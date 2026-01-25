@@ -9,7 +9,7 @@ interface SignaturePlaceholderProps {
 export const SignaturePlaceholder = ({ onClick, style }: SignaturePlaceholderProps) => {
   return (
     <div
-      className="absolute z-10 cursor-pointer"
+      className="absolute z-[15] cursor-pointer"
       style={style}
     >
       <Button
