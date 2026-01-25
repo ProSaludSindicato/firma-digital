@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Download, Send, AlertTriangle } from "lucide-react";
+import { Download, Send, AlertTriangle, CheckCircle } from "lucide-react";
 import { Header } from "@/components/Header";
 import { PDFUploader } from "@/components/PDFUploader";
 import { PDFViewer } from "@/components/PDFViewer";
 import { Button } from "@/components/ui/button";
 import { usePDFSigner } from "@/hooks/usePDFSigner";
+import { toast } from "@/hooks/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,11 +40,35 @@ const Index = () => {
     setShowConfirmDialog(true);
   };
 
-  const handleConfirmSend = () => {
-    // TODO: Implementar lógica de envío real
-    console.log("Convenio enviado");
-    setIsSent(true);
-    setShowConfirmDialog(false);
+  const handleConfirmSend = async () => {
+    try {
+      // TODO: Implementar lógica de envío real al backend
+      console.log("Convenio enviado");
+      
+      // Simular envío exitoso
+      setIsSent(true);
+      setShowConfirmDialog(false);
+      
+      // Mostrar toast de éxito
+      toast({
+        title: "✓ Convenio enviado exitosamente",
+        description: "Su convenio firmado ha sido recibido correctamente. Se descargará automáticamente.",
+        variant: "default",
+      });
+      
+      // Descargar automáticamente el PDF
+      setTimeout(async () => {
+        await downloadSignedPDF();
+      }, 500);
+      
+    } catch (error) {
+      console.error("Error al enviar el convenio:", error);
+      toast({
+        title: "Error al enviar el convenio",
+        description: "Hubo un problema al enviar su convenio. Por favor, intente nuevamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -77,6 +102,7 @@ const Index = () => {
                 onClearSignature={handleClearSignature}
                 totalPages={totalPages}
                 onTotalPagesChange={setTotalPages}
+                isLocked={isSent}
               />
 
               <div className="flex flex-col sm:flex-row justify-center gap-3">
@@ -107,9 +133,15 @@ const Index = () => {
               )}
 
               {isSent && (
-                <p className="text-sm text-primary text-center font-medium">
-                  ✓ Convenio enviado exitosamente. Ahora puede descargar su copia.
-                </p>
+                <div className="flex flex-col items-center gap-2 p-4 bg-primary/10 border border-primary/30 rounded-lg">
+                  <div className="flex items-center gap-2 text-primary">
+                    <CheckCircle className="w-6 h-6" />
+                    <span className="text-lg font-semibold">¡Convenio enviado y recibido correctamente!</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground text-center">
+                    Su convenio firmado ha sido procesado exitosamente. Puede descargar una copia adicional si lo necesita.
+                  </p>
+                </div>
               )}
             </div>
           )}

@@ -14,6 +14,7 @@ interface PDFPageViewProps {
   onPlaceholderPositionChange: (position: { x: number; y: number; page: number } | null) => void;
   onPlaceholderClick: () => void;
   onClearSignature: () => void;
+  isLocked?: boolean;
 }
 
 export const PDFPageView = ({
@@ -27,6 +28,7 @@ export const PDFPageView = ({
   onPlaceholderPositionChange,
   onPlaceholderClick,
   onClearSignature,
+  isLocked = false,
 }: PDFPageViewProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -234,13 +236,17 @@ export const PDFPageView = ({
       {/* Actual signature */}
       {showSignature && (
         <div
-          className="absolute cursor-move select-none z-10 border-2 border-primary border-dashed rounded-md p-1 bg-primary/5 hover:bg-primary/10 transition-colors"
+          className={`absolute select-none z-10 border-2 rounded-md p-1 transition-colors ${
+            isLocked 
+              ? "border-muted-foreground/50 bg-muted/30 cursor-default" 
+              : "border-primary border-dashed bg-primary/5 hover:bg-primary/10 cursor-move"
+          }`}
           style={{
             left: signaturePosition.x - signaturePosition.width / 2,
             top: signaturePosition.y - signaturePosition.height / 2,
             width: signaturePosition.width,
           }}
-          onMouseDown={handleSignatureDrag}
+          onMouseDown={isLocked ? undefined : handleSignatureDrag}
         >
           <img
             src={signature}
@@ -249,28 +255,37 @@ export const PDFPageView = ({
             style={{ maxHeight: signaturePosition.height - 8 }}
             draggable={false}
           />
-          <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
-            <Move className="w-3 h-3" />
-            Arrastra para mover
-          </div>
-          {/* Delete signature button */}
-          <div
-            className="absolute -top-2 -left-2 w-5 h-5 bg-destructive rounded-full cursor-pointer flex items-center justify-center shadow-md hover:bg-destructive/80 transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              onClearSignature();
-            }}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <Trash2 className="w-3 h-3 text-destructive-foreground" />
-          </div>
-          {/* Resize handle */}
-          <div
-            className="absolute -bottom-2 -right-2 w-5 h-5 bg-primary rounded-full cursor-se-resize flex items-center justify-center shadow-md hover:bg-primary/80 transition-colors"
-            onMouseDown={handleSignatureResize}
-          >
-            <Maximize2 className="w-3 h-3 text-primary-foreground rotate-90" />
-          </div>
+          {!isLocked && (
+            <>
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
+                <Move className="w-3 h-3" />
+                Arrastra para mover
+              </div>
+              {/* Delete signature button */}
+              <div
+                className="absolute -top-2 -left-2 w-5 h-5 bg-destructive rounded-full cursor-pointer flex items-center justify-center shadow-md hover:bg-destructive/80 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClearSignature();
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <Trash2 className="w-3 h-3 text-destructive-foreground" />
+              </div>
+              {/* Resize handle */}
+              <div
+                className="absolute -bottom-2 -right-2 w-5 h-5 bg-primary rounded-full cursor-se-resize flex items-center justify-center shadow-md hover:bg-primary/80 transition-colors"
+                onMouseDown={handleSignatureResize}
+              >
+                <Maximize2 className="w-3 h-3 text-primary-foreground rotate-90" />
+              </div>
+            </>
+          )}
+          {isLocked && (
+            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
+              Documento enviado
+            </div>
+          )}
         </div>
       )}
 
