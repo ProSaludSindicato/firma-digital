@@ -17,6 +17,7 @@ interface PDFViewerProps {
   onClearSignature: () => void;
   totalPages: number;
   onTotalPagesChange: (total: number) => void;
+  isLocked?: boolean;
 }
 
 export const PDFViewer = ({
@@ -27,6 +28,7 @@ export const PDFViewer = ({
   onSignatureCreate,
   onClearSignature,
   onTotalPagesChange,
+  isLocked = false,
 }: PDFViewerProps) => {
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -183,6 +185,7 @@ export const PDFViewer = ({
             onPlaceholderPositionChange={setPlaceholderPosition}
             onPlaceholderClick={handlePlaceholderClick}
             onClearSignature={onClearSignature}
+            isLocked={isLocked}
           />
         </div>
       </div>
