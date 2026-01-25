@@ -81,8 +81,8 @@ export const SignaturePanel = ({
               <SignatureCanvas
                 ref={signatureRef}
                 canvasProps={{
-                  className: "w-full h-32",
-                  style: { width: "100%", height: "128px" },
+                  className: "w-full h-48",
+                  style: { width: "100%", height: "192px" },
                 }}
                 backgroundColor="transparent"
                 penColor="#1e293b"

@@ -4,13 +4,14 @@ import { PDFDocument } from "pdf-lib";
 interface SignaturePosition {
   x: number;
   y: number;
+  page: number;
 }
 
 export const usePDFSigner = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
-  const [signaturePosition, setSignaturePosition] = useState<SignaturePosition | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [signaturePosition, setSignaturePosition] =
+    useState<SignaturePosition | null>(null);
   const [totalPages, setTotalPages] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -18,7 +19,6 @@ export const usePDFSigner = () => {
     setPdfFile(file);
     setSignature(null);
     setSignaturePosition(null);
-    setCurrentPage(1);
   }, []);
 
   const handleSignatureCreate = useCallback((sig: string) => {
@@ -40,7 +40,7 @@ export const usePDFSigner = () => {
       const arrayBuffer = await pdfFile.arrayBuffer();
       const pdfDoc = await PDFDocument.load(arrayBuffer);
       const pages = pdfDoc.getPages();
-      const page = pages[currentPage - 1];
+      const page = pages[signaturePosition.page - 1];
 
       // Get page dimensions
       const { height: pageHeight } = page.getSize();
@@ -59,13 +59,15 @@ export const usePDFSigner = () => {
 
       // Scale factor based on PDF rendering scale (1.2 in PDFViewer)
       const scaleFactor = 1.2;
-      
+
       // Calculate position - flip Y coordinate for PDF coordinate system
       const signatureWidth = 150 / scaleFactor;
-      const signatureHeight = (signatureImage.height / signatureImage.width) * signatureWidth;
-      
+      const signatureHeight =
+        (signatureImage.height / signatureImage.width) * signatureWidth;
+
       const x = (signaturePosition.x - 75) / scaleFactor;
-      const y = pageHeight - ((signaturePosition.y - 25) / scaleFactor) - signatureHeight;
+      const y =
+        pageHeight - (signaturePosition.y - 25) / scaleFactor - signatureHeight;
 
       page.drawImage(signatureImage, {
         x,
@@ -75,7 +77,9 @@ export const usePDFSigner = () => {
       });
 
       const pdfBytes = await pdfDoc.save();
-      const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
+      const blob = new Blob([new Uint8Array(pdfBytes)], {
+        type: "application/pdf",
+      });
       const url = URL.createObjectURL(blob);
 
       const link = document.createElement("a");
@@ -89,7 +93,7 @@ export const usePDFSigner = () => {
     } finally {
       setIsDownloading(false);
     }
-  }, [pdfFile, signature, signaturePosition, currentPage]);
+  }, [pdfFile, signature, signaturePosition]);
 
   const canDownload = pdfFile && signature && signaturePosition;
 
@@ -97,7 +101,6 @@ export const usePDFSigner = () => {
     pdfFile,
     signature,
     signaturePosition,
-    currentPage,
     totalPages,
     isDownloading,
     canDownload,
@@ -105,7 +108,6 @@ export const usePDFSigner = () => {
     handleSignatureCreate,
     handleClearSignature,
     setSignaturePosition,
-    setCurrentPage,
     setTotalPages,
     downloadSignedPDF,
   };
