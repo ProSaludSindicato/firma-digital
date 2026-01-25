@@ -1,4 +1,4 @@
-import { Download } from "lucide-react";
+import { Download, Send } from "lucide-react";
 import { Header } from "@/components/Header";
 import { PDFUploader } from "@/components/PDFUploader";
 import { PDFViewer } from "@/components/PDFViewer";
@@ -21,9 +21,18 @@ const Index = () => {
     downloadSignedPDF,
   } = usePDFSigner();
 
+  const handleFinishAndSend = () => {
+    // TODO: Implementar lógica de envío
+    console.log("Finalizar y enviar convenio");
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Header />
+      <Header 
+        showFinishButton={!!signature && !!signaturePosition} 
+        onFinish={handleFinishAndSend}
+        isProcessing={isDownloading}
+      />
       
       <main className="flex-1 p-6">
         <div className="max-w-7xl mx-auto">
@@ -53,15 +62,25 @@ const Index = () => {
                 onTotalPagesChange={setTotalPages}
               />
               
-              <div className="flex justify-center">
+              <div className="flex flex-col sm:flex-row justify-center gap-3">
                 <Button
-                  onClick={downloadSignedPDF}
+                  onClick={handleFinishAndSend}
                   disabled={!canDownload || isDownloading}
                   size="lg"
                   className="min-w-[250px]"
                 >
+                  <Send className="w-5 h-5 mr-2" />
+                  {isDownloading ? "Procesando..." : "Finalizar y Enviar convenio"}
+                </Button>
+                <Button
+                  onClick={downloadSignedPDF}
+                  disabled={!canDownload || isDownloading}
+                  size="lg"
+                  variant="outline"
+                  className="min-w-[200px]"
+                >
                   <Download className="w-5 h-5 mr-2" />
-                  {isDownloading ? "Procesando..." : "Descargar PDF firmado"}
+                  Descargar PDF
                 </Button>
               </div>
               

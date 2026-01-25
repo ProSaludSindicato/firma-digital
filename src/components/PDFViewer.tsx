@@ -200,8 +200,9 @@ export const PDFViewer = ({
       </div>
 
       {/* Page info footer */}
-      <div className="text-center text-xs text-muted-foreground py-2">
-        {file.name} — Página {currentPage} de {totalPages}
+      <div className="flex justify-between items-center text-xs text-muted-foreground py-2 px-2">
+        <span className="truncate max-w-[50%]">{file.name}</span>
+        <span>Página {currentPage} de {totalPages}</span>
       </div>
 
       <SignatureModal
