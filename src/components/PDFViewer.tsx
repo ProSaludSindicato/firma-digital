@@ -31,10 +31,20 @@ export const PDFViewer = ({
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
-  const [scale, setScale] = useState(1.2);
   const [placeholderPosition, setPlaceholderPosition] = useState<{ x: number; y: number; page: number } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  // Calculate responsive zoom based on screen width
+  const getResponsiveZoom = useCallback(() => {
+    const width = window.innerWidth;
+    if (width >= 1920) return 1.6; // Very large screens: 160%
+    if (width >= 1440) return 1.4; // Large screens: 140%
+    if (width >= 768) return 1.0;  // Tablets: 100%
+    return 0.8;                     // Mobile: 80%
+  }, []);
+
+  const [scale, setScale] = useState(getResponsiveZoom);
 
   // Load PDF
   useEffect(() => {
@@ -184,6 +194,7 @@ export const PDFViewer = ({
             placeholderPosition={placeholderPosition}
             onPlaceholderPositionChange={setPlaceholderPosition}
             onPlaceholderClick={handlePlaceholderClick}
+            onClearSignature={onClearSignature}
           />
         </div>
       </div>
