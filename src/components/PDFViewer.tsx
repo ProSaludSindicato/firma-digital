@@ -127,15 +127,18 @@ export const PDFViewer = ({
         accumulatedHeight += pageHeight;
       }
       
+      // Handle clicks near the end - place on last page
       if (pageCanvases.length > 0 && y >= accumulatedHeight - 48) {
         const lastIndex = pageCanvases.length - 1;
         let totalHeight = 0;
         for (let i = 0; i < lastIndex; i++) {
           totalHeight += pageCanvases[i].height + 48;
         }
-        return { 
-          page: pageCanvases.length, 
-          relativeY: Math.min(y - totalHeight, pageCanvases[lastIndex].height - 30) 
+        const relativeY = y - totalHeight;
+        const maxY = pageCanvases[lastIndex].height - 30;
+        return {
+          page: pageCanvases.length,
+          relativeY: Math.max(30, Math.min(relativeY, maxY))
         };
       }
       
@@ -146,8 +149,11 @@ export const PDFViewer = ({
 
   const handleContainerClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      // Don't place new placeholder if signature already exists or if dragging/resizing
-      if (signature || isDragging || isResizing || !pagesContainerRef.current || !containerRef.current) return;
+      // Only block clicks if we're dragging, resizing, or missing refs
+      if (isDragging || isResizing || !pagesContainerRef.current || !containerRef.current) return;
+      
+      // Don't allow new placeholder if signature already placed
+      if (signature) return;
 
       const pagesContainerRect = pagesContainerRef.current.getBoundingClientRect();
       const scrollTop = containerRef.current.scrollTop;
@@ -164,7 +170,7 @@ export const PDFViewer = ({
         });
       }
     },
-    [signature, isDragging, isResizing, getPageFromY]
+    [signature, isDragging, isResizing, getPageFromY, pageCanvases]
   );
 
   const handlePlaceholderClick = useCallback(() => {
@@ -345,11 +351,19 @@ export const PDFViewer = ({
       <div
         ref={containerRef}
         className="relative border border-border rounded-lg overflow-auto max-h-[80vh] bg-muted/30 w-full p-4"
-        onClick={handleContainerClick}
       >
         <div ref={pagesContainerRef} className="relative">
           {/* Pages are rendered here dynamically */}
         </div>
+
+        {/* Transparent overlay for click detection when no signature */}
+        {!signature && (
+          <div
+            className="absolute inset-0 z-[5]"
+            onClick={handleContainerClick}
+            style={{ cursor: 'crosshair' }}
+          />
+        )}
 
         {/* Placeholder button - shown when no signature yet */}
         {!signature && placeholderPosition && pageCanvases.length > 0 && (
