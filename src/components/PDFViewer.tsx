@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist";
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from "lucide-react";
+import { ZoomIn, ZoomOut, Move } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs`;
@@ -8,12 +8,17 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs
 interface PDFViewerProps {
   file: File;
   signature: string | null;
-  signaturePosition: { x: number; y: number } | null;
-  onSignaturePositionChange: (position: { x: number; y: number }) => void;
-  currentPage: number;
-  onPageChange: (page: number) => void;
+  signaturePosition: { x: number; y: number; page: number } | null;
+  onSignaturePositionChange: (position: { x: number; y: number; page: number }) => void;
   totalPages: number;
   onTotalPagesChange: (total: number) => void;
+}
+
+interface PageCanvas {
+  canvas: HTMLCanvasElement;
+  width: number;
+  height: number;
+  offsetTop: number;
 }
 
 export const PDFViewer = ({
@@ -21,17 +26,15 @@ export const PDFViewer = ({
   signature,
   signaturePosition,
   onSignaturePositionChange,
-  currentPage,
-  onPageChange,
-  totalPages,
   onTotalPagesChange,
 }: PDFViewerProps) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const pagesContainerRef = useRef<HTMLDivElement>(null);
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [scale, setScale] = useState(1.2);
   const [isDragging, setIsDragging] = useState(false);
-  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+  const [pageCanvases, setPageCanvases] = useState<PageCanvas[]>([]);
+  const [isRendering, setIsRendering] = useState(false);
 
   useEffect(() => {
     const loadPdf = async () => {
@@ -44,79 +47,145 @@ export const PDFViewer = ({
   }, [file, onTotalPagesChange]);
 
   useEffect(() => {
-    const renderPage = async () => {
-      if (!pdfDoc || !canvasRef.current) return;
+    const renderAllPages = async () => {
+      if (!pdfDoc || !pagesContainerRef.current || isRendering) return;
 
-      const page = await pdfDoc.getPage(currentPage);
-      const viewport = page.getViewport({ scale });
-      const canvas = canvasRef.current;
-      const context = canvas.getContext("2d");
+      setIsRendering(true);
+      const container = pagesContainerRef.current;
+      container.innerHTML = "";
 
-      if (!context) return;
+      const canvases: PageCanvas[] = [];
+      let currentOffsetTop = 0;
 
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
-      setCanvasSize({ width: viewport.width, height: viewport.height });
+      for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+        const page = await pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale });
 
-      await page.render({
-        canvasContext: context,
-        viewport: viewport,
-      }).promise;
+        const canvas = document.createElement("canvas");
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        canvas.className = "block mx-auto shadow-md";
+        canvas.dataset.page = String(pageNum);
+
+        const context = canvas.getContext("2d");
+        if (context) {
+          await page.render({
+            canvasContext: context,
+            viewport: viewport,
+          }).promise;
+        }
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "mb-4 relative";
+        wrapper.appendChild(canvas);
+        container.appendChild(wrapper);
+
+        canvases.push({
+          canvas,
+          width: viewport.width,
+          height: viewport.height,
+          offsetTop: currentOffsetTop,
+        });
+
+        currentOffsetTop += viewport.height + 16; // 16px margin
+      }
+
+      setPageCanvases(canvases);
+      setIsRendering(false);
     };
-    renderPage();
-  }, [pdfDoc, currentPage, scale]);
 
-  const handleCanvasClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!signature || isDragging) return;
-      
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      
-      onSignaturePositionChange({ x, y });
+    renderAllPages();
+  }, [pdfDoc, scale]);
+
+  const getPageFromPosition = useCallback(
+    (clientY: number): { page: number; relativeY: number } | null => {
+      if (!pagesContainerRef.current) return null;
+
+      const containerRect = pagesContainerRef.current.getBoundingClientRect();
+      const scrollTop = pagesContainerRef.current.parentElement?.scrollTop || 0;
+      const y = clientY - containerRect.top + scrollTop;
+
+      let accumulatedHeight = 0;
+      for (let i = 0; i < pageCanvases.length; i++) {
+        const pageHeight = pageCanvases[i].height + 16; // including margin
+        if (y >= accumulatedHeight && y < accumulatedHeight + pageCanvases[i].height) {
+          return { page: i + 1, relativeY: y - accumulatedHeight };
+        }
+        accumulatedHeight += pageHeight;
+      }
+      return null;
     },
-    [signature, isDragging, onSignaturePositionChange]
+    [pageCanvases]
+  );
+
+  const handleContainerClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!signature || isDragging || !pagesContainerRef.current) return;
+
+      const containerRect = pagesContainerRef.current.getBoundingClientRect();
+      const scrollTop = containerRef.current?.scrollTop || 0;
+      
+      const x = e.clientX - containerRect.left;
+      const y = e.clientY - containerRect.top + scrollTop;
+
+      // Determine which page was clicked
+      let accumulatedHeight = 0;
+      for (let i = 0; i < pageCanvases.length; i++) {
+        const pageHeight = pageCanvases[i].height + 16;
+        if (y >= accumulatedHeight && y < accumulatedHeight + pageCanvases[i].height) {
+          const relativeY = y - accumulatedHeight;
+          onSignaturePositionChange({ x, y: relativeY, page: i + 1 });
+          return;
+        }
+        accumulatedHeight += pageHeight;
+      }
+    },
+    [signature, isDragging, pageCanvases, onSignaturePositionChange]
   );
 
   const handleSignatureDrag = useCallback(
-    (e: React.MouseEvent<HTMLImageElement>) => {
+    (e: React.MouseEvent<HTMLDivElement>) => {
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(true);
-      
+
       const container = containerRef.current;
-      if (!container) return;
-      
+      const pagesContainer = pagesContainerRef.current;
+      if (!container || !pagesContainer || !signaturePosition) return;
+
       const startX = e.clientX;
       const startY = e.clientY;
-      const startPosX = signaturePosition?.x || 0;
-      const startPosY = signaturePosition?.y || 0;
+      const startPosX = signaturePosition.x;
+      const startPosY = signaturePosition.y;
+      const startPage = signaturePosition.page;
 
       const handleMouseMove = (moveEvent: MouseEvent) => {
         const deltaX = moveEvent.clientX - startX;
         const deltaY = moveEvent.clientY - startY;
-        
-        // Calculate new position
+
+        const pageCanvas = pageCanvases[startPage - 1];
+        if (!pageCanvas) return;
+
         let newX = startPosX + deltaX;
         let newY = startPosY + deltaY;
-        
-        // Constrain to canvas boundaries
+
+        // Constrain to page boundaries
         const signatureWidth = 150;
         const signatureHeight = 80;
-        
-        newX = Math.max(signatureWidth / 2, Math.min(canvasSize.width - signatureWidth / 2, newX));
-        newY = Math.max(signatureHeight / 2, Math.min(canvasSize.height - signatureHeight / 2, newY));
-        
+
+        newX = Math.max(signatureWidth / 2, Math.min(pageCanvas.width - signatureWidth / 2, newX));
+        newY = Math.max(signatureHeight / 2, Math.min(pageCanvas.height - signatureHeight / 2, newY));
+
         onSignaturePositionChange({
           x: newX,
           y: newY,
+          page: startPage,
         });
-        
-        // Auto-scroll container if dragging near edges
+
+        // Auto-scroll
         const containerRect = container.getBoundingClientRect();
         const scrollMargin = 50;
-        
+
         if (moveEvent.clientY > containerRect.bottom - scrollMargin) {
           container.scrollTop += 10;
         } else if (moveEvent.clientY < containerRect.top + scrollMargin) {
@@ -133,32 +202,22 @@ export const PDFViewer = ({
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    [signaturePosition, onSignaturePositionChange, canvasSize]
+    [signaturePosition, onSignaturePositionChange, pageCanvases]
   );
+
+  const getSignatureTopPosition = useCallback(() => {
+    if (!signaturePosition || !pageCanvases.length) return 0;
+
+    let accumulatedHeight = 0;
+    for (let i = 0; i < signaturePosition.page - 1; i++) {
+      accumulatedHeight += pageCanvases[i].height + 16;
+    }
+    return accumulatedHeight + signaturePosition.y - 40;
+  }, [signaturePosition, pageCanvases]);
 
   return (
     <div className="flex flex-col items-center gap-4 w-full">
-      <div className="flex items-center gap-4 bg-card rounded-lg p-2 shadow-sm">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-          disabled={currentPage === 1}
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </Button>
-        <span className="text-sm font-medium text-foreground min-w-[100px] text-center">
-          Página {currentPage} de {totalPages}
-        </span>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-          disabled={currentPage === totalPages}
-        >
-          <ChevronRight className="w-5 h-5" />
-        </Button>
-        <div className="w-px h-6 bg-border mx-2" />
+      <div className="flex items-center gap-4 bg-card rounded-lg p-2 shadow-sm border border-border">
         <Button
           variant="ghost"
           size="icon"
@@ -180,26 +239,36 @@ export const PDFViewer = ({
 
       <div
         ref={containerRef}
-        className="relative border border-border rounded-lg overflow-auto max-h-[80vh] bg-muted/30 w-full"
-        onClick={handleCanvasClick}
+        className="relative border border-border rounded-lg overflow-auto max-h-[80vh] bg-muted/30 w-full p-4"
+        onClick={handleContainerClick}
       >
-        <canvas ref={canvasRef} className="block" />
-        {signature && signaturePosition && (
-          <img
-            src={signature}
-            alt="Firma"
-            className="absolute cursor-move select-none"
+        <div ref={pagesContainerRef} className="relative">
+          {/* Pages are rendered here dynamically */}
+        </div>
+
+        {signature && signaturePosition && pageCanvases.length > 0 && (
+          <div
+            className="absolute cursor-move select-none z-10 border-2 border-primary border-dashed rounded-md p-1 bg-primary/5 hover:bg-primary/10 transition-colors"
             style={{
-              left: signaturePosition.x - 75,
-              top: signaturePosition.y - 25,
-              width: 150,
-              height: "auto",
-              maxHeight: 80,
+              left: signaturePosition.x - 77,
+              top: getSignatureTopPosition(),
+              width: 154,
             }}
             onMouseDown={handleSignatureDrag}
-            draggable={false}
-          />
+          >
+            <img
+              src={signature}
+              alt="Firma"
+              className="w-full h-auto max-h-[76px] pointer-events-none"
+              draggable={false}
+            />
+            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
+              <Move className="w-3 h-3" />
+              Arrastra para mover
+            </div>
+          </div>
         )}
+
         {signature && !signaturePosition && (
           <div className="absolute inset-0 flex items-center justify-center bg-foreground/5 pointer-events-none">
             <p className="bg-card/90 text-foreground px-4 py-2 rounded-lg shadow-lg font-medium">

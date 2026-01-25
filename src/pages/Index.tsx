@@ -11,7 +11,6 @@ const Index = () => {
     pdfFile,
     signature,
     signaturePosition,
-    currentPage,
     totalPages,
     isDownloading,
     canDownload,
@@ -19,7 +18,6 @@ const Index = () => {
     handleSignatureCreate,
     handleClearSignature,
     setSignaturePosition,
-    setCurrentPage,
     setTotalPages,
     downloadSignedPDF,
   } = usePDFSigner();
@@ -51,8 +49,6 @@ const Index = () => {
                   signature={signature}
                   signaturePosition={signaturePosition}
                   onSignaturePositionChange={setSignaturePosition}
-                  currentPage={currentPage}
-                  onPageChange={setCurrentPage}
                   totalPages={totalPages}
                   onTotalPagesChange={setTotalPages}
                 />
