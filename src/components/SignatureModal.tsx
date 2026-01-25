@@ -57,7 +57,7 @@ export const SignatureModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg md:max-w-xl">
         <DialogHeader>
           <DialogTitle>Agregar tu firma</DialogTitle>
         </DialogHeader>
@@ -79,8 +79,8 @@ export const SignatureModal = ({
               <SignatureCanvas
                 ref={signatureRef}
                 canvasProps={{
-                  className: "w-full h-48",
-                  style: { width: "100%", height: "192px" },
+                  className: "w-full h-56 md:h-64",
+                  style: { width: "100%", height: "100%" },
                 }}
                 backgroundColor="transparent"
                 penColor="#1e293b"
