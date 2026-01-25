@@ -8,8 +8,8 @@ interface PDFPageViewProps {
   pageNumber: number;
   scale: number;
   signature: string | null;
-  signaturePosition: { x: number; y: number; page: number; width: number; height: number } | null;
-  onSignaturePositionChange: (position: { x: number; y: number; page: number; width: number; height: number } | null) => void;
+  signaturePosition: { x: number; y: number; page: number; width: number; height: number; scale: number } | null;
+  onSignaturePositionChange: (position: { x: number; y: number; page: number; width: number; height: number; scale: number } | null) => void;
   placeholderPosition: { x: number; y: number; page: number } | null;
   onPlaceholderPositionChange: (position: { x: number; y: number; page: number } | null) => void;
   onPlaceholderClick: () => void;
@@ -150,6 +150,7 @@ export const PDFPageView = ({
           page: pageNumber,
           width: signaturePosition.width,
           height: signaturePosition.height,
+          scale: signaturePosition.scale,
         });
       };
 
