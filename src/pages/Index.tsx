@@ -41,7 +41,7 @@ const Index = () => {
               <PDFUploader onFileSelect={handleFileSelect} />
             </div>
           ) : (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 h-[calc(100vh-180px)]">
               <PDFViewer
                 file={pdfFile}
                 signature={signature}
