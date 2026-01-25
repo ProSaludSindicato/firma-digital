@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist";
-import { ZoomIn, ZoomOut, Move, Maximize2 } from "lucide-react";
+import { ZoomIn, ZoomOut, Move, Maximize2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SignaturePlaceholder } from "./SignaturePlaceholder";
+import { SignatureModal } from "./SignatureModal";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs`;
 
@@ -9,7 +11,9 @@ interface PDFViewerProps {
   file: File;
   signature: string | null;
   signaturePosition: { x: number; y: number; page: number; width: number; height: number } | null;
-  onSignaturePositionChange: (position: { x: number; y: number; page: number; width: number; height: number }) => void;
+  onSignaturePositionChange: (position: { x: number; y: number; page: number; width: number; height: number } | null) => void;
+  onSignatureCreate: (signature: string) => void;
+  onClearSignature: () => void;
   totalPages: number;
   onTotalPagesChange: (total: number) => void;
 }
@@ -26,6 +30,8 @@ export const PDFViewer = ({
   signature,
   signaturePosition,
   onSignaturePositionChange,
+  onSignatureCreate,
+  onClearSignature,
   onTotalPagesChange,
 }: PDFViewerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -36,6 +42,10 @@ export const PDFViewer = ({
   const [isResizing, setIsResizing] = useState(false);
   const [pageCanvases, setPageCanvases] = useState<PageCanvas[]>([]);
   const [isRendering, setIsRendering] = useState(false);
+  
+  // New state for placeholder position (before signature is created)
+  const [placeholderPosition, setPlaceholderPosition] = useState<{ x: number; y: number; page: number } | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const loadPdf = async () => {
@@ -79,7 +89,6 @@ export const PDFViewer = ({
         const wrapper = document.createElement("div");
         wrapper.className = "mb-4 relative";
         
-        // Add page label with filename
         const pageLabel = document.createElement("div");
         pageLabel.className = "text-center text-xs text-muted-foreground py-2";
         pageLabel.textContent = `${file.name} — Página ${pageNum} de ${pdfDoc.numPages}`;
@@ -95,7 +104,7 @@ export const PDFViewer = ({
           offsetTop: currentOffsetTop,
         });
 
-        currentOffsetTop += viewport.height + 48; // canvas + label + margin
+        currentOffsetTop += viewport.height + 48;
       }
 
       setPageCanvases(canvases);
@@ -109,17 +118,15 @@ export const PDFViewer = ({
     (y: number): { page: number; relativeY: number } | null => {
       let accumulatedHeight = 0;
       for (let i = 0; i < pageCanvases.length; i++) {
-        const pageHeight = pageCanvases[i].height + 48; // canvas + label + margin
+        const pageHeight = pageCanvases[i].height + 48;
         const canvasHeight = pageCanvases[i].height;
         
-        // Check if y is within this page's canvas area (not in the margin/label area)
         if (y >= accumulatedHeight && y < accumulatedHeight + canvasHeight) {
           return { page: i + 1, relativeY: y - accumulatedHeight };
         }
         accumulatedHeight += pageHeight;
       }
       
-      // If we're past all pages, return the last page
       if (pageCanvases.length > 0 && y >= accumulatedHeight - 48) {
         const lastIndex = pageCanvases.length - 1;
         let totalHeight = 0;
@@ -139,39 +146,55 @@ export const PDFViewer = ({
 
   const handleContainerClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!signature || isDragging || isResizing || !pagesContainerRef.current || !containerRef.current) return;
+      // Don't place new placeholder if signature already exists or if dragging/resizing
+      if (signature || isDragging || isResizing || !pagesContainerRef.current || !containerRef.current) return;
 
       const pagesContainerRect = pagesContainerRef.current.getBoundingClientRect();
       const scrollTop = containerRef.current.scrollTop;
       
-      // Calculate position relative to the pages container including scroll
       const x = e.clientX - pagesContainerRect.left;
       const y = e.clientY - pagesContainerRect.top + scrollTop;
 
       const pageInfo = getPageFromY(y);
       if (pageInfo) {
-        // Default signature size
-        const defaultWidth = 150;
-        const defaultHeight = 60;
-        
-        // Ensure signature stays within page bounds
-        const pageCanvas = pageCanvases[pageInfo.page - 1];
-        if (pageCanvas) {
-          const constrainedX = Math.max(defaultWidth / 2, Math.min(pageCanvas.width - defaultWidth / 2, x));
-          const constrainedY = Math.max(defaultHeight / 2, Math.min(pageCanvas.height - defaultHeight / 2, pageInfo.relativeY));
-          
-          onSignaturePositionChange({
-            x: constrainedX,
-            y: constrainedY,
-            page: pageInfo.page,
-            width: signaturePosition?.width || defaultWidth,
-            height: signaturePosition?.height || defaultHeight,
-          });
-        }
+        setPlaceholderPosition({
+          x,
+          y: pageInfo.relativeY,
+          page: pageInfo.page,
+        });
       }
     },
-    [signature, isDragging, isResizing, pageCanvases, onSignaturePositionChange, getPageFromY, signaturePosition]
+    [signature, isDragging, isResizing, getPageFromY]
   );
+
+  const handlePlaceholderClick = useCallback(() => {
+    setIsModalOpen(true);
+  }, []);
+
+  const handleSignatureCreate = useCallback((sig: string) => {
+    onSignatureCreate(sig);
+    
+    // Convert placeholder position to signature position
+    if (placeholderPosition) {
+      const defaultWidth = 150;
+      const defaultHeight = 60;
+      
+      onSignaturePositionChange({
+        x: placeholderPosition.x,
+        y: placeholderPosition.y,
+        page: placeholderPosition.page,
+        width: defaultWidth,
+        height: defaultHeight,
+      });
+      
+      setPlaceholderPosition(null);
+    }
+  }, [placeholderPosition, onSignatureCreate, onSignaturePositionChange]);
+
+  const handleRemoveSignature = useCallback(() => {
+    onClearSignature();
+    onSignaturePositionChange(null);
+  }, [onClearSignature, onSignaturePositionChange]);
 
   const handleSignatureDrag = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -184,7 +207,6 @@ export const PDFViewer = ({
       if (!container || !pagesContainer || !signaturePosition) return;
 
       const handleMouseMove = (moveEvent: MouseEvent) => {
-        // Get fresh rect on each move to handle scroll changes
         const pagesContainerRect = pagesContainer.getBoundingClientRect();
         const scrollTop = container.scrollTop;
         
@@ -196,7 +218,6 @@ export const PDFViewer = ({
           const pageCanvas = pageCanvases[pageInfo.page - 1];
           if (!pageCanvas) return;
 
-          // Constrain to page boundaries
           const halfWidth = signaturePosition.width / 2;
           const halfHeight = signaturePosition.height / 2;
 
@@ -212,7 +233,6 @@ export const PDFViewer = ({
           });
         }
 
-        // Auto-scroll when near edges
         const containerRect = container.getBoundingClientRect();
         const scrollMargin = 60;
         const scrollSpeed = 15;
@@ -254,7 +274,6 @@ export const PDFViewer = ({
         const deltaX = moveEvent.clientX - startX;
         const deltaY = moveEvent.clientY - startY;
 
-        // Use the larger delta to maintain aspect ratio
         const delta = Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY * aspectRatio;
 
         const newWidth = Math.max(80, Math.min(400, startWidth + delta));
@@ -279,15 +298,15 @@ export const PDFViewer = ({
     [signaturePosition, onSignaturePositionChange]
   );
 
-  const getSignatureTopPosition = useCallback(() => {
-    if (!signaturePosition || !pageCanvases.length) return 0;
+  const getPositionTopForPage = useCallback((page: number, relativeY: number, height: number = 0) => {
+    if (!pageCanvases.length) return 0;
 
     let accumulatedHeight = 0;
-    for (let i = 0; i < signaturePosition.page - 1; i++) {
+    for (let i = 0; i < page - 1; i++) {
       accumulatedHeight += pageCanvases[i].height + 48;
     }
-    return accumulatedHeight + signaturePosition.y - signaturePosition.height / 2;
-  }, [signaturePosition, pageCanvases]);
+    return accumulatedHeight + relativeY - height / 2;
+  }, [pageCanvases]);
 
   return (
     <div className="flex flex-col items-center gap-4 w-full">
@@ -309,6 +328,18 @@ export const PDFViewer = ({
         >
           <ZoomIn className="w-5 h-5" />
         </Button>
+        
+        {signature && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRemoveSignature}
+            className="text-destructive hover:text-destructive ml-2"
+          >
+            <Trash2 className="w-4 h-4 mr-1" />
+            Eliminar firma
+          </Button>
+        )}
       </div>
 
       <div
@@ -320,12 +351,24 @@ export const PDFViewer = ({
           {/* Pages are rendered here dynamically */}
         </div>
 
+        {/* Placeholder button - shown when no signature yet */}
+        {!signature && placeholderPosition && pageCanvases.length > 0 && (
+          <SignaturePlaceholder
+            onClick={handlePlaceholderClick}
+            style={{
+              left: placeholderPosition.x - 75,
+              top: getPositionTopForPage(placeholderPosition.page, placeholderPosition.y),
+            }}
+          />
+        )}
+
+        {/* Actual signature - shown after creating */}
         {signature && signaturePosition && pageCanvases.length > 0 && (
           <div
             className="absolute cursor-move select-none z-10 border-2 border-primary border-dashed rounded-md p-1 bg-primary/5 hover:bg-primary/10 transition-colors"
             style={{
               left: signaturePosition.x - signaturePosition.width / 2,
-              top: getSignatureTopPosition(),
+              top: getPositionTopForPage(signaturePosition.page, signaturePosition.y, signaturePosition.height),
               width: signaturePosition.width,
             }}
             onMouseDown={handleSignatureDrag}
@@ -341,7 +384,6 @@ export const PDFViewer = ({
               <Move className="w-3 h-3" />
               Arrastra para mover
             </div>
-            {/* Resize handle */}
             <div
               className="absolute -bottom-2 -right-2 w-5 h-5 bg-primary rounded-full cursor-se-resize flex items-center justify-center shadow-md hover:bg-primary/80 transition-colors"
               onMouseDown={handleSignatureResize}
@@ -351,14 +393,21 @@ export const PDFViewer = ({
           </div>
         )}
 
-        {signature && !signaturePosition && (
+        {/* Initial instruction - before any click */}
+        {!signature && !placeholderPosition && (
           <div className="absolute inset-0 flex items-center justify-center bg-foreground/5 pointer-events-none">
             <p className="bg-card/90 text-foreground px-4 py-2 rounded-lg shadow-lg font-medium">
-              Haz clic donde deseas colocar tu firma
+              Haz clic en el documento donde deseas agregar tu firma
             </p>
           </div>
         )}
       </div>
+
+      <SignatureModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSignatureCreate={handleSignatureCreate}
+      />
     </div>
   );
 };

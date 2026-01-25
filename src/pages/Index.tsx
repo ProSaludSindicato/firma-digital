@@ -2,7 +2,6 @@ import { Download } from "lucide-react";
 import { Header } from "@/components/Header";
 import { PDFUploader } from "@/components/PDFUploader";
 import { PDFViewer } from "@/components/PDFViewer";
-import { SignaturePanel } from "@/components/SignaturePanel";
 import { Button } from "@/components/ui/button";
 import { usePDFSigner } from "@/hooks/usePDFSigner";
 
@@ -35,50 +34,44 @@ const Index = () => {
                   Firma tus documentos PDF
                 </h2>
                 <p className="text-muted-foreground">
-                  Sube tu documento, agrega tu firma dibujándola o subiendo una imagen, 
+                  Sube tu documento, haz clic donde deseas firmar, 
                   y descarga el PDF firmado listo para enviar.
                 </p>
               </div>
               <PDFUploader onFileSelect={handleFileSelect} />
             </div>
           ) : (
-            <div className="grid grid-cols-1 xl:grid-cols-5 lg:grid-cols-4 gap-6">
-              <div className="xl:col-span-4 lg:col-span-3">
-                <PDFViewer
-                  file={pdfFile}
-                  signature={signature}
-                  signaturePosition={signaturePosition}
-                  onSignaturePositionChange={setSignaturePosition}
-                  totalPages={totalPages}
-                  onTotalPagesChange={setTotalPages}
-                />
-              </div>
+            <div className="flex flex-col gap-4">
+              <PDFViewer
+                file={pdfFile}
+                signature={signature}
+                signaturePosition={signaturePosition}
+                onSignaturePositionChange={setSignaturePosition}
+                onSignatureCreate={handleSignatureCreate}
+                onClearSignature={handleClearSignature}
+                totalPages={totalPages}
+                onTotalPagesChange={setTotalPages}
+              />
               
-              <div className="space-y-4">
-                <SignaturePanel
-                  onSignatureCreate={handleSignatureCreate}
-                  onClearSignature={handleClearSignature}
-                  hasSignature={!!signature}
-                />
-                
+              <div className="flex justify-center">
                 <Button
                   onClick={downloadSignedPDF}
                   disabled={!canDownload || isDownloading}
-                  className="w-full"
                   size="lg"
+                  className="min-w-[250px]"
                 >
                   <Download className="w-5 h-5 mr-2" />
                   {isDownloading ? "Procesando..." : "Descargar PDF firmado"}
                 </Button>
-                
-                {!canDownload && pdfFile && (
-                  <p className="text-sm text-muted-foreground text-center">
-                    {!signature
-                      ? "Agrega tu firma para continuar"
-                      : "Coloca la firma en el documento"}
-                  </p>
-                )}
               </div>
+              
+              {!canDownload && pdfFile && (
+                <p className="text-sm text-muted-foreground text-center">
+                  {!signature
+                    ? "Haz clic en el documento y agrega tu firma para continuar"
+                    : "Ajusta la posición de tu firma si es necesario"}
+                </p>
+              )}
             </div>
           )}
         </div>
