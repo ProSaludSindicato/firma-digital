@@ -356,12 +356,18 @@ export const PDFViewer = ({
           {/* Pages are rendered here dynamically */}
         </div>
 
-        {/* Transparent overlay for click detection when no signature */}
-        {!signature && (
+        {/* Transparent overlay for click detection when no signature - covers exact PDF content area */}
+        {!signature && pageCanvases.length > 0 && (
           <div
-            className="absolute inset-0 z-[5]"
+            className="absolute z-[5]"
             onClick={handleContainerClick}
-            style={{ cursor: 'crosshair' }}
+            style={{ 
+              cursor: 'crosshair',
+              top: 0,
+              left: 0,
+              width: Math.max(...pageCanvases.map(p => p.width)) + 32,
+              height: pageCanvases.reduce((acc, p) => acc + p.height + 48, 0),
+            }}
           />
         )}
 
