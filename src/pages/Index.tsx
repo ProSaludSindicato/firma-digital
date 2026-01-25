@@ -19,7 +19,7 @@ import {
 const Index = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isSent, setIsSent] = useState(false);
-  
+
   const {
     pdfFile,
     signature,
@@ -48,23 +48,20 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Header 
-        showFinishButton={!!signature && !!signaturePosition} 
+      <Header
+        showFinishButton={!!signature && !!signaturePosition}
         onFinish={handleFinishAndSend}
         isProcessing={isDownloading}
       />
-      
+
       <main className="flex-1 p-6">
         <div className="max-w-7xl mx-auto">
           {!pdfFile ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8">
               <div className="text-center max-w-xl">
-                <h2 className="text-3xl font-bold text-foreground mb-4">
-                  Firma tus documentos PDF
-                </h2>
+                <h2 className="text-3xl font-bold text-foreground mb-4">Firma tus documentos PDF</h2>
                 <p className="text-muted-foreground">
-                  Sube tu documento, haz clic donde deseas firmar, 
-                  y descarga el PDF firmado listo para enviar.
+                  Sube tu documento, haz clic donde deseas firmar, y descarga el PDF firmado listo para enviar.
                 </p>
               </div>
               <PDFUploader onFileSelect={handleFileSelect} />
@@ -81,7 +78,7 @@ const Index = () => {
                 totalPages={totalPages}
                 onTotalPagesChange={setTotalPages}
               />
-              
+
               <div className="flex flex-col sm:flex-row justify-center gap-3">
                 {!isSent ? (
                   <Button
@@ -94,18 +91,13 @@ const Index = () => {
                     {isDownloading ? "Procesando..." : "Finalizar y Enviar convenio"}
                   </Button>
                 ) : (
-                  <Button
-                    onClick={downloadSignedPDF}
-                    disabled={isDownloading}
-                    size="lg"
-                    className="min-w-[250px]"
-                  >
+                  <Button onClick={downloadSignedPDF} disabled={isDownloading} size="lg" className="min-w-[250px]">
                     <Download className="w-5 h-5 mr-2" />
                     {isDownloading ? "Procesando..." : "Descargar PDF firmado"}
                   </Button>
                 )}
               </div>
-              
+
               {!isSent && !canDownload && pdfFile && (
                 <p className="text-sm text-muted-foreground text-center">
                   {!signature
@@ -113,7 +105,7 @@ const Index = () => {
                     : "Ajusta la posición de tu firma si es necesario"}
                 </p>
               )}
-              
+
               {isSent && (
                 <p className="text-sm text-primary text-center font-medium">
                   ✓ Convenio enviado exitosamente. Ahora puede descargar su copia.
@@ -134,19 +126,17 @@ const Index = () => {
             </AlertDialogTitle>
             <AlertDialogDescription className="text-left space-y-2">
               <p>
-                <strong>⚠️ Al confirmar, la firma quedará integrada al documento y no podrá modificarse.</strong>
+                <strong>Al confirmar, la firma quedará integrada al documento y no podrá modificarse.</strong>
               </p>
               <p className="text-muted-foreground">
-                Asegúrese de que la firma esté correctamente ubicada antes de continuar. 
-                Una vez enviado, podrá descargar una copia del documento firmado.
+                Asegúrese de que la firma esté correctamente ubicada antes de continuar. Una vez enviado, podrá
+                descargar una copia del documento firmado.
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmSend}>
-              Confirmar y Enviar
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirmSend}>Confirmar y Enviar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
