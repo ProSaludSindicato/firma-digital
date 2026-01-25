@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist";
-import { ZoomIn, ZoomOut, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PDFThumbnails } from "./PDFThumbnails";
 import { PDFPageView } from "./PDFPageView";
@@ -98,39 +98,35 @@ export const PDFViewer = ({
     [placeholderPosition, onSignatureCreate, onSignaturePositionChange]
   );
 
-  const handleRemoveSignature = useCallback(() => {
-    onClearSignature();
-    onSignaturePositionChange(null);
-  }, [onClearSignature, onSignaturePositionChange]);
 
   return (
     <div className="flex flex-col h-full w-full">
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-2 bg-card rounded-lg p-3 shadow-sm border border-border mb-4 flex-wrap">
-        <div className="flex items-center gap-1 sm:gap-2">
+        {/* Zoom controls - ghost style */}
+        <div className="flex items-center gap-1">
           <Button
-            variant="outline"
-            size="sm"
+            variant="ghost"
+            size="icon"
             onClick={() => setScale((s) => Math.max(0.5, s - 0.2))}
-            className="h-9 px-3"
+            className="h-8 w-8"
           >
-            <ZoomOut className="w-4 h-4 sm:mr-1" />
-            <span className="hidden sm:inline text-xs">Alejar</span>
+            <ZoomOut className="w-4 h-4" />
           </Button>
-          <span className="text-sm font-semibold text-foreground min-w-[50px] text-center bg-muted px-2 py-1 rounded">
+          <span className="text-xs font-medium text-muted-foreground min-w-[45px] text-center">
             {Math.round(scale * 100)}%
           </span>
           <Button
-            variant="outline"
-            size="sm"
+            variant="ghost"
+            size="icon"
             onClick={() => setScale((s) => Math.min(2, s + 0.2))}
-            className="h-9 px-3"
+            className="h-8 w-8"
           >
-            <ZoomIn className="w-4 h-4 sm:mr-1" />
-            <span className="hidden sm:inline text-xs">Acercar</span>
+            <ZoomIn className="w-4 h-4" />
           </Button>
         </div>
 
+        {/* Page navigation - outline style with background */}
         <div className="flex items-center gap-1 sm:gap-2">
           <Button
             variant="outline"
@@ -157,17 +153,8 @@ export const PDFViewer = ({
           </Button>
         </div>
 
-        {signature && (
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleRemoveSignature}
-            className="h-9"
-          >
-            <Trash2 className="w-4 h-4 mr-1" />
-            <span className="hidden sm:inline">Eliminar firma</span>
-          </Button>
-        )}
+        {/* Spacer for alignment */}
+        <div className="w-[88px] hidden sm:block"></div>
       </div>
 
       {/* Main content */}
