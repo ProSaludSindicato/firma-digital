@@ -1,20 +1,26 @@
 import { useRef, useState } from "react";
 import SignatureCanvas from "react-signature-canvas";
-import { Pencil, Upload, Trash2, Check } from "lucide-react";
+import { Pencil, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-interface SignaturePanelProps {
+interface SignatureModalProps {
+  isOpen: boolean;
+  onClose: () => void;
   onSignatureCreate: (signature: string) => void;
-  onClearSignature: () => void;
-  hasSignature: boolean;
 }
 
-export const SignaturePanel = ({
+export const SignatureModal = ({
+  isOpen,
+  onClose,
   onSignatureCreate,
-  onClearSignature,
-  hasSignature,
-}: SignaturePanelProps) => {
+}: SignatureModalProps) => {
   const signatureRef = useRef<SignatureCanvas>(null);
   const [activeTab, setActiveTab] = useState("draw");
 
@@ -22,6 +28,7 @@ export const SignaturePanel = ({
     if (signatureRef.current && !signatureRef.current.isEmpty()) {
       const dataUrl = signatureRef.current.toDataURL("image/png");
       onSignatureCreate(dataUrl);
+      onClose();
     }
   };
 
@@ -36,34 +43,25 @@ export const SignaturePanel = ({
       reader.onload = (event) => {
         const result = event.target?.result as string;
         onSignatureCreate(result);
+        onClose();
       };
       reader.readAsDataURL(file);
     }
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="bg-card rounded-lg p-6 shadow-sm border border-border">
-      <h3 className="text-lg font-semibold text-foreground mb-4">Tu Firma</h3>
-      
-      {hasSignature ? (
-        <div className="flex flex-col items-center gap-4">
-          <div className="flex items-center gap-2 text-primary">
-            <Check className="w-5 h-5" />
-            <span className="font-medium">Firma agregada</span>
-          </div>
-          <p className="text-sm text-muted-foreground text-center">
-            Arrastra la firma en el documento para reposicionarla
-          </p>
-          <Button
-            variant="outline"
-            onClick={onClearSignature}
-            className="flex items-center gap-2"
-          >
-            <Trash2 className="w-4 h-4" />
-            Eliminar firma
-          </Button>
-        </div>
-      ) : (
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Agregar tu firma</DialogTitle>
+        </DialogHeader>
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-4">
             <TabsTrigger value="draw" className="flex items-center gap-2">
@@ -109,10 +107,10 @@ export const SignaturePanel = ({
                 accept="image/*"
                 onChange={handleImageUpload}
                 className="hidden"
-                id="signature-upload"
+                id="signature-modal-upload"
               />
               <label
-                htmlFor="signature-upload"
+                htmlFor="signature-modal-upload"
                 className="cursor-pointer flex flex-col items-center"
               >
                 <Upload className="w-8 h-8 text-muted-foreground mb-2" />
@@ -126,7 +124,7 @@ export const SignaturePanel = ({
             </div>
           </TabsContent>
         </Tabs>
-      )}
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
