@@ -94,6 +94,9 @@ All colors MUST be HSL.
     --tracking-normal: 0em;
 
     --spacing: 0.25rem;
+
+    --header-bg: 220 50% 18%;
+    --header-foreground: 0 0% 100%;
   }
 
   .dark {
