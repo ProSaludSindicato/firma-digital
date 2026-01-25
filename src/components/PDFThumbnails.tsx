@@ -75,7 +75,7 @@ export const PDFThumbnails = ({
 
   if (isCollapsed) {
     return (
-      <div className="flex flex-col items-center py-2 px-1 bg-muted/50 border-r border-border">
+      <div className="flex-shrink-0 flex flex-col items-center py-2 px-1 bg-muted/50 border-r border-border w-10">
         {ToggleButton}
       </div>
     );

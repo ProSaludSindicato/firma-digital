@@ -275,8 +275,8 @@ export const PDFPageView = ({
 
       {/* Instruction overlay */}
       {!signature && !placeholderPosition && (
-        <div className="absolute inset-0 flex items-center justify-center bg-foreground/5 pointer-events-none rounded">
-          <p className="bg-card/90 text-foreground px-4 py-2 rounded-lg shadow-lg font-medium text-sm md:text-base">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none rounded">
+          <p className="bg-secondary text-secondary-foreground px-4 py-3 rounded-lg shadow-xl font-semibold text-sm md:text-base border border-border">
             Haz clic donde deseas agregar tu firma
           </p>
         </div>
