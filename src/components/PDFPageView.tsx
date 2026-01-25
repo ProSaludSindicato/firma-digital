@@ -234,27 +234,35 @@ export const PDFPageView = ({
       )}
 
       {/* Actual signature */}
-      {showSignature && (
-        <div
-          className={`absolute select-none z-10 border-2 rounded-md p-1 transition-colors ${
-            isLocked 
-              ? "border-muted-foreground/50 bg-muted/30 cursor-default" 
-              : "border-primary border-dashed bg-primary/5 hover:bg-primary/10 cursor-move"
-          }`}
-          style={{
-            left: signaturePosition.x - signaturePosition.width / 2,
-            top: signaturePosition.y - signaturePosition.height / 2,
-            width: signaturePosition.width,
-          }}
-          onMouseDown={isLocked ? undefined : handleSignatureDrag}
-        >
-          <img
-            src={signature}
-            alt="Firma"
-            className="w-full h-auto pointer-events-none"
-            style={{ maxHeight: signaturePosition.height - 8 }}
-            draggable={false}
-          />
+      {showSignature && (() => {
+        // Calculate scale ratio to adjust position when zoom changes
+        const scaleRatio = scale / signaturePosition.scale;
+        const adjustedX = signaturePosition.x * scaleRatio;
+        const adjustedY = signaturePosition.y * scaleRatio;
+        const adjustedWidth = signaturePosition.width * scaleRatio;
+        const adjustedHeight = signaturePosition.height * scaleRatio;
+
+        return (
+          <div
+            className={`absolute select-none z-10 border-2 rounded-md p-1 transition-colors ${
+              isLocked 
+                ? "border-muted-foreground/50 bg-muted/30 cursor-default" 
+                : "border-primary border-dashed bg-primary/5 hover:bg-primary/10 cursor-move"
+            }`}
+            style={{
+              left: adjustedX - adjustedWidth / 2,
+              top: adjustedY - adjustedHeight / 2,
+              width: adjustedWidth,
+            }}
+            onMouseDown={isLocked ? undefined : handleSignatureDrag}
+          >
+            <img
+              src={signature}
+              alt="Firma"
+              className="w-full h-auto pointer-events-none"
+              style={{ maxHeight: adjustedHeight - 8 }}
+              draggable={false}
+            />
           {!isLocked && (
             <>
               <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
@@ -286,8 +294,9 @@ export const PDFPageView = ({
               Documento enviado
             </div>
           )}
-        </div>
-      )}
+          </div>
+        );
+      })()}
 
       {/* Instruction overlay */}
       {!signature && !placeholderPosition && (
