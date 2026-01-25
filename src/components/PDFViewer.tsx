@@ -109,12 +109,29 @@ export const PDFViewer = ({
     (y: number): { page: number; relativeY: number } | null => {
       let accumulatedHeight = 0;
       for (let i = 0; i < pageCanvases.length; i++) {
-        const pageHeight = pageCanvases[i].height + 48;
-        if (y >= accumulatedHeight && y < accumulatedHeight + pageCanvases[i].height) {
+        const pageHeight = pageCanvases[i].height + 48; // canvas + label + margin
+        const canvasHeight = pageCanvases[i].height;
+        
+        // Check if y is within this page's canvas area (not in the margin/label area)
+        if (y >= accumulatedHeight && y < accumulatedHeight + canvasHeight) {
           return { page: i + 1, relativeY: y - accumulatedHeight };
         }
         accumulatedHeight += pageHeight;
       }
+      
+      // If we're past all pages, return the last page
+      if (pageCanvases.length > 0 && y >= accumulatedHeight - 48) {
+        const lastIndex = pageCanvases.length - 1;
+        let totalHeight = 0;
+        for (let i = 0; i < lastIndex; i++) {
+          totalHeight += pageCanvases[i].height + 48;
+        }
+        return { 
+          page: pageCanvases.length, 
+          relativeY: Math.min(y - totalHeight, pageCanvases[lastIndex].height - 30) 
+        };
+      }
+      
       return null;
     },
     [pageCanvases]
@@ -122,13 +139,14 @@ export const PDFViewer = ({
 
   const handleContainerClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!signature || isDragging || isResizing || !pagesContainerRef.current) return;
+      if (!signature || isDragging || isResizing || !pagesContainerRef.current || !containerRef.current) return;
 
-      const containerRect = pagesContainerRef.current.getBoundingClientRect();
-      const scrollTop = containerRef.current?.scrollTop || 0;
+      const pagesContainerRect = pagesContainerRef.current.getBoundingClientRect();
+      const scrollTop = containerRef.current.scrollTop;
       
-      const x = e.clientX - containerRect.left;
-      const y = e.clientY - containerRect.top + scrollTop;
+      // Calculate position relative to the pages container including scroll
+      const x = e.clientX - pagesContainerRect.left;
+      const y = e.clientY - pagesContainerRect.top + scrollTop;
 
       const pageInfo = getPageFromY(y);
       if (pageInfo) {
@@ -136,13 +154,20 @@ export const PDFViewer = ({
         const defaultWidth = 150;
         const defaultHeight = 60;
         
-        onSignaturePositionChange({
-          x,
-          y: pageInfo.relativeY,
-          page: pageInfo.page,
-          width: signaturePosition?.width || defaultWidth,
-          height: signaturePosition?.height || defaultHeight,
-        });
+        // Ensure signature stays within page bounds
+        const pageCanvas = pageCanvases[pageInfo.page - 1];
+        if (pageCanvas) {
+          const constrainedX = Math.max(defaultWidth / 2, Math.min(pageCanvas.width - defaultWidth / 2, x));
+          const constrainedY = Math.max(defaultHeight / 2, Math.min(pageCanvas.height - defaultHeight / 2, pageInfo.relativeY));
+          
+          onSignaturePositionChange({
+            x: constrainedX,
+            y: constrainedY,
+            page: pageInfo.page,
+            width: signaturePosition?.width || defaultWidth,
+            height: signaturePosition?.height || defaultHeight,
+          });
+        }
       }
     },
     [signature, isDragging, isResizing, pageCanvases, onSignaturePositionChange, getPageFromY, signaturePosition]
@@ -158,12 +183,13 @@ export const PDFViewer = ({
       const pagesContainer = pagesContainerRef.current;
       if (!container || !pagesContainer || !signaturePosition) return;
 
-      const containerRect = pagesContainer.getBoundingClientRect();
-
       const handleMouseMove = (moveEvent: MouseEvent) => {
-        const scrollTop = container.scrollTop || 0;
-        const x = moveEvent.clientX - containerRect.left;
-        const y = moveEvent.clientY - containerRect.top + scrollTop;
+        // Get fresh rect on each move to handle scroll changes
+        const pagesContainerRect = pagesContainer.getBoundingClientRect();
+        const scrollTop = container.scrollTop;
+        
+        const x = moveEvent.clientX - pagesContainerRect.left;
+        const y = moveEvent.clientY - pagesContainerRect.top + scrollTop;
 
         const pageInfo = getPageFromY(y);
         if (pageInfo) {
@@ -186,14 +212,15 @@ export const PDFViewer = ({
           });
         }
 
-        // Auto-scroll
-        const scrollContainerRect = container.getBoundingClientRect();
-        const scrollMargin = 50;
+        // Auto-scroll when near edges
+        const containerRect = container.getBoundingClientRect();
+        const scrollMargin = 60;
+        const scrollSpeed = 15;
 
-        if (moveEvent.clientY > scrollContainerRect.bottom - scrollMargin) {
-          container.scrollTop += 10;
-        } else if (moveEvent.clientY < scrollContainerRect.top + scrollMargin) {
-          container.scrollTop -= 10;
+        if (moveEvent.clientY > containerRect.bottom - scrollMargin) {
+          container.scrollTop += scrollSpeed;
+        } else if (moveEvent.clientY < containerRect.top + scrollMargin) {
+          container.scrollTop -= scrollSpeed;
         }
       };
 
