@@ -86,7 +86,7 @@ export const PDFPageView = ({
     [isDragging, isResizing, signature, canvasSize, pageNumber, onPlaceholderPositionChange]
   );
 
-  // Handle placeholder drag
+  // Handle placeholder drag (mouse)
   const handlePlaceholderDrag = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       e.preventDefault();
@@ -124,7 +124,46 @@ export const PDFPageView = ({
     [placeholderPosition, canvasSize, pageNumber, onPlaceholderPositionChange]
   );
 
-  // Handle signature drag
+  // Handle placeholder drag (touch)
+  const handlePlaceholderTouchDrag = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(true);
+
+      if (!placeholderPosition || !containerRef.current) return;
+
+      const container = containerRef.current;
+      const containerRect = container.getBoundingClientRect();
+
+      const handleTouchMove = (moveEvent: TouchEvent) => {
+        const touch = moveEvent.touches[0];
+        const x = touch.clientX - containerRect.left;
+        const y = touch.clientY - containerRect.top;
+
+        const clampedX = Math.max(75, Math.min(canvasSize.width - 75, x));
+        const clampedY = Math.max(18, Math.min(canvasSize.height - 18, y));
+
+        onPlaceholderPositionChange({
+          x: clampedX,
+          y: clampedY,
+          page: pageNumber,
+        });
+      };
+
+      const handleTouchEnd = () => {
+        setTimeout(() => setIsDragging(false), 50);
+        document.removeEventListener("touchmove", handleTouchMove);
+        document.removeEventListener("touchend", handleTouchEnd);
+      };
+
+      document.addEventListener("touchmove", handleTouchMove, { passive: false });
+      document.addEventListener("touchend", handleTouchEnd);
+    },
+    [placeholderPosition, canvasSize, pageNumber, onPlaceholderPositionChange]
+  );
+
+  // Handle signature drag (mouse)
   const handleSignatureDrag = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       e.preventDefault();
@@ -168,7 +207,52 @@ export const PDFPageView = ({
     [signaturePosition, canvasSize, pageNumber, onSignaturePositionChange]
   );
 
-  // Handle signature resize
+  // Handle signature drag (touch)
+  const handleSignatureTouchDrag = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(true);
+
+      if (!signaturePosition || !containerRef.current) return;
+
+      const container = containerRef.current;
+      const containerRect = container.getBoundingClientRect();
+
+      const handleTouchMove = (moveEvent: TouchEvent) => {
+        const touch = moveEvent.touches[0];
+        const x = touch.clientX - containerRect.left;
+        const y = touch.clientY - containerRect.top;
+
+        const halfWidth = signaturePosition.width / 2;
+        const halfHeight = signaturePosition.height / 2;
+
+        const newX = Math.max(halfWidth, Math.min(canvasSize.width - halfWidth, x));
+        const newY = Math.max(halfHeight, Math.min(canvasSize.height - halfHeight, y));
+
+        onSignaturePositionChange({
+          x: newX,
+          y: newY,
+          page: pageNumber,
+          width: signaturePosition.width,
+          height: signaturePosition.height,
+          scale: signaturePosition.scale,
+        });
+      };
+
+      const handleTouchEnd = () => {
+        setTimeout(() => setIsDragging(false), 50);
+        document.removeEventListener("touchmove", handleTouchMove);
+        document.removeEventListener("touchend", handleTouchEnd);
+      };
+
+      document.addEventListener("touchmove", handleTouchMove, { passive: false });
+      document.addEventListener("touchend", handleTouchEnd);
+    },
+    [signaturePosition, canvasSize, pageNumber, onSignaturePositionChange]
+  );
+
+  // Handle signature resize (mouse)
   const handleSignatureResize = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       e.preventDefault();
@@ -210,6 +294,50 @@ export const PDFPageView = ({
     [signaturePosition, onSignaturePositionChange]
   );
 
+  // Handle signature resize (touch)
+  const handleSignatureTouchResize = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsResizing(true);
+
+      if (!signaturePosition) return;
+
+      const touch = e.touches[0];
+      const startX = touch.clientX;
+      const startY = touch.clientY;
+      const startWidth = signaturePosition.width;
+      const startHeight = signaturePosition.height;
+      const aspectRatio = startWidth / startHeight;
+
+      const handleTouchMove = (moveEvent: TouchEvent) => {
+        const currentTouch = moveEvent.touches[0];
+        const deltaX = currentTouch.clientX - startX;
+        const deltaY = currentTouch.clientY - startY;
+        const delta = Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY * aspectRatio;
+
+        const newWidth = Math.max(80, Math.min(400, startWidth + delta));
+        const newHeight = newWidth / aspectRatio;
+
+        onSignaturePositionChange({
+          ...signaturePosition,
+          width: newWidth,
+          height: newHeight,
+        });
+      };
+
+      const handleTouchEnd = () => {
+        setTimeout(() => setIsResizing(false), 50);
+        document.removeEventListener("touchmove", handleTouchMove);
+        document.removeEventListener("touchend", handleTouchEnd);
+      };
+
+      document.addEventListener("touchmove", handleTouchMove, { passive: false });
+      document.addEventListener("touchend", handleTouchEnd);
+    },
+    [signaturePosition, onSignaturePositionChange]
+  );
+
   const showPlaceholder = !signature && placeholderPosition && placeholderPosition.page === pageNumber;
   const showSignature = signature && signaturePosition && signaturePosition.page === pageNumber;
 
@@ -226,6 +354,7 @@ export const PDFPageView = ({
         <SignaturePlaceholder
           onClick={onPlaceholderClick}
           onDragStart={handlePlaceholderDrag}
+          onTouchDragStart={handlePlaceholderTouchDrag}
           style={{
             left: placeholderPosition.x - 75,
             top: placeholderPosition.y - 18,
@@ -244,7 +373,7 @@ export const PDFPageView = ({
 
         return (
           <div
-            className={`absolute select-none z-10 border-2 rounded-md p-1 transition-colors ${
+            className={`absolute select-none z-10 border-2 rounded-md p-1 transition-colors touch-none ${
               isLocked 
                 ? "border-muted-foreground/50 bg-muted/30 cursor-default" 
                 : "border-primary border-dashed bg-primary/5 hover:bg-primary/10 cursor-move"
@@ -255,6 +384,7 @@ export const PDFPageView = ({
               width: adjustedWidth,
             }}
             onMouseDown={isLocked ? undefined : handleSignatureDrag}
+            onTouchStart={isLocked ? undefined : handleSignatureTouchDrag}
           >
             <img
               src={signature}
@@ -263,37 +393,39 @@ export const PDFPageView = ({
               style={{ maxHeight: adjustedHeight - 8 }}
               draggable={false}
             />
-          {!isLocked && (
-            <>
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
-                <Move className="w-3 h-3" />
-                Arrastra para mover
+            {!isLocked && (
+              <>
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
+                  <Move className="w-3 h-3" />
+                  Arrastra para mover
+                </div>
+                {/* Delete signature button */}
+                <div
+                  className="absolute -top-2 -left-2 w-6 h-6 bg-destructive rounded-full cursor-pointer flex items-center justify-center shadow-md hover:bg-destructive/80 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClearSignature();
+                  }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                >
+                  <Trash2 className="w-3 h-3 text-destructive-foreground" />
+                </div>
+                {/* Resize handle */}
+                <div
+                  className="absolute -bottom-2 -right-2 w-6 h-6 bg-primary rounded-full cursor-se-resize flex items-center justify-center shadow-md hover:bg-primary/80 transition-colors touch-none"
+                  onMouseDown={handleSignatureResize}
+                  onTouchStart={handleSignatureTouchResize}
+                >
+                  <Maximize2 className="w-3 h-3 text-primary-foreground rotate-90" />
+                </div>
+              </>
+            )}
+            {isLocked && (
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
+                Documento enviado
               </div>
-              {/* Delete signature button */}
-              <div
-                className="absolute -top-2 -left-2 w-5 h-5 bg-destructive rounded-full cursor-pointer flex items-center justify-center shadow-md hover:bg-destructive/80 transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClearSignature();
-                }}
-                onMouseDown={(e) => e.stopPropagation()}
-              >
-                <Trash2 className="w-3 h-3 text-destructive-foreground" />
-              </div>
-              {/* Resize handle */}
-              <div
-                className="absolute -bottom-2 -right-2 w-5 h-5 bg-primary rounded-full cursor-se-resize flex items-center justify-center shadow-md hover:bg-primary/80 transition-colors"
-                onMouseDown={handleSignatureResize}
-              >
-                <Maximize2 className="w-3 h-3 text-primary-foreground rotate-90" />
-              </div>
-            </>
-          )}
-          {isLocked && (
-            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
-              Documento enviado
-            </div>
-          )}
+            )}
           </div>
         );
       })()}

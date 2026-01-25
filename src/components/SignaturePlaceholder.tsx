@@ -4,15 +4,17 @@ import { Button } from "@/components/ui/button";
 interface SignaturePlaceholderProps {
   onClick: () => void;
   onDragStart: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onTouchDragStart: (e: React.TouchEvent<HTMLDivElement>) => void;
   style: React.CSSProperties;
 }
 
-export const SignaturePlaceholder = ({ onClick, onDragStart, style }: SignaturePlaceholderProps) => {
+export const SignaturePlaceholder = ({ onClick, onDragStart, onTouchDragStart, style }: SignaturePlaceholderProps) => {
   return (
     <div
-      className="absolute z-[15] cursor-move select-none"
+      className="absolute z-[15] cursor-move select-none touch-none"
       style={style}
       onMouseDown={onDragStart}
+      onTouchStart={onTouchDragStart}
     >
       <div className="relative">
         <Button
