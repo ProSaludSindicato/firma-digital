@@ -55,11 +55,6 @@ const Index = () => {
               </div>
               
               <div className="space-y-4">
-                <PDFUploader
-                  onFileSelect={handleFileSelect}
-                  fileName={pdfFile.name}
-                />
-                
                 <SignaturePanel
                   onSignatureCreate={handleSignatureCreate}
                   onClearSignature={handleClearSignature}
