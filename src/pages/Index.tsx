@@ -49,11 +49,11 @@ const Index = () => {
       setIsSent(true);
       setShowConfirmDialog(false);
       
-      // Mostrar toast de éxito
+      // Mostrar toast de éxito con estilo verde
       toast({
         title: "✓ Convenio enviado exitosamente",
         description: "Su convenio firmado ha sido recibido correctamente. Se descargará automáticamente.",
-        variant: "default",
+        className: "bg-green-500 text-white border-green-600",
       });
       
       // Descargar automáticamente el PDF
@@ -105,44 +105,46 @@ const Index = () => {
                 isLocked={isSent}
               />
 
-              <div className="flex flex-col sm:flex-row justify-center gap-3">
-                {!isSent ? (
-                  <Button
-                    onClick={handleFinishAndSend}
-                    disabled={!canDownload || isDownloading}
-                    size="lg"
-                    className="min-w-[250px]"
-                  >
-                    <Send className="w-5 h-5 mr-2" />
-                    {isDownloading ? "Procesando..." : "Finalizar y Enviar convenio"}
-                  </Button>
-                ) : (
-                  <Button onClick={downloadSignedPDF} disabled={isDownloading} size="lg" className="min-w-[250px]">
-                    <Download className="w-5 h-5 mr-2" />
-                    {isDownloading ? "Procesando..." : "Descargar PDF firmado"}
-                  </Button>
+              <div className="flex flex-col items-center gap-4 mb-4">
+                {isSent && (
+                  <div className="flex flex-col items-center gap-2 p-4 bg-green-500/10 border border-green-500/30 rounded-lg w-full max-w-lg">
+                    <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                      <CheckCircle className="w-6 h-6" />
+                      <span className="text-lg font-semibold">¡Convenio enviado y recibido correctamente!</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground text-center">
+                      Su convenio firmado ha sido procesado exitosamente. Puede descargar una copia adicional si lo necesita.
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row justify-center gap-3">
+                  {!isSent ? (
+                    <Button
+                      onClick={handleFinishAndSend}
+                      disabled={!canDownload || isDownloading}
+                      size="lg"
+                      className="min-w-[250px]"
+                    >
+                      <Send className="w-5 h-5 mr-2" />
+                      {isDownloading ? "Procesando..." : "Finalizar y Enviar convenio"}
+                    </Button>
+                  ) : (
+                    <Button onClick={downloadSignedPDF} disabled={isDownloading} size="lg" className="min-w-[250px]">
+                      <Download className="w-5 h-5 mr-2" />
+                      {isDownloading ? "Procesando..." : "Descargar PDF firmado"}
+                    </Button>
+                  )}
+                </div>
+
+                {!isSent && !canDownload && pdfFile && (
+                  <p className="text-sm text-muted-foreground text-center">
+                    {!signature
+                      ? "Haz clic en el documento y agrega tu firma para continuar"
+                      : "Ajusta la posición de tu firma si es necesario"}
+                  </p>
                 )}
               </div>
-
-              {!isSent && !canDownload && pdfFile && (
-                <p className="text-sm text-muted-foreground text-center">
-                  {!signature
-                    ? "Haz clic en el documento y agrega tu firma para continuar"
-                    : "Ajusta la posición de tu firma si es necesario"}
-                </p>
-              )}
-
-              {isSent && (
-                <div className="flex flex-col items-center gap-2 p-4 bg-primary/10 border border-primary/30 rounded-lg">
-                  <div className="flex items-center gap-2 text-primary">
-                    <CheckCircle className="w-6 h-6" />
-                    <span className="text-lg font-semibold">¡Convenio enviado y recibido correctamente!</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground text-center">
-                    Su convenio firmado ha sido procesado exitosamente. Puede descargar una copia adicional si lo necesita.
-                  </p>
-                </div>
-              )}
             </div>
           )}
         </div>
