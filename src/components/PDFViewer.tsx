@@ -82,7 +82,11 @@ export const PDFViewer = ({
   const handleSignatureDrag = useCallback(
     (e: React.MouseEvent<HTMLImageElement>) => {
       e.preventDefault();
+      e.stopPropagation();
       setIsDragging(true);
+      
+      const container = containerRef.current;
+      if (!container) return;
       
       const startX = e.clientX;
       const startY = e.clientY;
@@ -92,14 +96,36 @@ export const PDFViewer = ({
       const handleMouseMove = (moveEvent: MouseEvent) => {
         const deltaX = moveEvent.clientX - startX;
         const deltaY = moveEvent.clientY - startY;
+        
+        // Calculate new position
+        let newX = startPosX + deltaX;
+        let newY = startPosY + deltaY;
+        
+        // Constrain to canvas boundaries
+        const signatureWidth = 150;
+        const signatureHeight = 80;
+        
+        newX = Math.max(signatureWidth / 2, Math.min(canvasSize.width - signatureWidth / 2, newX));
+        newY = Math.max(signatureHeight / 2, Math.min(canvasSize.height - signatureHeight / 2, newY));
+        
         onSignaturePositionChange({
-          x: startPosX + deltaX,
-          y: startPosY + deltaY,
+          x: newX,
+          y: newY,
         });
+        
+        // Auto-scroll container if dragging near edges
+        const containerRect = container.getBoundingClientRect();
+        const scrollMargin = 50;
+        
+        if (moveEvent.clientY > containerRect.bottom - scrollMargin) {
+          container.scrollTop += 10;
+        } else if (moveEvent.clientY < containerRect.top + scrollMargin) {
+          container.scrollTop -= 10;
+        }
       };
 
       const handleMouseUp = () => {
-        setIsDragging(false);
+        setTimeout(() => setIsDragging(false), 100);
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
       };
@@ -107,7 +133,7 @@ export const PDFViewer = ({
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    [signaturePosition, onSignaturePositionChange]
+    [signaturePosition, onSignaturePositionChange, canvasSize]
   );
 
   return (
@@ -154,7 +180,7 @@ export const PDFViewer = ({
 
       <div
         ref={containerRef}
-        className="relative border border-border rounded-lg overflow-auto max-h-[70vh] bg-muted/30"
+        className="relative border border-border rounded-lg overflow-auto max-h-[80vh] bg-muted/30 w-full"
         onClick={handleCanvasClick}
       >
         <canvas ref={canvasRef} className="block" />

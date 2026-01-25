@@ -44,8 +44,8 @@ const Index = () => {
               <PDFUploader onFileSelect={handleFileSelect} />
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              <div className="lg:col-span-3">
+            <div className="grid grid-cols-1 xl:grid-cols-5 lg:grid-cols-4 gap-6">
+              <div className="xl:col-span-4 lg:col-span-3">
                 <PDFViewer
                   file={pdfFile}
                   signature={signature}
