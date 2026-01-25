@@ -34,6 +34,7 @@ export const PDFViewer = ({
   const [scale, setScale] = useState(1.2);
   const [placeholderPosition, setPlaceholderPosition] = useState<{ x: number; y: number; page: number } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Load PDF
   useEffect(() => {
@@ -95,58 +96,66 @@ export const PDFViewer = ({
   return (
     <div className="flex flex-col h-full w-full">
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-2 bg-card rounded-lg p-2 shadow-sm border border-border mb-4 flex-wrap">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2 bg-card rounded-lg p-3 shadow-sm border border-border mb-4 flex-wrap">
+        <div className="flex items-center gap-1 sm:gap-2">
           <Button
-            variant="ghost"
-            size="icon"
+            variant="outline"
+            size="sm"
             onClick={() => setScale((s) => Math.max(0.5, s - 0.2))}
+            className="h-9 px-3"
           >
-            <ZoomOut className="w-5 h-5" />
+            <ZoomOut className="w-4 h-4 sm:mr-1" />
+            <span className="hidden sm:inline text-xs">Alejar</span>
           </Button>
-          <span className="text-sm font-medium text-foreground min-w-[50px] text-center">
+          <span className="text-sm font-semibold text-foreground min-w-[50px] text-center bg-muted px-2 py-1 rounded">
             {Math.round(scale * 100)}%
           </span>
           <Button
-            variant="ghost"
-            size="icon"
+            variant="outline"
+            size="sm"
             onClick={() => setScale((s) => Math.min(2, s + 0.2))}
+            className="h-9 px-3"
           >
-            <ZoomIn className="w-5 h-5" />
+            <ZoomIn className="w-4 h-4 sm:mr-1" />
+            <span className="hidden sm:inline text-xs">Acercar</span>
           </Button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <Button
-            variant="ghost"
-            size="icon"
+            variant="outline"
+            size="sm"
             onClick={handlePrevPage}
             disabled={currentPage <= 1}
+            className="h-9 px-3"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-4 h-4" />
+            <span className="hidden sm:inline text-xs">Anterior</span>
           </Button>
-          <span className="text-sm font-medium text-foreground min-w-[80px] text-center">
+          <span className="text-sm font-semibold text-foreground min-w-[70px] text-center bg-muted px-2 py-1 rounded">
             {currentPage} / {totalPages}
           </span>
           <Button
-            variant="ghost"
-            size="icon"
+            variant="outline"
+            size="sm"
             onClick={handleNextPage}
             disabled={currentPage >= totalPages}
+            className="h-9 px-3"
           >
-            <ChevronRight className="w-5 h-5" />
+            <span className="hidden sm:inline text-xs">Siguiente</span>
+            <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
 
         {signature && (
           <Button
-            variant="ghost"
+            variant="destructive"
             size="sm"
             onClick={handleRemoveSignature}
-            className="text-destructive hover:text-destructive"
+            className="h-9"
           >
             <Trash2 className="w-4 h-4 mr-1" />
-            Eliminar firma
+            <span className="hidden sm:inline">Eliminar firma</span>
           </Button>
         )}
       </div>
@@ -159,6 +168,8 @@ export const PDFViewer = ({
           currentPage={currentPage}
           onPageSelect={handlePageSelect}
           signaturePage={signaturePosition?.page || null}
+          isCollapsed={isSidebarCollapsed}
+          onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         />
 
         {/* Page view */}
