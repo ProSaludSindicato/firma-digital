@@ -11,8 +11,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs
 interface PDFViewerProps {
   file: File;
   signature: string | null;
-  signaturePosition: { x: number; y: number; page: number; width: number; height: number } | null;
-  onSignaturePositionChange: (position: { x: number; y: number; page: number; width: number; height: number } | null) => void;
+  signaturePosition: { x: number; y: number; page: number; width: number; height: number; scale: number } | null;
+  onSignaturePositionChange: (position: { x: number; y: number; page: number; width: number; height: number; scale: number } | null) => void;
   onSignatureCreate: (signature: string) => void;
   onClearSignature: () => void;
   totalPages: number;
@@ -90,6 +90,7 @@ export const PDFViewer = ({
           page: placeholderPosition.page,
           width: defaultWidth,
           height: defaultHeight,
+          scale: scale,
         });
 
         setPlaceholderPosition(null);
