@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist";
-import { Move, Maximize2 } from "lucide-react";
+import { Move, Maximize2, Trash2 } from "lucide-react";
 import { SignaturePlaceholder } from "./SignaturePlaceholder";
 
 interface PDFPageViewProps {
@@ -13,6 +13,7 @@ interface PDFPageViewProps {
   placeholderPosition: { x: number; y: number; page: number } | null;
   onPlaceholderPositionChange: (position: { x: number; y: number; page: number } | null) => void;
   onPlaceholderClick: () => void;
+  onClearSignature: () => void;
 }
 
 export const PDFPageView = ({
@@ -25,6 +26,7 @@ export const PDFPageView = ({
   placeholderPosition,
   onPlaceholderPositionChange,
   onPlaceholderClick,
+  onClearSignature,
 }: PDFPageViewProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -80,6 +82,44 @@ export const PDFPageView = ({
       }
     },
     [isDragging, isResizing, signature, canvasSize, pageNumber, onPlaceholderPositionChange]
+  );
+
+  // Handle placeholder drag
+  const handlePlaceholderDrag = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(true);
+
+      if (!placeholderPosition || !containerRef.current) return;
+
+      const container = containerRef.current;
+      const containerRect = container.getBoundingClientRect();
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        const x = moveEvent.clientX - containerRect.left;
+        const y = moveEvent.clientY - containerRect.top;
+
+        const clampedX = Math.max(75, Math.min(canvasSize.width - 75, x));
+        const clampedY = Math.max(18, Math.min(canvasSize.height - 18, y));
+
+        onPlaceholderPositionChange({
+          x: clampedX,
+          y: clampedY,
+          page: pageNumber,
+        });
+      };
+
+      const handleMouseUp = () => {
+        setTimeout(() => setIsDragging(false), 50);
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
+
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    },
+    [placeholderPosition, canvasSize, pageNumber, onPlaceholderPositionChange]
   );
 
   // Handle signature drag
@@ -182,6 +222,7 @@ export const PDFPageView = ({
       {showPlaceholder && (
         <SignaturePlaceholder
           onClick={onPlaceholderClick}
+          onDragStart={handlePlaceholderDrag}
           style={{
             left: placeholderPosition.x - 75,
             top: placeholderPosition.y - 18,
@@ -211,6 +252,18 @@ export const PDFPageView = ({
             <Move className="w-3 h-3" />
             Arrastra para mover
           </div>
+          {/* Delete signature button */}
+          <div
+            className="absolute -top-2 -left-2 w-5 h-5 bg-destructive rounded-full cursor-pointer flex items-center justify-center shadow-md hover:bg-destructive/80 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClearSignature();
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <Trash2 className="w-3 h-3 text-destructive-foreground" />
+          </div>
+          {/* Resize handle */}
           <div
             className="absolute -bottom-2 -right-2 w-5 h-5 bg-primary rounded-full cursor-se-resize flex items-center justify-center shadow-md hover:bg-primary/80 transition-colors"
             onMouseDown={handleSignatureResize}
