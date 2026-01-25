@@ -5,6 +5,8 @@ interface SignaturePosition {
   x: number;
   y: number;
   page: number;
+  width: number;
+  height: number;
 }
 
 export const usePDFSigner = () => {
@@ -61,13 +63,11 @@ export const usePDFSigner = () => {
       const scaleFactor = 1.2;
 
       // Calculate position - flip Y coordinate for PDF coordinate system
-      const signatureWidth = 150 / scaleFactor;
-      const signatureHeight =
-        (signatureImage.height / signatureImage.width) * signatureWidth;
+      const signatureWidth = signaturePosition.width / scaleFactor;
+      const signatureHeight = signaturePosition.height / scaleFactor;
 
-      const x = (signaturePosition.x - 75) / scaleFactor;
-      const y =
-        pageHeight - (signaturePosition.y - 25) / scaleFactor - signatureHeight;
+      const x = (signaturePosition.x - signaturePosition.width / 2) / scaleFactor;
+      const y = pageHeight - (signaturePosition.y + signaturePosition.height / 2) / scaleFactor;
 
       page.drawImage(signatureImage, {
         x,

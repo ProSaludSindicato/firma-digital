@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist";
-import { ZoomIn, ZoomOut, Move } from "lucide-react";
+import { ZoomIn, ZoomOut, Move, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs`;
@@ -8,8 +8,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs
 interface PDFViewerProps {
   file: File;
   signature: string | null;
-  signaturePosition: { x: number; y: number; page: number } | null;
-  onSignaturePositionChange: (position: { x: number; y: number; page: number }) => void;
+  signaturePosition: { x: number; y: number; page: number; width: number; height: number } | null;
+  onSignaturePositionChange: (position: { x: number; y: number; page: number; width: number; height: number }) => void;
   totalPages: number;
   onTotalPagesChange: (total: number) => void;
 }
@@ -33,6 +33,7 @@ export const PDFViewer = ({
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [scale, setScale] = useState(1.2);
   const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
   const [pageCanvases, setPageCanvases] = useState<PageCanvas[]>([]);
   const [isRendering, setIsRendering] = useState(false);
 
@@ -77,7 +78,14 @@ export const PDFViewer = ({
 
         const wrapper = document.createElement("div");
         wrapper.className = "mb-4 relative";
+        
+        // Add page label with filename
+        const pageLabel = document.createElement("div");
+        pageLabel.className = "text-center text-xs text-muted-foreground py-2";
+        pageLabel.textContent = `${file.name} — Página ${pageNum} de ${pdfDoc.numPages}`;
+        
         wrapper.appendChild(canvas);
+        wrapper.appendChild(pageLabel);
         container.appendChild(wrapper);
 
         canvases.push({
@@ -87,7 +95,7 @@ export const PDFViewer = ({
           offsetTop: currentOffsetTop,
         });
 
-        currentOffsetTop += viewport.height + 16; // 16px margin
+        currentOffsetTop += viewport.height + 48; // canvas + label + margin
       }
 
       setPageCanvases(canvases);
@@ -95,19 +103,13 @@ export const PDFViewer = ({
     };
 
     renderAllPages();
-  }, [pdfDoc, scale]);
+  }, [pdfDoc, scale, file.name]);
 
-  const getPageFromPosition = useCallback(
-    (clientY: number): { page: number; relativeY: number } | null => {
-      if (!pagesContainerRef.current) return null;
-
-      const containerRect = pagesContainerRef.current.getBoundingClientRect();
-      const scrollTop = pagesContainerRef.current.parentElement?.scrollTop || 0;
-      const y = clientY - containerRect.top + scrollTop;
-
+  const getPageFromY = useCallback(
+    (y: number): { page: number; relativeY: number } | null => {
       let accumulatedHeight = 0;
       for (let i = 0; i < pageCanvases.length; i++) {
-        const pageHeight = pageCanvases[i].height + 16; // including margin
+        const pageHeight = pageCanvases[i].height + 48;
         if (y >= accumulatedHeight && y < accumulatedHeight + pageCanvases[i].height) {
           return { page: i + 1, relativeY: y - accumulatedHeight };
         }
@@ -120,7 +122,7 @@ export const PDFViewer = ({
 
   const handleContainerClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!signature || isDragging || !pagesContainerRef.current) return;
+      if (!signature || isDragging || isResizing || !pagesContainerRef.current) return;
 
       const containerRect = pagesContainerRef.current.getBoundingClientRect();
       const scrollTop = containerRef.current?.scrollTop || 0;
@@ -128,19 +130,22 @@ export const PDFViewer = ({
       const x = e.clientX - containerRect.left;
       const y = e.clientY - containerRect.top + scrollTop;
 
-      // Determine which page was clicked
-      let accumulatedHeight = 0;
-      for (let i = 0; i < pageCanvases.length; i++) {
-        const pageHeight = pageCanvases[i].height + 16;
-        if (y >= accumulatedHeight && y < accumulatedHeight + pageCanvases[i].height) {
-          const relativeY = y - accumulatedHeight;
-          onSignaturePositionChange({ x, y: relativeY, page: i + 1 });
-          return;
-        }
-        accumulatedHeight += pageHeight;
+      const pageInfo = getPageFromY(y);
+      if (pageInfo) {
+        // Default signature size
+        const defaultWidth = 150;
+        const defaultHeight = 60;
+        
+        onSignaturePositionChange({
+          x,
+          y: pageInfo.relativeY,
+          page: pageInfo.page,
+          width: signaturePosition?.width || defaultWidth,
+          height: signaturePosition?.height || defaultHeight,
+        });
       }
     },
-    [signature, isDragging, pageCanvases, onSignaturePositionChange]
+    [signature, isDragging, isResizing, pageCanvases, onSignaturePositionChange, getPageFromY, signaturePosition]
   );
 
   const handleSignatureDrag = useCallback(
@@ -153,42 +158,41 @@ export const PDFViewer = ({
       const pagesContainer = pagesContainerRef.current;
       if (!container || !pagesContainer || !signaturePosition) return;
 
-      const startX = e.clientX;
-      const startY = e.clientY;
-      const startPosX = signaturePosition.x;
-      const startPosY = signaturePosition.y;
-      const startPage = signaturePosition.page;
+      const containerRect = pagesContainer.getBoundingClientRect();
 
       const handleMouseMove = (moveEvent: MouseEvent) => {
-        const deltaX = moveEvent.clientX - startX;
-        const deltaY = moveEvent.clientY - startY;
+        const scrollTop = container.scrollTop || 0;
+        const x = moveEvent.clientX - containerRect.left;
+        const y = moveEvent.clientY - containerRect.top + scrollTop;
 
-        const pageCanvas = pageCanvases[startPage - 1];
-        if (!pageCanvas) return;
+        const pageInfo = getPageFromY(y);
+        if (pageInfo) {
+          const pageCanvas = pageCanvases[pageInfo.page - 1];
+          if (!pageCanvas) return;
 
-        let newX = startPosX + deltaX;
-        let newY = startPosY + deltaY;
+          // Constrain to page boundaries
+          const halfWidth = signaturePosition.width / 2;
+          const halfHeight = signaturePosition.height / 2;
 
-        // Constrain to page boundaries
-        const signatureWidth = 150;
-        const signatureHeight = 80;
+          const newX = Math.max(halfWidth, Math.min(pageCanvas.width - halfWidth, x));
+          const newY = Math.max(halfHeight, Math.min(pageCanvas.height - halfHeight, pageInfo.relativeY));
 
-        newX = Math.max(signatureWidth / 2, Math.min(pageCanvas.width - signatureWidth / 2, newX));
-        newY = Math.max(signatureHeight / 2, Math.min(pageCanvas.height - signatureHeight / 2, newY));
-
-        onSignaturePositionChange({
-          x: newX,
-          y: newY,
-          page: startPage,
-        });
+          onSignaturePositionChange({
+            x: newX,
+            y: newY,
+            page: pageInfo.page,
+            width: signaturePosition.width,
+            height: signaturePosition.height,
+          });
+        }
 
         // Auto-scroll
-        const containerRect = container.getBoundingClientRect();
+        const scrollContainerRect = container.getBoundingClientRect();
         const scrollMargin = 50;
 
-        if (moveEvent.clientY > containerRect.bottom - scrollMargin) {
+        if (moveEvent.clientY > scrollContainerRect.bottom - scrollMargin) {
           container.scrollTop += 10;
-        } else if (moveEvent.clientY < containerRect.top + scrollMargin) {
+        } else if (moveEvent.clientY < scrollContainerRect.top + scrollMargin) {
           container.scrollTop -= 10;
         }
       };
@@ -202,7 +206,50 @@ export const PDFViewer = ({
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    [signaturePosition, onSignaturePositionChange, pageCanvases]
+    [signaturePosition, onSignaturePositionChange, pageCanvases, getPageFromY]
+  );
+
+  const handleSignatureResize = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsResizing(true);
+
+      if (!signaturePosition) return;
+
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startWidth = signaturePosition.width;
+      const startHeight = signaturePosition.height;
+      const aspectRatio = startWidth / startHeight;
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        const deltaX = moveEvent.clientX - startX;
+        const deltaY = moveEvent.clientY - startY;
+
+        // Use the larger delta to maintain aspect ratio
+        const delta = Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY * aspectRatio;
+
+        const newWidth = Math.max(80, Math.min(400, startWidth + delta));
+        const newHeight = newWidth / aspectRatio;
+
+        onSignaturePositionChange({
+          ...signaturePosition,
+          width: newWidth,
+          height: newHeight,
+        });
+      };
+
+      const handleMouseUp = () => {
+        setTimeout(() => setIsResizing(false), 100);
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
+
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    },
+    [signaturePosition, onSignaturePositionChange]
   );
 
   const getSignatureTopPosition = useCallback(() => {
@@ -210,9 +257,9 @@ export const PDFViewer = ({
 
     let accumulatedHeight = 0;
     for (let i = 0; i < signaturePosition.page - 1; i++) {
-      accumulatedHeight += pageCanvases[i].height + 16;
+      accumulatedHeight += pageCanvases[i].height + 48;
     }
-    return accumulatedHeight + signaturePosition.y - 40;
+    return accumulatedHeight + signaturePosition.y - signaturePosition.height / 2;
   }, [signaturePosition, pageCanvases]);
 
   return (
@@ -250,21 +297,29 @@ export const PDFViewer = ({
           <div
             className="absolute cursor-move select-none z-10 border-2 border-primary border-dashed rounded-md p-1 bg-primary/5 hover:bg-primary/10 transition-colors"
             style={{
-              left: signaturePosition.x - 77,
+              left: signaturePosition.x - signaturePosition.width / 2,
               top: getSignatureTopPosition(),
-              width: 154,
+              width: signaturePosition.width,
             }}
             onMouseDown={handleSignatureDrag}
           >
             <img
               src={signature}
               alt="Firma"
-              className="w-full h-auto max-h-[76px] pointer-events-none"
+              className="w-full h-auto pointer-events-none"
+              style={{ maxHeight: signaturePosition.height - 8 }}
               draggable={false}
             />
             <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
               <Move className="w-3 h-3" />
               Arrastra para mover
+            </div>
+            {/* Resize handle */}
+            <div
+              className="absolute -bottom-2 -right-2 w-5 h-5 bg-primary rounded-full cursor-se-resize flex items-center justify-center shadow-md hover:bg-primary/80 transition-colors"
+              onMouseDown={handleSignatureResize}
+            >
+              <Maximize2 className="w-3 h-3 text-primary-foreground rotate-90" />
             </div>
           </div>
         )}
