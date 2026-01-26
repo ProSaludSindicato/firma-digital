@@ -1,11 +1,12 @@
 import { useState, useCallback } from "react";
-import { X, MousePointerClick, Move, PenLine, FileSignature, ChevronRight } from "lucide-react";
+import { MousePointerClick, Move, PenLine, FileSignature, ChevronRight, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 
 interface TutorialStep {
@@ -35,9 +36,12 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     title: "Crea tu firma",
     description: "Toca el marcador para abrir el panel de firma. Puedes dibujar tu firma o subir una imagen.",
   },
+  {
+    icon: <Send className="w-8 h-8 text-primary" />,
+    title: "Revisa y envía",
+    description: "Una vez colocada tu firma, revisa el documento y presiona 'Finalizar y Enviar Convenio'.",
+  },
 ];
-
-const TUTORIAL_STORAGE_KEY = "signature-tutorial-shown";
 
 interface SignatureTutorialProps {
   isOpen: boolean;
@@ -56,12 +60,12 @@ export const SignatureTutorial = ({ isOpen, onClose }: SignatureTutorialProps) =
   };
 
   const handleComplete = () => {
-    localStorage.setItem(TUTORIAL_STORAGE_KEY, "true");
+    setCurrentStep(0);
     onClose();
   };
 
   const handleSkip = () => {
-    localStorage.setItem(TUTORIAL_STORAGE_KEY, "true");
+    setCurrentStep(0);
     onClose();
   };
 
@@ -73,6 +77,9 @@ export const SignatureTutorial = ({ isOpen, onClose }: SignatureTutorialProps) =
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-center">Cómo firmar tu documento</DialogTitle>
+          <DialogDescription className="text-center text-muted-foreground">
+            Sigue estos pasos para completar tu firma
+          </DialogDescription>
         </DialogHeader>
         
         <div className="flex flex-col items-center py-6 px-4">
@@ -119,30 +126,22 @@ export const SignatureTutorial = ({ isOpen, onClose }: SignatureTutorialProps) =
   );
 };
 
-// Hook to manage tutorial visibility
+// Hook to manage tutorial visibility - shows every time PDF loads
 export const useSignatureTutorial = () => {
   const [showTutorial, setShowTutorial] = useState(false);
 
   const checkAndShowTutorial = useCallback(() => {
-    const hasSeenTutorial = localStorage.getItem(TUTORIAL_STORAGE_KEY);
-    if (!hasSeenTutorial) {
-      setShowTutorial(true);
-    }
+    // Always show tutorial when PDF loads
+    setShowTutorial(true);
   }, []);
 
   const closeTutorial = useCallback(() => {
     setShowTutorial(false);
   }, []);
 
-  // Reset tutorial (useful for testing)
-  const resetTutorial = useCallback(() => {
-    localStorage.removeItem(TUTORIAL_STORAGE_KEY);
-  }, []);
-
   return {
     showTutorial,
     checkAndShowTutorial,
     closeTutorial,
-    resetTutorial,
   };
 };
