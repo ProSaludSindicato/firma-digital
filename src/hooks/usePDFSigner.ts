@@ -69,8 +69,11 @@ export const usePDFSigner = () => {
       
       // x, y in signaturePosition are the CENTER of the signature in canvas coords
       // Convert to PDF coords (bottom-left origin, Y pointing up)
+      // pdf-lib drawImage uses bottom-left corner as reference point
       const x = (signaturePosition.x - signaturePosition.width / 2) / scaleFactor;
-      const y = pageHeight - ((signaturePosition.y + signaturePosition.height / 2) / scaleFactor);
+      // Center Y in PDF = pageHeight - (canvas center Y / scaleFactor)
+      // Bottom-left Y for drawImage = PDF center Y - (signatureHeight / 2)
+      const y = pageHeight - (signaturePosition.y / scaleFactor) - (signatureHeight / 2);
 
       page.drawImage(signatureImage, {
         x,
