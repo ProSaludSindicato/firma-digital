@@ -422,9 +422,10 @@ export const SignatureModal = ({
               </div>
             </TabsContent>
 
-            <TabsContent value="upload" className="flex-1 m-0 p-3 flex flex-col">
+            <TabsContent value="upload" className="flex-1 flex flex-col m-0 p-3 overflow-hidden min-h-0">
+              {/* Upload area - same flex layout as draw tab */}
               <div 
-                className="border-2 border-dashed border-border rounded-lg p-8 text-center bg-accent w-full h-48 flex items-center justify-center"
+                className="flex-1 min-h-0 border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent flex items-center justify-center"
               >
                 <input
                   type="file"
@@ -438,13 +439,21 @@ export const SignatureModal = ({
                   className="cursor-pointer flex flex-col items-center justify-center w-full h-full"
                 >
                   <Upload className="w-12 h-12 text-muted-foreground mb-3" />
-                  <span className="text-base text-muted-foreground">
+                  <span className="text-base text-muted-foreground text-center px-4">
                     Toca para subir una imagen de tu firma
                   </span>
                   <span className="text-sm text-muted-foreground mt-1">
                     PNG o JPG
                   </span>
                 </label>
+              </div>
+
+              {/* Spacer to match the button area from draw tab */}
+              <div 
+                className="shrink-0 pt-3"
+                style={{ paddingBottom: 'max(0rem, env(safe-area-inset-bottom))' }}
+              >
+                <div className="h-12" />
               </div>
             </TabsContent>
           </Tabs>
