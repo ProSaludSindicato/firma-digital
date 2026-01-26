@@ -64,19 +64,33 @@ export const PDFViewer = ({
 
   // Load PDF
   useEffect(() => {
+    let isCancelled = false;
+    
     const loadPdf = async () => {
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      
+      if (isCancelled) return;
+      
       setPdfDoc(pdf);
       setTotalPages(pdf.numPages);
       onTotalPagesChange(pdf.numPages);
       setCurrentPage(1);
       setPlaceholderPosition(null);
-      // Show tutorial when PDF loads for the first time
-      checkAndShowTutorial();
     };
     loadPdf();
-  }, [file, onTotalPagesChange, checkAndShowTutorial]);
+    
+    return () => {
+      isCancelled = true;
+    };
+  }, [file, onTotalPagesChange]);
+
+  // Show tutorial when PDF loads for the first time (separate effect to avoid re-renders)
+  useEffect(() => {
+    if (pdfDoc) {
+      checkAndShowTutorial();
+    }
+  }, [pdfDoc, checkAndShowTutorial]);
 
   const handlePageSelect = useCallback((page: number) => {
     setCurrentPage(page);
