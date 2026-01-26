@@ -37,12 +37,15 @@ export const PDFViewer = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  // Calculate responsive zoom based on screen width
+  // Calculate responsive zoom - fit to screen width on mobile
   const getResponsiveZoom = useCallback(() => {
     const width = window.innerWidth;
     if (width >= 1440) return 1.6; // Large screens: 160%
+    if (width >= 1024) return 1.2; // Desktop: 120%
     if (width >= 768) return 1.0;  // Tablets: 100%
-    return 0.8;                     // Mobile: 80%
+    // Mobile: calculate zoom to fit document width (approx 612pt for letter size)
+    const mobileZoom = (width - 8) / 612; // Subtract minimal padding
+    return Math.max(0.5, Math.min(1.0, mobileZoom));
   }, []);
 
   const [scale, setScale] = useState(getResponsiveZoom);
@@ -102,77 +105,79 @@ export const PDFViewer = ({
 
 
   return (
-    <div className="flex flex-col h-full w-full">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between gap-2 bg-card rounded-lg p-3 shadow-sm border border-border mb-4 flex-wrap">
-        {/* Zoom controls - ghost style */}
+    <div className="flex flex-col h-full w-full overflow-hidden">
+      {/* Toolbar - compact on mobile */}
+      <div className="flex items-center justify-between gap-2 bg-card p-2 md:p-3 border-b border-border flex-shrink-0">
+        {/* Zoom controls */}
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setScale((s) => Math.max(0.5, s - 0.2))}
-            className="h-8 w-8"
+            className="h-7 w-7 md:h-8 md:w-8"
           >
             <ZoomOut className="w-4 h-4" />
           </Button>
-          <span className="text-xs font-medium text-muted-foreground min-w-[45px] text-center">
+          <span className="text-xs font-medium text-muted-foreground min-w-[40px] text-center">
             {Math.round(scale * 100)}%
           </span>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setScale((s) => Math.min(2, s + 0.2))}
-            className="h-8 w-8"
+            className="h-7 w-7 md:h-8 md:w-8"
           >
             <ZoomIn className="w-4 h-4" />
           </Button>
         </div>
 
-        {/* Page navigation - outline style with background */}
-        <div className="flex items-center gap-1 sm:gap-2">
+        {/* Page navigation */}
+        <div className="flex items-center gap-1">
           <Button
-            variant="outline"
-            size="sm"
+            variant="ghost"
+            size="icon"
             onClick={handlePrevPage}
             disabled={currentPage <= 1}
-            className="h-9 px-3"
+            className="h-7 w-7 md:h-8 md:w-8"
           >
             <ChevronLeft className="w-4 h-4" />
-            <span className="hidden sm:inline text-xs">Anterior</span>
           </Button>
-          <span className="text-sm font-semibold text-foreground min-w-[70px] text-center bg-muted px-2 py-1 rounded">
+          <span className="text-xs font-medium text-foreground min-w-[50px] text-center">
             {currentPage} / {totalPages}
           </span>
           <Button
-            variant="outline"
-            size="sm"
+            variant="ghost"
+            size="icon"
             onClick={handleNextPage}
             disabled={currentPage >= totalPages}
-            className="h-9 px-3"
+            className="h-7 w-7 md:h-8 md:w-8"
           >
-            <span className="hidden sm:inline text-xs">Siguiente</span>
             <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
 
-        {/* Spacer for alignment */}
-        <div className="w-[88px] hidden sm:block"></div>
+        {/* File name - hidden on mobile */}
+        <span className="text-xs text-muted-foreground truncate max-w-[120px] hidden md:block">
+          {file.name}
+        </span>
       </div>
 
-      {/* Main content */}
-      <div className="flex flex-1 border border-border rounded-lg overflow-hidden bg-muted/30 min-h-0">
-        {/* Thumbnails sidebar */}
-        <PDFThumbnails
-          pdfDoc={pdfDoc}
-          currentPage={currentPage}
-          onPageSelect={handlePageSelect}
-          signaturePage={signaturePosition?.page || null}
-          isCollapsed={isSidebarCollapsed}
-          onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-        />
+      {/* Main content - full width on mobile */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Thumbnails sidebar - hidden on mobile */}
+        <div className="hidden md:block">
+          <PDFThumbnails
+            pdfDoc={pdfDoc}
+            currentPage={currentPage}
+            onPageSelect={handlePageSelect}
+            signaturePage={signaturePosition?.page || null}
+            isCollapsed={isSidebarCollapsed}
+            onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          />
+        </div>
 
-        {/* Page view */}
-        <div className="flex-1 overflow-auto p-4 flex items-start justify-center">
+        {/* Page view - full width, no margins on mobile */}
+        <div className="flex-1 overflow-auto flex items-start justify-center p-0 md:p-4 bg-muted/30">
           <PDFPageView
             pdfDoc={pdfDoc}
             pageNumber={currentPage}
@@ -187,12 +192,6 @@ export const PDFViewer = ({
             isLocked={isLocked}
           />
         </div>
-      </div>
-
-      {/* Page info footer */}
-      <div className="flex justify-between items-center text-xs text-muted-foreground py-2 px-2">
-        <span className="truncate max-w-[50%]">{file.name}</span>
-        <span>Página {currentPage} de {totalPages}</span>
       </div>
 
       <SignatureModal

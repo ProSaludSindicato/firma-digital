@@ -72,27 +72,28 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
       <Header
         showFinishButton={!!signature && !!signaturePosition}
         onFinish={handleFinishAndSend}
         isProcessing={isDownloading}
       />
 
-      <main className="flex-1 p-6">
-        <div className="max-w-7xl mx-auto">
-          {!pdfFile ? (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8">
-              <div className="text-center max-w-xl">
-                <h2 className="text-3xl font-bold text-foreground mb-4">Firma tus documentos PDF</h2>
-                <p className="text-muted-foreground">
-                  Sube tu documento, haz clic donde deseas firmar, y descarga el PDF firmado listo para enviar.
-                </p>
-              </div>
-              <PDFUploader onFileSelect={handleFileSelect} />
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        {!pdfFile ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-6 gap-8">
+            <div className="text-center max-w-xl">
+              <h2 className="text-3xl font-bold text-foreground mb-4">Firma tus documentos PDF</h2>
+              <p className="text-muted-foreground">
+                Sube tu documento, haz clic donde deseas firmar, y descarga el PDF firmado listo para enviar.
+              </p>
             </div>
-          ) : (
-            <div className="flex flex-col gap-4 h-[calc(100vh-180px)]">
+            <PDFUploader onFileSelect={handleFileSelect} />
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            {/* PDF Viewer - full width on mobile */}
+            <div className="flex-1 min-h-0 overflow-hidden">
               <PDFViewer
                 file={pdfFile}
                 signature={signature}
@@ -104,50 +105,41 @@ const Index = () => {
                 onTotalPagesChange={setTotalPages}
                 isLocked={isSent}
               />
-
-              <div className="flex flex-col items-center gap-4 mb-4">
-                {isSent && (
-                  <div className="flex flex-col items-center gap-2 p-4 bg-green-500/10 border border-green-500/30 rounded-lg w-full max-w-lg">
-                    <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-                      <CheckCircle className="w-6 h-6" />
-                      <span className="text-lg font-semibold">¡Convenio enviado y recibido correctamente!</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground text-center">
-                      Su convenio firmado ha sido procesado exitosamente. Puede descargar una copia adicional si lo necesita.
-                    </p>
-                  </div>
-                )}
-
-                <div className="flex flex-col sm:flex-row justify-center gap-3">
-                  {!isSent ? (
-                    <Button
-                      onClick={handleFinishAndSend}
-                      disabled={!canDownload || isDownloading}
-                      size="lg"
-                      className="min-w-[250px]"
-                    >
-                      <Send className="w-5 h-5 mr-2" />
-                      {isDownloading ? "Procesando..." : "Finalizar y Enviar convenio"}
-                    </Button>
-                  ) : (
-                    <Button onClick={downloadSignedPDF} disabled={isDownloading} size="lg" className="min-w-[250px]">
-                      <Download className="w-5 h-5 mr-2" />
-                      {isDownloading ? "Procesando..." : "Descargar PDF firmado"}
-                    </Button>
-                  )}
-                </div>
-
-                {!isSent && !canDownload && pdfFile && (
-                  <p className="text-sm text-muted-foreground text-center">
-                    {!signature
-                      ? "Haz clic en el documento y agrega tu firma para continuar"
-                      : "Ajusta la posición de tu firma si es necesario"}
-                  </p>
-                )}
-              </div>
             </div>
-          )}
-        </div>
+
+            {/* Bottom action bar - always visible */}
+            <div className="flex-shrink-0 p-3 md:p-4 bg-background border-t border-border">
+              {isSent ? (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm">
+                    <CheckCircle className="w-5 h-5" />
+                    <span className="font-semibold">¡Convenio enviado correctamente!</span>
+                  </div>
+                  <Button onClick={downloadSignedPDF} disabled={isDownloading} className="w-full max-w-md">
+                    <Download className="w-4 h-4 mr-2" />
+                    {isDownloading ? "Procesando..." : "Descargar PDF firmado"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  {!canDownload && pdfFile && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      {!signature ? "Toque donde desea firmar" : "Ajuste la posición si es necesario"}
+                    </p>
+                  )}
+                  <Button
+                    onClick={handleFinishAndSend}
+                    disabled={!canDownload || isDownloading}
+                    className="w-full max-w-md"
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    {isDownloading ? "Procesando..." : "Finalizar"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Confirmation Dialog */}
