@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist";
-import { Move, Maximize2, Trash2 } from "lucide-react";
+import { Move, Maximize2, Pencil } from "lucide-react";
 import { SignaturePlaceholder } from "./SignaturePlaceholder";
 
 interface PDFPageViewProps {
@@ -418,17 +418,17 @@ export const PDFPageView = ({
                     <Move className="w-3 h-3" />
                     Arrastra para mover
                   </div>
-                  {/* Delete signature button */}
+                  {/* Edit signature button - opens modal with current signature */}
                   <div
-                    className="absolute -top-2 -left-2 w-6 h-6 bg-destructive rounded-full cursor-pointer flex items-center justify-center shadow-md hover:bg-destructive/80 transition-colors"
+                    className="absolute -top-2 -left-2 w-6 h-6 bg-primary rounded-full cursor-pointer flex items-center justify-center shadow-md hover:bg-primary/80 transition-colors"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onClearSignature();
+                      onPlaceholderClick();
                     }}
                     onMouseDown={(e) => e.stopPropagation()}
                     onTouchStart={(e) => e.stopPropagation()}
                   >
-                    <Trash2 className="w-3 h-3 text-destructive-foreground" />
+                    <Pencil className="w-3 h-3 text-primary-foreground" />
                   </div>
                   {/* Resize handle */}
                   <div

@@ -294,6 +294,8 @@ export const PDFViewer = ({
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSignatureCreate={handleSignatureCreate}
+        onClearSignature={onClearSignature}
+        currentSignature={signature}
       />
 
       <SignatureTutorial isOpen={showTutorial} onClose={closeTutorial} />
