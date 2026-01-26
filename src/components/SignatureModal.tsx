@@ -28,6 +28,11 @@ export const SignatureModal = ({
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const isMobile = useIsMobile();
 
+  // Get device pixel ratio for high-DPI displays
+  const getPixelRatio = () => {
+    return typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 3) : 1;
+  };
+
   // Update canvas size when container resizes or modal opens
   useEffect(() => {
     if (!isOpen || !containerRef.current) return;
@@ -35,7 +40,12 @@ export const SignatureModal = ({
     const updateSize = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        setCanvasSize({ width: rect.width, height: rect.height });
+        const pixelRatio = getPixelRatio();
+        // Store display size and actual canvas size (scaled for retina)
+        setCanvasSize({ 
+          width: rect.width * pixelRatio, 
+          height: rect.height * pixelRatio 
+        });
       }
     };
 
@@ -54,10 +64,73 @@ export const SignatureModal = ({
     };
   }, [isOpen]);
 
+  // Get high-quality signature with proper trimming
   const handleSaveSignature = () => {
     if (signatureRef.current && !signatureRef.current.isEmpty()) {
-      const dataUrl = signatureRef.current.toDataURL("image/png");
-      onSignatureCreate(dataUrl);
+      const canvas = signatureRef.current.getCanvas();
+      
+      // Create a new canvas for the trimmed, high-quality output
+      const trimmedCanvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const trimmedCtx = trimmedCanvas.getContext('2d');
+      
+      if (!ctx || !trimmedCtx) {
+        const dataUrl = signatureRef.current.toDataURL("image/png");
+        onSignatureCreate(dataUrl);
+        onClose();
+        return;
+      }
+
+      // Get image data to find the bounding box of the signature
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const { data, width, height } = imageData;
+      
+      let minX = width, minY = height, maxX = 0, maxY = 0;
+      
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const alpha = data[(y * width + x) * 4 + 3];
+          if (alpha > 0) {
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+          }
+        }
+      }
+      
+      // Add padding around the signature
+      const padding = 20;
+      minX = Math.max(0, minX - padding);
+      minY = Math.max(0, minY - padding);
+      maxX = Math.min(width, maxX + padding);
+      maxY = Math.min(height, maxY + padding);
+      
+      const trimmedWidth = maxX - minX;
+      const trimmedHeight = maxY - minY;
+      
+      if (trimmedWidth > 0 && trimmedHeight > 0) {
+        trimmedCanvas.width = trimmedWidth;
+        trimmedCanvas.height = trimmedHeight;
+        
+        // Enable high-quality image smoothing
+        trimmedCtx.imageSmoothingEnabled = true;
+        trimmedCtx.imageSmoothingQuality = 'high';
+        
+        // Draw the trimmed portion
+        trimmedCtx.drawImage(
+          canvas,
+          minX, minY, trimmedWidth, trimmedHeight,
+          0, 0, trimmedWidth, trimmedHeight
+        );
+        
+        const dataUrl = trimmedCanvas.toDataURL("image/png", 1.0);
+        onSignatureCreate(dataUrl);
+      } else {
+        const dataUrl = signatureRef.current.toDataURL("image/png");
+        onSignatureCreate(dataUrl);
+      }
+      
       onClose();
     }
   };
@@ -123,23 +196,29 @@ export const SignatureModal = ({
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
                   <p className="text-muted-foreground text-sm">Firma aquí</p>
                 </div>
-                {canvasSize.width > 0 && (
+              {canvasSize.width > 0 && (() => {
+                const pixelRatio = getPixelRatio();
+                const displayWidth = canvasSize.width / pixelRatio;
+                const displayHeight = canvasSize.height / pixelRatio;
+                
+                return (
                   <SignatureCanvas
                     ref={signatureRef}
                     canvasProps={{
                       width: canvasSize.width,
                       height: canvasSize.height,
                       style: { 
-                        width: '100%', 
-                        height: '100%',
+                        width: `${displayWidth}px`, 
+                        height: `${displayHeight}px`,
                       },
                     }}
                     backgroundColor="transparent"
                     penColor="#1e293b"
-                    minWidth={1.5}
-                    maxWidth={3}
+                    minWidth={1.5 * pixelRatio}
+                    maxWidth={3 * pixelRatio}
                   />
-                )}
+                );
+              })()}
               </div>
 
               {/* Large confirm button */}
