@@ -422,9 +422,9 @@ export const SignatureModal = ({
               </div>
             </TabsContent>
 
-            <TabsContent value="upload" className="flex-1 m-0 p-3 flex items-center justify-center">
+            <TabsContent value="upload" className="flex-1 m-0 p-3 flex flex-col">
               <div 
-                className="border-2 border-dashed border-border rounded-lg p-6 text-center bg-accent w-full max-w-sm"
+                className="border-2 border-dashed border-border rounded-lg p-8 text-center bg-accent w-full h-48 flex items-center justify-center"
               >
                 <input
                   type="file"
@@ -435,13 +435,13 @@ export const SignatureModal = ({
                 />
                 <label
                   htmlFor="signature-modal-upload-mobile"
-                  className="cursor-pointer flex flex-col items-center"
+                  className="cursor-pointer flex flex-col items-center justify-center w-full h-full"
                 >
-                  <Upload className="w-10 h-10 text-muted-foreground mb-3" />
-                  <span className="text-sm text-muted-foreground">
+                  <Upload className="w-12 h-12 text-muted-foreground mb-3" />
+                  <span className="text-base text-muted-foreground">
                     Toca para subir una imagen de tu firma
                   </span>
-                  <span className="text-xs text-muted-foreground mt-1">
+                  <span className="text-sm text-muted-foreground mt-1">
                     PNG o JPG
                   </span>
                 </label>
