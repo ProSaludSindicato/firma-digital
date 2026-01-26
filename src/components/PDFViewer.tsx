@@ -37,14 +37,15 @@ export const PDFViewer = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  // Calculate responsive zoom - start at readable size on mobile
+  // Calculate responsive zoom - fit to screen width on mobile
   const getResponsiveZoom = useCallback(() => {
     const width = window.innerWidth;
     if (width >= 1440) return 1.6; // Large screens: 160%
     if (width >= 1024) return 1.2; // Desktop: 120%
     if (width >= 768) return 1.0;  // Tablets: 100%
-    // Mobile: start at 100% for readable text, user can pinch-zoom to navigate
-    return 1.0;
+    // Mobile: fit document to screen width, user can pinch-zoom to read
+    const mobileZoom = (width - 8) / 612; // 612pt = letter size width
+    return Math.max(0.5, Math.min(1.0, mobileZoom));
   }, []);
 
   const [scale, setScale] = useState(getResponsiveZoom);
