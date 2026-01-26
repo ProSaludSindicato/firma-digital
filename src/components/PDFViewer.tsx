@@ -8,7 +8,11 @@ import { SignatureModal } from "./SignatureModal";
 import { SignatureTutorial, useSignatureTutorial } from "./SignatureTutorial";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs`;
+// Configure PDF.js worker using Vite's import.meta.url resolution
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.mjs",
+  import.meta.url
+).toString();
 
 // ⚙️ CONFIGURABLE: Page number where the signature should be placed
 const SIGNATURE_PAGE = 2;
