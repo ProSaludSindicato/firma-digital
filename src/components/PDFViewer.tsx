@@ -143,8 +143,21 @@ export const PDFViewer = ({
         setPlaceholderPosition(null);
       }
     },
-    [placeholderPosition, onSignatureCreate, onSignaturePositionChange]
+    [placeholderPosition, onSignatureCreate, onSignaturePositionChange, scale]
   );
+
+  // Handle clearing signature from modal - restore placeholder at the same position
+  const handleClearSignatureFromModal = useCallback(() => {
+    if (signaturePosition) {
+      // Restore placeholder at the signature's current position
+      setPlaceholderPosition({
+        x: signaturePosition.x,
+        y: signaturePosition.y,
+        page: signaturePosition.page,
+      });
+    }
+    onClearSignature();
+  }, [signaturePosition, onClearSignature]);
 
   const isOnSignaturePage = currentPage === SIGNATURE_PAGE;
 
@@ -294,7 +307,7 @@ export const PDFViewer = ({
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSignatureCreate={handleSignatureCreate}
-        onClearSignature={onClearSignature}
+        onClearSignature={handleClearSignatureFromModal}
         currentSignature={signature}
       />
 
