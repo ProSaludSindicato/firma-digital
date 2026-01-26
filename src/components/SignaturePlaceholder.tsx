@@ -28,7 +28,7 @@ export const SignaturePlaceholder = ({ onClick, onDragStart, onTouchDragStart, s
           <PenLine className="w-4 h-4 mr-2" />
           Agregar firma aquí
         </Button>
-        <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
+        <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-muted text-muted-foreground text-[10px] leading-tight px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
           <Move className="w-3 h-3" />
           Arrastra para mover
         </div>

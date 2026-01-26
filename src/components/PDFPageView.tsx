@@ -44,7 +44,7 @@ export const PDFPageView = ({
       if (!pdfDoc || !canvasRef.current) return;
 
       const page = await pdfDoc.getPage(pageNumber);
-      
+
       // Use higher pixel ratio for sharper text rendering
       const pixelRatio = Math.min(window.devicePixelRatio || 1, 3);
       const viewport = page.getViewport({ scale });
@@ -54,7 +54,7 @@ export const PDFPageView = ({
       // Set canvas internal size to high-res
       canvas.width = scaledViewport.width;
       canvas.height = scaledViewport.height;
-      
+
       // Set display size to normal
       canvas.style.width = `${viewport.width}px`;
       canvas.style.height = `${viewport.height}px`;
@@ -403,7 +403,7 @@ export const PDFPageView = ({
               />
               {!isLocked && (
                 <>
-                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
+                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] leading-tight px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
                     <Move className="w-3 h-3" />
                     Arrastra para mover
                   </div>
