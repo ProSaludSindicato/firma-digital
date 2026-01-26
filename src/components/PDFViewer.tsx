@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { PDFThumbnails } from "./PDFThumbnails";
 import { PDFPageView } from "./PDFPageView";
 import { SignatureModal } from "./SignatureModal";
+import { SignatureTutorial, useSignatureTutorial } from "./SignatureTutorial";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs`;
@@ -40,8 +41,8 @@ export const PDFViewer = ({
   const [placeholderPosition, setPlaceholderPosition] = useState<{ x: number; y: number; page: number } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [hasNavigatedToSignaturePage, setHasNavigatedToSignaturePage] = useState(false);
   const isMobile = useIsMobile();
+  const { showTutorial, checkAndShowTutorial, closeTutorial } = useSignatureTutorial();
 
   // Calculate responsive zoom - fit to screen width on mobile
   const getResponsiveZoom = useCallback(() => {
@@ -67,21 +68,11 @@ export const PDFViewer = ({
       onTotalPagesChange(pdf.numPages);
       setCurrentPage(1);
       setPlaceholderPosition(null);
-      setHasNavigatedToSignaturePage(false);
+      // Show tutorial when PDF loads for the first time
+      checkAndShowTutorial();
     };
     loadPdf();
-  }, [file, onTotalPagesChange]);
-
-  // Auto-navigate to signature page after a brief delay
-  useEffect(() => {
-    if (pdfDoc && totalPages >= SIGNATURE_PAGE && !hasNavigatedToSignaturePage && !signature) {
-      const timer = setTimeout(() => {
-        setCurrentPage(SIGNATURE_PAGE);
-        setHasNavigatedToSignaturePage(true);
-      }, 1500); // 1.5 second delay to let user see the first page
-      return () => clearTimeout(timer);
-    }
-  }, [pdfDoc, totalPages, hasNavigatedToSignaturePage, signature]);
+  }, [file, onTotalPagesChange, checkAndShowTutorial]);
 
   const handlePageSelect = useCallback((page: number) => {
     setCurrentPage(page);
@@ -263,6 +254,8 @@ export const PDFViewer = ({
         onClose={() => setIsModalOpen(false)}
         onSignatureCreate={handleSignatureCreate}
       />
+
+      <SignatureTutorial isOpen={showTutorial} onClose={closeTutorial} />
     </div>
   );
 };
