@@ -193,32 +193,37 @@ export const SignatureModal = ({
                 ref={containerRef}
                 className="flex-1 border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent relative"
               >
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
-                  <p className="text-muted-foreground text-sm">Firma aquí</p>
-                </div>
-              {canvasSize.width > 0 && (() => {
-                const pixelRatio = getPixelRatio();
-                const displayWidth = canvasSize.width / pixelRatio;
-                const displayHeight = canvasSize.height / pixelRatio;
-                
-                return (
-                  <SignatureCanvas
-                    ref={signatureRef}
-                    canvasProps={{
-                      width: canvasSize.width,
-                      height: canvasSize.height,
-                      style: { 
-                        width: `${displayWidth}px`, 
-                        height: `${displayHeight}px`,
-                      },
-                    }}
-                    backgroundColor="transparent"
-                    penColor="#1e293b"
-                    minWidth={1.5 * pixelRatio}
-                    maxWidth={3 * pixelRatio}
-                  />
-                );
-              })()}
+                {canvasSize.width === 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
+                    <p className="text-muted-foreground text-sm">Firma aquí</p>
+                  </div>
+                )}
+                {canvasSize.width > 0 && (() => {
+                  const pixelRatio = getPixelRatio();
+                  const displayWidth = canvasSize.width / pixelRatio;
+                  const displayHeight = canvasSize.height / pixelRatio;
+                  
+                  return (
+                    <SignatureCanvas
+                      ref={signatureRef}
+                      canvasProps={{
+                        width: canvasSize.width,
+                        height: canvasSize.height,
+                        style: { 
+                          width: `${displayWidth}px`, 
+                          height: `${displayHeight}px`,
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                        },
+                      }}
+                      backgroundColor="transparent"
+                      penColor="#1e293b"
+                      minWidth={1.5 * pixelRatio}
+                      maxWidth={3 * pixelRatio}
+                    />
+                  );
+                })()}
               </div>
 
               {/* Large confirm button */}
