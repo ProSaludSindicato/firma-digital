@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist";
-import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, FileSignature } from "lucide-react";
+import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, FileSignature, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PDFThumbnails } from "./PDFThumbnails";
 import { PDFPageView } from "./PDFPageView";
 import { SignatureModal } from "./SignatureModal";
 import { SignatureTutorial, useSignatureTutorial } from "./SignatureTutorial";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Configure PDF.js worker using Vite's import.meta.url resolution
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -40,6 +41,7 @@ export const PDFViewer = ({
   isLocked = false,
 }: PDFViewerProps) => {
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [placeholderPosition, setPlaceholderPosition] = useState<{ x: number; y: number; page: number } | null>(null);
@@ -65,18 +67,25 @@ export const PDFViewer = ({
   // Load PDF
   useEffect(() => {
     let isCancelled = false;
+    setIsLoading(true);
     
     const loadPdf = async () => {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      
-      if (isCancelled) return;
-      
-      setPdfDoc(pdf);
-      setTotalPages(pdf.numPages);
-      onTotalPagesChange(pdf.numPages);
-      setCurrentPage(1);
-      setPlaceholderPosition(null);
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        
+        if (isCancelled) return;
+        
+        setPdfDoc(pdf);
+        setTotalPages(pdf.numPages);
+        onTotalPagesChange(pdf.numPages);
+        setCurrentPage(1);
+        setPlaceholderPosition(null);
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
     };
     loadPdf();
     
@@ -250,20 +259,34 @@ export const PDFViewer = ({
 
         {/* Page view - full width, pinch-to-zoom enabled on mobile */}
         <div className="flex-1 overflow-auto flex items-start justify-center p-0 md:p-4 bg-muted/30 touch-pan-x touch-pan-y touch-pinch-zoom">
-          <PDFPageView
-            pdfDoc={pdfDoc}
-            pageNumber={currentPage}
-            scale={scale}
-            signature={signature}
-            signaturePosition={signaturePosition}
-            onSignaturePositionChange={onSignaturePositionChange}
-            placeholderPosition={placeholderPosition}
-            onPlaceholderPositionChange={setPlaceholderPosition}
-            onPlaceholderClick={handlePlaceholderClick}
-            onClearSignature={onClearSignature}
-            isLocked={isLocked}
-            fileName={file.name}
-          />
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center gap-4 py-12 animate-fade-in">
+              <div className="relative">
+                <Skeleton className="w-[300px] h-[400px] md:w-[400px] md:h-[520px] rounded-lg" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                  <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                  <span className="text-sm text-muted-foreground font-medium">
+                    Cargando documento...
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <PDFPageView
+              pdfDoc={pdfDoc}
+              pageNumber={currentPage}
+              scale={scale}
+              signature={signature}
+              signaturePosition={signaturePosition}
+              onSignaturePositionChange={onSignaturePositionChange}
+              placeholderPosition={placeholderPosition}
+              onPlaceholderPositionChange={setPlaceholderPosition}
+              onPlaceholderClick={handlePlaceholderClick}
+              onClearSignature={onClearSignature}
+              isLocked={isLocked}
+              fileName={file.name}
+            />
+          )}
         </div>
       </div>
 
