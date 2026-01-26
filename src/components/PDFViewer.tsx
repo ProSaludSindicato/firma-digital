@@ -187,8 +187,8 @@ export const PDFViewer = ({
             <ChevronLeft className="w-5 h-5 md:w-4 md:h-4" />
           </Button>
           
-          {/* Mobile: Show page dots/numbers for quick navigation */}
-          {isMobile && totalPages <= 5 ? (
+          {/* Page number buttons for quick navigation */}
+          {totalPages <= 5 ? (
             <div className="flex items-center gap-1">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                 <button
