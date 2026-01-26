@@ -322,7 +322,7 @@ export const SignatureModal = ({
                 <div className="flex-1 border-2 border-dashed border-border rounded-lg text-center bg-accent flex items-center justify-center">
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/png, image/jpeg"
                     onChange={handleImageUpload}
                     className="hidden"
                     id="signature-modal-upload-landscape"
@@ -422,14 +422,13 @@ export const SignatureModal = ({
               </div>
             </TabsContent>
 
-            <TabsContent value="upload" className="flex-1 m-0 p-3">
+            <TabsContent value="upload" className="flex-1 m-0 p-3 flex items-center justify-center">
               <div 
-                className="h-full border-2 border-dashed border-border rounded-lg p-6 text-center bg-accent flex items-center justify-center"
-                style={{ marginBottom: 'env(safe-area-inset-bottom)' }}
+                className="border-2 border-dashed border-border rounded-lg p-6 text-center bg-accent w-full max-w-sm"
               >
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/png, image/jpeg"
                   onChange={handleImageUpload}
                   className="hidden"
                   id="signature-modal-upload-mobile"
@@ -443,7 +442,7 @@ export const SignatureModal = ({
                     Toca para subir una imagen de tu firma
                   </span>
                   <span className="text-xs text-muted-foreground mt-1">
-                    PNG, JPG o GIF
+                    PNG o JPG
                   </span>
                 </label>
               </div>
@@ -504,7 +503,7 @@ export const SignatureModal = ({
             <div className="border-2 border-dashed border-border rounded-lg p-8 text-center bg-accent">
               <input
                 type="file"
-                accept="image/*"
+                accept="image/png, image/jpeg"
                 onChange={handleImageUpload}
                 className="hidden"
                 id="signature-modal-upload"
@@ -518,7 +517,7 @@ export const SignatureModal = ({
                   Haz clic para subir una imagen de tu firma
                 </span>
                 <span className="text-xs text-muted-foreground mt-1">
-                  PNG, JPG o GIF
+                  PNG o JPG
                 </span>
               </label>
             </div>
