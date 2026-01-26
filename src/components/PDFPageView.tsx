@@ -438,14 +438,14 @@ export const PDFPageView = ({
           );
         })()}
 
-      {/* Instruction overlay */}
+      {/* Instruction overlay
       {!signature && !placeholderPosition && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none rounded">
           <p className="bg-secondary text-secondary-foreground px-4 py-3 rounded-lg shadow-xl font-semibold text-sm md:text-base border border-border">
             Haz clic donde deseas agregar tu firma
           </p>
         </div>
-      )}
+      )}*/}
     </div>
   );
 };

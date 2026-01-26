@@ -44,23 +44,22 @@ const Index = () => {
     try {
       // TODO: Implementar lógica de envío real al backend
       console.log("Convenio enviado");
-      
+
       // Simular envío exitoso
       setIsSent(true);
       setShowConfirmDialog(false);
-      
+
       // Mostrar toast de éxito con estilo verde
       toast({
         title: "✓ Convenio enviado exitosamente",
         description: "Su convenio firmado ha sido recibido correctamente. Se descargará automáticamente.",
         className: "bg-green-500 text-white border-green-600",
       });
-      
+
       // Descargar automáticamente el PDF
       setTimeout(async () => {
         await downloadSignedPDF();
       }, 500);
-      
     } catch (error) {
       console.error("Error al enviar el convenio:", error);
       toast({
@@ -109,12 +108,12 @@ const Index = () => {
             </div>
 
             {/* Spacer for fixed bottom bar on mobile */}
-            <div className="flex-shrink-0 h-24 md:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} />
-            
+            <div className="flex-shrink-0 h-24 md:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }} />
+
             {/* Bottom action bar - fixed on mobile, static on desktop */}
-            <div 
+            <div
               className="fixed bottom-0 left-0 right-0 md:relative p-3 md:p-4 bg-background border-t border-border z-50"
-              style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+              style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
             >
               {isSent ? (
                 <div className="flex flex-col items-center gap-2">
@@ -131,7 +130,9 @@ const Index = () => {
                 <div className="flex flex-col items-center gap-2">
                   {!canDownload && pdfFile && (
                     <p className="text-xs text-muted-foreground text-center">
-                      {!signature ? "Toque donde desea firmar" : "Ajuste la posición si es necesario"}
+                      {!signature
+                        ? "Haz clic donde deseas agregar tu firma"
+                        : "Ajuste la posición de la firma si es necesario"}
                     </p>
                   )}
                   <Button
