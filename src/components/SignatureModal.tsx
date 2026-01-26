@@ -139,6 +139,12 @@ export const SignatureModal = ({
 
   // Get high-quality signature with proper trimming
   const handleSaveSignature = () => {
+    // If canvas is empty and we have a current signature, keep the current one
+    if (signatureRef.current?.isEmpty() && currentSignature) {
+      onClose();
+      return;
+    }
+    
     if (signatureRef.current && !signatureRef.current.isEmpty()) {
       const canvas = signatureRef.current.getCanvas();
       

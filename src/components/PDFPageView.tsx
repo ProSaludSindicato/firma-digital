@@ -420,7 +420,7 @@ export const PDFPageView = ({
                   </div>
                   {/* Edit signature button - opens modal with current signature */}
                   <div
-                    className="absolute -top-2 -left-2 w-6 h-6 bg-primary rounded-full cursor-pointer flex items-center justify-center shadow-md hover:bg-primary/80 transition-colors"
+                    className="absolute -top-1.5 -left-1.5 w-5 h-5 md:-top-2 md:-left-2 md:w-6 md:h-6 bg-primary rounded-full cursor-pointer flex items-center justify-center shadow-md hover:bg-primary/80 transition-colors"
                     onClick={(e) => {
                       e.stopPropagation();
                       onPlaceholderClick();
@@ -428,15 +428,15 @@ export const PDFPageView = ({
                     onMouseDown={(e) => e.stopPropagation()}
                     onTouchStart={(e) => e.stopPropagation()}
                   >
-                    <Pencil className="w-3 h-3 text-primary-foreground" />
+                    <Pencil className="w-2.5 h-2.5 md:w-3 md:h-3 text-primary-foreground" />
                   </div>
                   {/* Resize handle */}
                   <div
-                    className="absolute -bottom-2 -right-2 w-6 h-6 bg-primary rounded-full cursor-se-resize flex items-center justify-center shadow-md hover:bg-primary/80 transition-colors touch-none"
+                    className="absolute -bottom-1.5 -right-1.5 w-5 h-5 md:-bottom-2 md:-right-2 md:w-6 md:h-6 bg-primary rounded-full cursor-se-resize flex items-center justify-center shadow-md hover:bg-primary/80 transition-colors touch-none"
                     onMouseDown={handleSignatureResize}
                     onTouchStart={handleSignatureTouchResize}
                   >
-                    <Maximize2 className="w-3 h-3 text-primary-foreground rotate-90" />
+                    <Maximize2 className="w-2.5 h-2.5 md:w-3 md:h-3 text-primary-foreground rotate-90" />
                   </div>
                 </>
               )}
