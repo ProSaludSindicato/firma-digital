@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import SignatureCanvas from "react-signature-canvas";
-import { Pencil, Upload, X, Trash2, Check } from "lucide-react";
+import { Pencil, Upload, X, Trash2, Check, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,16 +15,20 @@ interface SignatureModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSignatureCreate: (signature: string) => void;
+  onClearSignature?: () => void;
+  currentSignature?: string | null;
 }
 
 export const SignatureModal = ({
   isOpen,
   onClose,
   onSignatureCreate,
+  onClearSignature,
+  currentSignature,
 }: SignatureModalProps) => {
   const signatureRef = useRef<SignatureCanvas>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState("draw");
+  const [activeTab, setActiveTab] = useState(currentSignature ? "preview" : "draw");
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [hasStroke, setHasStroke] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
@@ -125,10 +129,13 @@ export const SignatureModal = ({
     }
   }, [isLandscape]);
 
-  // Reset placeholder state when reopening
+  // Reset state when reopening
   useEffect(() => {
-    if (isOpen) setHasStroke(false);
-  }, [isOpen]);
+    if (isOpen) {
+      setHasStroke(false);
+      setActiveTab(currentSignature ? "preview" : "draw");
+    }
+  }, [isOpen, currentSignature]);
 
   // Get high-quality signature with proper trimming
   const handleSaveSignature = () => {
@@ -255,6 +262,14 @@ export const SignatureModal = ({
               {/* Vertical tabs */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col justify-center">
                 <TabsList className="flex flex-col h-auto bg-transparent gap-1 p-1">
+                  {currentSignature && (
+                    <TabsTrigger 
+                      value="preview" 
+                      className="flex items-center justify-center p-2 h-12 w-12 data-[state=active]:bg-background touch-manipulation"
+                    >
+                      <Eye className="w-5 h-5" />
+                    </TabsTrigger>
+                  )}
                   <TabsTrigger 
                     value="draw" 
                     className="flex items-center justify-center p-2 h-12 w-12 data-[state=active]:bg-background touch-manipulation"
@@ -291,7 +306,27 @@ export const SignatureModal = ({
                 paddingRight: 'max(0.5rem, env(safe-area-inset-right))'
               }}
             >
-              {activeTab === "draw" ? (
+              {activeTab === "preview" && currentSignature ? (
+                <div className="flex-1 border-2 border-dashed border-border rounded-lg bg-accent flex flex-col items-center justify-center p-4">
+                  <img
+                    src={currentSignature}
+                    alt="Tu firma actual"
+                    className="max-w-full max-h-full object-contain"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      onClearSignature?.();
+                      setActiveTab("draw");
+                    }}
+                    className="mt-4"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Limpiar
+                  </Button>
+                </div>
+              ) : activeTab === "draw" ? (
                 <div 
                   ref={containerRef}
                   className="flex-1 min-h-0 border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent relative"
@@ -364,16 +399,59 @@ export const SignatureModal = ({
 
           {/* Tabs for mobile */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0 h-full">
-            <TabsList className="grid w-full grid-cols-2 mx-3 mt-2 shrink-0 h-9" style={{ width: 'calc(100% - 1.5rem)' }}>
+            <TabsList className={`grid w-full mx-3 mt-2 shrink-0 h-9 ${currentSignature ? 'grid-cols-3' : 'grid-cols-2'}`} style={{ width: 'calc(100% - 1.5rem)' }}>
+              {currentSignature && (
+                <TabsTrigger value="preview" className="flex items-center gap-1.5 text-sm py-1">
+                  <Eye className="w-3.5 h-3.5" />
+                  Tu firma
+                </TabsTrigger>
+              )}
               <TabsTrigger value="draw" className="flex items-center gap-1.5 text-sm py-1">
                 <Pencil className="w-3.5 h-3.5" />
                 Dibujar
               </TabsTrigger>
               <TabsTrigger value="upload" className="flex items-center gap-1.5 text-sm py-1">
                 <Upload className="w-3.5 h-3.5" />
-                Subir imagen
+                Subir
               </TabsTrigger>
             </TabsList>
+
+            {currentSignature && (
+              <TabsContent value="preview" className="flex-1 flex flex-col m-0 p-3 overflow-hidden min-h-0 mt-0">
+                <div className="flex-1 min-h-0 border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent relative flex items-center justify-center p-4">
+                  <img
+                    src={currentSignature}
+                    alt="Tu firma actual"
+                    className="max-w-full max-h-full object-contain"
+                  />
+                </div>
+                <div 
+                  className="shrink-0 pt-3 flex gap-2"
+                  style={{ paddingBottom: 'max(0rem, env(safe-area-inset-bottom))' }}
+                >
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      onClearSignature?.();
+                      setActiveTab("draw");
+                    }}
+                    size="lg" 
+                    className="flex-1 h-12 text-base"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Limpiar
+                  </Button>
+                  <Button 
+                    onClick={onClose}
+                    size="lg" 
+                    className="flex-1 h-12 text-base"
+                  >
+                    <Check className="w-4 h-4 mr-2" />
+                    Mantener
+                  </Button>
+                </div>
+              </TabsContent>
+            )}
 
             <TabsContent value="draw" className="flex-1 flex flex-col m-0 p-3 overflow-hidden min-h-0 mt-0">
               {/* Canvas container - takes all available space */}
@@ -471,7 +549,13 @@ export const SignatureModal = ({
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsList className={`grid w-full mb-4 ${currentSignature ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            {currentSignature && (
+              <TabsTrigger value="preview" className="flex items-center gap-2">
+                <Eye className="w-4 h-4" />
+                Tu firma
+              </TabsTrigger>
+            )}
             <TabsTrigger value="draw" className="flex items-center gap-2">
               <Pencil className="w-4 h-4" />
               Dibujar
@@ -481,6 +565,35 @@ export const SignatureModal = ({
               Subir imagen
             </TabsTrigger>
           </TabsList>
+
+          {currentSignature && (
+            <TabsContent value="preview" className="mt-0">
+              <div className="border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent p-4 flex items-center justify-center min-h-[200px]">
+                <img
+                  src={currentSignature}
+                  alt="Tu firma actual"
+                  className="max-w-full max-h-48 object-contain"
+                />
+              </div>
+              <div className="flex gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    onClearSignature?.();
+                    setActiveTab("draw");
+                  }}
+                  className="flex-1"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Limpiar y dibujar nueva
+                </Button>
+                <Button onClick={onClose} className="flex-1">
+                  <Check className="w-4 h-4 mr-2" />
+                  Mantener firma
+                </Button>
+              </div>
+            </TabsContent>
+          )}
 
           <TabsContent value="draw" className="mt-0">
             <div className="border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent">
