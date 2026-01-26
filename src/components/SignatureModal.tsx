@@ -479,7 +479,7 @@ export const SignatureModal = ({
               <SignatureCanvas
                 ref={signatureRef}
                 canvasProps={{
-                  className: "w-full h-56 md:h-64",
+                  className: "w-full h-72 md:h-80",
                   style: { width: "100%", height: "100%", touchAction: "none" },
                 }}
                 backgroundColor="transparent"
