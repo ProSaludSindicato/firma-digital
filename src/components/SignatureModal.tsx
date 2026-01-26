@@ -197,13 +197,16 @@ export const SignatureModal = ({
     }
   };
 
-  // Full-screen mobile modal
+  // Full-screen mobile modal with safe area support
   if (isMobile) {
     return (
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-        <DialogContent className="w-screen h-screen max-w-none max-h-none m-0 p-0 rounded-none border-none flex flex-col [&>button]:hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b bg-background">
+        <DialogContent className="w-screen h-[100dvh] max-w-none max-h-none m-0 p-0 rounded-none border-none flex flex-col [&>button]:hidden">
+          {/* Header with safe area padding */}
+          <div 
+            className="flex items-center justify-between px-4 py-3 border-b bg-background shrink-0"
+            style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+          >
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="w-5 h-5" />
             </Button>
@@ -214,8 +217,8 @@ export const SignatureModal = ({
           </div>
 
           {/* Tabs for mobile */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="grid w-full grid-cols-2 mx-4 mt-2" style={{ width: 'calc(100% - 2rem)' }}>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0">
+            <TabsList className="grid w-full grid-cols-2 mx-4 mt-2 shrink-0" style={{ width: 'calc(100% - 2rem)' }}>
               <TabsTrigger value="draw" className="flex items-center gap-2">
                 <Pencil className="w-4 h-4" />
                 Dibujar
@@ -226,11 +229,11 @@ export const SignatureModal = ({
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="draw" className="flex-1 flex flex-col m-0 p-4 overflow-hidden">
+            <TabsContent value="draw" className="flex-1 flex flex-col m-0 p-4 overflow-hidden min-h-0">
               {/* Canvas container - takes all available space */}
               <div 
                 ref={containerRef}
-                className="flex-1 min-h-64 border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent relative touch-none"
+                className="flex-1 min-h-0 border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent relative"
               >
                 {!hasStroke && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
@@ -238,47 +241,46 @@ export const SignatureModal = ({
                   </div>
                 )}
 
-                {(() => {
-                  const pixelRatio = getPixelRatio();
-
-                  return (
-                    <SignatureCanvas
-                      ref={signatureRef}
-                      onBegin={() => setHasStroke(true)}
-                      canvasProps={{
-                        width: Math.max(1, canvasSize.width),
-                        height: Math.max(1, canvasSize.height),
-                        style: {
-                          width: "100%",
-                          height: "100%",
-                          position: "absolute",
-                          inset: 0,
-                          touchAction: "none",
-                          pointerEvents: "auto",
-                        },
-                      }}
-                      backgroundColor="transparent"
-                      penColor="#1e293b"
-                      minWidth={1.5 * pixelRatio}
-                      maxWidth={3 * pixelRatio}
-                    />
-                  );
-                })()}
+                {/* Use display dimensions for canvas, not scaled - let library handle touch properly */}
+                <SignatureCanvas
+                  ref={signatureRef}
+                  onBegin={() => setHasStroke(true)}
+                  canvasProps={{
+                    className: "w-full h-full",
+                    style: {
+                      width: "100%",
+                      height: "100%",
+                      touchAction: "none",
+                    },
+                  }}
+                  backgroundColor="transparent"
+                  penColor="#1e293b"
+                  minWidth={1.5}
+                  maxWidth={3}
+                />
               </div>
 
-              {/* Large confirm button */}
-              <Button 
-                onClick={handleSaveSignature} 
-                size="lg" 
-                className="w-full mt-4 h-14 text-lg"
+              {/* Large confirm button with safe area padding */}
+              <div 
+                className="shrink-0 pt-4"
+                style={{ paddingBottom: 'max(0rem, env(safe-area-inset-bottom))' }}
               >
-                <Check className="w-5 h-5 mr-2" />
-                Usar esta firma
-              </Button>
+                <Button 
+                  onClick={handleSaveSignature} 
+                  size="lg" 
+                  className="w-full h-14 text-lg"
+                >
+                  <Check className="w-5 h-5 mr-2" />
+                  Usar esta firma
+                </Button>
+              </div>
             </TabsContent>
 
             <TabsContent value="upload" className="flex-1 m-0 p-4">
-              <div className="h-full border-2 border-dashed border-border rounded-lg p-8 text-center bg-accent flex items-center justify-center">
+              <div 
+                className="h-full border-2 border-dashed border-border rounded-lg p-8 text-center bg-accent flex items-center justify-center"
+                style={{ marginBottom: 'env(safe-area-inset-bottom)' }}
+              >
                 <input
                   type="file"
                   accept="image/*"
