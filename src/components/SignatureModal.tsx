@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import SignatureCanvas from "react-signature-canvas";
-import { Pencil, Upload, X } from "lucide-react";
+import { Pencil, Upload, X, RotateCcw, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface SignatureModalProps {
   isOpen: boolean;
@@ -22,7 +23,36 @@ export const SignatureModal = ({
   onSignatureCreate,
 }: SignatureModalProps) => {
   const signatureRef = useRef<SignatureCanvas>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState("draw");
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+  const isMobile = useIsMobile();
+
+  // Update canvas size when container resizes or modal opens
+  useEffect(() => {
+    if (!isOpen || !containerRef.current) return;
+
+    const updateSize = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setCanvasSize({ width: rect.width, height: rect.height });
+      }
+    };
+
+    // Initial size
+    setTimeout(updateSize, 50);
+
+    // Listen for resize
+    window.addEventListener("resize", updateSize);
+    window.addEventListener("orientationchange", () => {
+      setTimeout(updateSize, 100);
+    });
+
+    return () => {
+      window.removeEventListener("resize", updateSize);
+      window.removeEventListener("orientationchange", updateSize);
+    };
+  }, [isOpen]);
 
   const handleSaveSignature = () => {
     if (signatureRef.current && !signatureRef.current.isEmpty()) {
@@ -55,6 +85,106 @@ export const SignatureModal = ({
     }
   };
 
+  // Full-screen mobile modal
+  if (isMobile) {
+    return (
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+        <DialogContent className="w-screen h-screen max-w-none max-h-none m-0 p-0 rounded-none border-none flex flex-col [&>button]:hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b bg-background">
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="w-5 h-5" />
+            </Button>
+            <h2 className="text-lg font-semibold">Dibuja tu firma</h2>
+            <Button variant="ghost" size="icon" onClick={handleClearCanvas}>
+              <RotateCcw className="w-5 h-5" />
+            </Button>
+          </div>
+
+          {/* Tabs for mobile */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+            <TabsList className="grid w-full grid-cols-2 mx-4 mt-2" style={{ width: 'calc(100% - 2rem)' }}>
+              <TabsTrigger value="draw" className="flex items-center gap-2">
+                <Pencil className="w-4 h-4" />
+                Dibujar
+              </TabsTrigger>
+              <TabsTrigger value="upload" className="flex items-center gap-2">
+                <Upload className="w-4 h-4" />
+                Subir imagen
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="draw" className="flex-1 flex flex-col m-0 p-4 overflow-hidden">
+              {/* Canvas container - takes all available space */}
+              <div 
+                ref={containerRef}
+                className="flex-1 border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent relative"
+              >
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
+                  <p className="text-muted-foreground text-sm">Firma aquí</p>
+                </div>
+                {canvasSize.width > 0 && (
+                  <SignatureCanvas
+                    ref={signatureRef}
+                    canvasProps={{
+                      width: canvasSize.width,
+                      height: canvasSize.height,
+                      className: "touch-none",
+                      style: { 
+                        width: '100%', 
+                        height: '100%',
+                        touchAction: 'none'
+                      },
+                    }}
+                    backgroundColor="transparent"
+                    penColor="#1e293b"
+                    minWidth={1.5}
+                    maxWidth={3}
+                  />
+                )}
+              </div>
+
+              {/* Large confirm button */}
+              <Button 
+                onClick={handleSaveSignature} 
+                size="lg" 
+                className="w-full mt-4 h-14 text-lg"
+              >
+                <Check className="w-5 h-5 mr-2" />
+                Usar esta firma
+              </Button>
+            </TabsContent>
+
+            <TabsContent value="upload" className="flex-1 m-0 p-4">
+              <div className="h-full border-2 border-dashed border-border rounded-lg p-8 text-center bg-accent flex items-center justify-center">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="signature-modal-upload-mobile"
+                />
+                <label
+                  htmlFor="signature-modal-upload-mobile"
+                  className="cursor-pointer flex flex-col items-center"
+                >
+                  <Upload className="w-12 h-12 text-muted-foreground mb-4" />
+                  <span className="text-base text-muted-foreground">
+                    Toca para subir una imagen de tu firma
+                  </span>
+                  <span className="text-sm text-muted-foreground mt-2">
+                    PNG, JPG o GIF
+                  </span>
+                </label>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Desktop modal (original behavior)
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg md:max-w-xl">
