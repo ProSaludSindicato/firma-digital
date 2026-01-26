@@ -1,12 +1,16 @@
 import { useEffect, useState, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist";
-import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from "lucide-react";
+import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, FileSignature } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PDFThumbnails } from "./PDFThumbnails";
 import { PDFPageView } from "./PDFPageView";
 import { SignatureModal } from "./SignatureModal";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs`;
+
+// ⚙️ CONFIGURABLE: Page number where the signature should be placed
+const SIGNATURE_PAGE = 2;
 
 interface PDFViewerProps {
   file: File;
@@ -36,6 +40,8 @@ export const PDFViewer = ({
   const [placeholderPosition, setPlaceholderPosition] = useState<{ x: number; y: number; page: number } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [hasNavigatedToSignaturePage, setHasNavigatedToSignaturePage] = useState(false);
+  const isMobile = useIsMobile();
 
   // Calculate responsive zoom - fit to screen width on mobile
   const getResponsiveZoom = useCallback(() => {
@@ -61,9 +67,21 @@ export const PDFViewer = ({
       onTotalPagesChange(pdf.numPages);
       setCurrentPage(1);
       setPlaceholderPosition(null);
+      setHasNavigatedToSignaturePage(false);
     };
     loadPdf();
   }, [file, onTotalPagesChange]);
+
+  // Auto-navigate to signature page after a brief delay
+  useEffect(() => {
+    if (pdfDoc && totalPages >= SIGNATURE_PAGE && !hasNavigatedToSignaturePage && !signature) {
+      const timer = setTimeout(() => {
+        setCurrentPage(SIGNATURE_PAGE);
+        setHasNavigatedToSignaturePage(true);
+      }, 1500); // 1.5 second delay to let user see the first page
+      return () => clearTimeout(timer);
+    }
+  }, [pdfDoc, totalPages, hasNavigatedToSignaturePage, signature]);
 
   const handlePageSelect = useCallback((page: number) => {
     setCurrentPage(page);
@@ -75,6 +93,12 @@ export const PDFViewer = ({
 
   const handleNextPage = useCallback(() => {
     setCurrentPage((p) => Math.min(totalPages, p + 1));
+  }, [totalPages]);
+
+  const handleGoToSignaturePage = useCallback(() => {
+    if (totalPages >= SIGNATURE_PAGE) {
+      setCurrentPage(SIGNATURE_PAGE);
+    }
   }, [totalPages]);
 
   const handlePlaceholderClick = useCallback(() => {
@@ -104,6 +128,7 @@ export const PDFViewer = ({
     [placeholderPosition, onSignatureCreate, onSignaturePositionChange]
   );
 
+  const isOnSignaturePage = currentPage === SIGNATURE_PAGE;
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden">
@@ -132,30 +157,67 @@ export const PDFViewer = ({
           </Button>
         </div>
 
-        {/* Page navigation */}
+        {/* Page navigation - Enhanced for mobile */}
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon"
             onClick={handlePrevPage}
             disabled={currentPage <= 1}
-            className="h-7 w-7 md:h-8 md:w-8"
+            className="h-8 w-8 md:h-8 md:w-8"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-5 h-5 md:w-4 md:h-4" />
           </Button>
-          <span className="text-xs font-medium text-foreground min-w-[50px] text-center">
-            {currentPage} / {totalPages}
-          </span>
+          
+          {/* Mobile: Show page dots/numbers for quick navigation */}
+          {isMobile && totalPages <= 5 ? (
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => handlePageSelect(page)}
+                  className={`w-7 h-7 rounded-full text-xs font-medium transition-all ${
+                    currentPage === page
+                      ? "bg-primary text-primary-foreground"
+                      : page === SIGNATURE_PAGE
+                      ? "bg-primary/20 text-primary border border-primary/50"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <span className="text-xs font-medium text-foreground min-w-[50px] text-center">
+              {currentPage} / {totalPages}
+            </span>
+          )}
+          
           <Button
             variant="ghost"
             size="icon"
             onClick={handleNextPage}
             disabled={currentPage >= totalPages}
-            className="h-7 w-7 md:h-8 md:w-8"
+            className="h-8 w-8 md:h-8 md:w-8"
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
           </Button>
         </div>
+
+        {/* Go to signature page button - visible when not on signature page and no signature yet */}
+        {!isOnSignaturePage && !signature && totalPages >= SIGNATURE_PAGE && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleGoToSignaturePage}
+            className="h-7 md:h-8 text-xs gap-1 bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
+          >
+            <FileSignature className="w-3 h-3" />
+            <span className="hidden sm:inline">Ir a firmar</span>
+            <span className="sm:hidden">Pág {SIGNATURE_PAGE}</span>
+          </Button>
+        )}
 
         {/* File name - hidden on mobile, full on desktop */}
         <span className="text-xs text-muted-foreground hidden md:block">
