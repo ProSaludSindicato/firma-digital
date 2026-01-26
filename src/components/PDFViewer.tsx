@@ -37,15 +37,14 @@ export const PDFViewer = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  // Calculate responsive zoom - fit to screen width on mobile
+  // Calculate responsive zoom - start at readable size on mobile
   const getResponsiveZoom = useCallback(() => {
     const width = window.innerWidth;
     if (width >= 1440) return 1.6; // Large screens: 160%
     if (width >= 1024) return 1.2; // Desktop: 120%
     if (width >= 768) return 1.0;  // Tablets: 100%
-    // Mobile: calculate zoom to fit document width (approx 612pt for letter size)
-    const mobileZoom = (width - 8) / 612; // Subtract minimal padding
-    return Math.max(0.5, Math.min(1.0, mobileZoom));
+    // Mobile: start at 100% for readable text, user can pinch-zoom to navigate
+    return 1.0;
   }, []);
 
   const [scale, setScale] = useState(getResponsiveZoom);
@@ -176,8 +175,8 @@ export const PDFViewer = ({
           />
         </div>
 
-        {/* Page view - full width, no margins on mobile */}
-        <div className="flex-1 overflow-auto flex items-start justify-center p-0 md:p-4 bg-muted/30">
+        {/* Page view - full width, pinch-to-zoom enabled on mobile */}
+        <div className="flex-1 overflow-auto flex items-start justify-center p-0 md:p-4 bg-muted/30 touch-pan-x touch-pan-y touch-pinch-zoom">
           <PDFPageView
             pdfDoc={pdfDoc}
             pageNumber={currentPage}
