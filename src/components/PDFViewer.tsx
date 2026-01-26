@@ -41,6 +41,7 @@ export const PDFViewer = ({
   const getResponsiveZoom = useCallback(() => {
     const width = window.innerWidth;
     if (width >= 1440) return 1.6; // Large screens: 160%
+    if (width >= 1200) return 1.2; // Medium-large screens: 120%
     if (width >= 1024) return 1.2; // Desktop: 120%
     if (width >= 768) return 1.0;  // Tablets: 100%
     // Mobile: fit document to screen width, user can pinch-zoom to read
@@ -156,8 +157,8 @@ export const PDFViewer = ({
           </Button>
         </div>
 
-        {/* File name - hidden on mobile */}
-        <span className="text-xs text-muted-foreground truncate max-w-[120px] hidden md:block">
+        {/* File name - hidden on mobile, full on desktop */}
+        <span className="text-xs text-muted-foreground hidden md:block">
           {file.name}
         </span>
       </div>
@@ -190,6 +191,7 @@ export const PDFViewer = ({
             onPlaceholderClick={handlePlaceholderClick}
             onClearSignature={onClearSignature}
             isLocked={isLocked}
+            fileName={file.name}
           />
         </div>
       </div>

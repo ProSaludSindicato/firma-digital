@@ -17,6 +17,7 @@ interface PDFPageViewProps {
   onPlaceholderClick: () => void;
   onClearSignature: () => void;
   isLocked?: boolean;
+  fileName?: string;
 }
 
 export const PDFPageView = ({
@@ -31,6 +32,7 @@ export const PDFPageView = ({
   onPlaceholderClick,
   onClearSignature,
   isLocked = false,
+  fileName,
 }: PDFPageViewProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -355,6 +357,15 @@ export const PDFPageView = ({
   return (
     <div ref={containerRef} className="relative inline-block cursor-crosshair" onClick={handleCanvasClick}>
       <canvas ref={canvasRef} className="block shadow-lg rounded" />
+      
+      {/* File name footer - visible only on mobile */}
+      {fileName && (
+        <div className="md:hidden absolute -bottom-6 left-0 right-0 text-center">
+          <span className="text-[10px] text-muted-foreground truncate block px-2">
+            {fileName}
+          </span>
+        </div>
+      )}
 
       {/* Placeholder button */}
       {showPlaceholder && (
