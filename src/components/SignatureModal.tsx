@@ -27,7 +27,26 @@ export const SignatureModal = ({
   const [activeTab, setActiveTab] = useState("draw");
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [hasStroke, setHasStroke] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
   const isMobile = useIsMobile();
+
+  // Detect landscape orientation for mobile
+  useEffect(() => {
+    if (!isMobile) return;
+    
+    const checkOrientation = () => {
+      setIsLandscape(window.innerWidth > window.innerHeight);
+    };
+    
+    checkOrientation();
+    window.addEventListener("resize", checkOrientation);
+    window.addEventListener("orientationchange", checkOrientation);
+    
+    return () => {
+      window.removeEventListener("resize", checkOrientation);
+      window.removeEventListener("orientationchange", checkOrientation);
+    };
+  }, [isMobile]);
 
   // Get device pixel ratio for high-DPI displays
   const getPixelRatio = () => {
@@ -96,6 +115,15 @@ export const SignatureModal = ({
       window.removeEventListener("orientationchange", updateSize);
     };
   }, [isOpen, activeTab]);
+
+  // Reset canvas when orientation changes to fix touch offset issues
+  useEffect(() => {
+    if (isOpen && activeTab === "draw" && signatureRef.current) {
+      // Clear and reset the canvas when orientation changes
+      signatureRef.current.clear();
+      setHasStroke(false);
+    }
+  }, [isLandscape]);
 
   // Reset placeholder state when reopening
   useEffect(() => {
@@ -198,25 +226,6 @@ export const SignatureModal = ({
   };
 
   // Full-screen mobile modal with safe area support
-  // Detect landscape orientation for mobile
-  const [isLandscape, setIsLandscape] = useState(false);
-  
-  useEffect(() => {
-    if (!isMobile) return;
-    
-    const checkOrientation = () => {
-      setIsLandscape(window.innerWidth > window.innerHeight);
-    };
-    
-    checkOrientation();
-    window.addEventListener("resize", checkOrientation);
-    window.addEventListener("orientationchange", checkOrientation);
-    
-    return () => {
-      window.removeEventListener("resize", checkOrientation);
-      window.removeEventListener("orientationchange", checkOrientation);
-    };
-  }, [isMobile]);
 
   if (isMobile) {
     // Landscape layout: horizontal with tabs on the left side
@@ -246,11 +255,17 @@ export const SignatureModal = ({
               {/* Vertical tabs */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col justify-center">
                 <TabsList className="flex flex-col h-auto bg-transparent gap-1 p-1">
-                  <TabsTrigger value="draw" className="flex items-center justify-center p-2 h-10 w-10 data-[state=active]:bg-background">
-                    <Pencil className="w-4 h-4" />
+                  <TabsTrigger 
+                    value="draw" 
+                    className="flex items-center justify-center p-2 h-12 w-12 data-[state=active]:bg-background touch-manipulation"
+                  >
+                    <Pencil className="w-5 h-5" />
                   </TabsTrigger>
-                  <TabsTrigger value="upload" className="flex items-center justify-center p-2 h-10 w-10 data-[state=active]:bg-background">
-                    <Upload className="w-4 h-4" />
+                  <TabsTrigger 
+                    value="upload" 
+                    className="flex items-center justify-center p-2 h-12 w-12 data-[state=active]:bg-background touch-manipulation"
+                  >
+                    <Upload className="w-5 h-5" />
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
