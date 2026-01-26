@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import SignatureCanvas from "react-signature-canvas";
-import { Pencil, Upload, X, RotateCcw, Check } from "lucide-react";
+import { Pencil, Upload, X, Trash2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -33,36 +33,46 @@ export const SignatureModal = ({
     return typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 3) : 1;
   };
 
-  // Update canvas size when container resizes or modal opens
+  // Update canvas size when container resizes (critical on mobile where layout settles after open)
   useEffect(() => {
-    if (!isOpen || !containerRef.current) return;
+    if (!isOpen) return;
+    if (activeTab !== "draw") return;
+    const el = containerRef.current;
+    if (!el) return;
 
     const updateSize = () => {
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        const pixelRatio = getPixelRatio();
-        // Store display size and actual canvas size (scaled for retina)
-        setCanvasSize({ 
-          width: rect.width * pixelRatio, 
-          height: rect.height * pixelRatio 
-        });
-      }
+      const displayWidth = el.clientWidth;
+      const displayHeight = el.clientHeight;
+
+      // Avoid locking canvas into a 0x0 state during initial layout
+      if (displayWidth < 8 || displayHeight < 8) return;
+
+      const pixelRatio = getPixelRatio();
+      setCanvasSize({
+        width: Math.floor(displayWidth * pixelRatio),
+        height: Math.floor(displayHeight * pixelRatio),
+      });
     };
 
-    // Initial size
-    setTimeout(updateSize, 50);
+    // Run once ASAP after mount/layout
+    const raf = requestAnimationFrame(updateSize);
+    const timeout = window.setTimeout(updateSize, 50);
 
-    // Listen for resize
+    // Keep in sync with actual container size
+    const ro = new ResizeObserver(updateSize);
+    ro.observe(el);
+
     window.addEventListener("resize", updateSize);
-    window.addEventListener("orientationchange", () => {
-      setTimeout(updateSize, 100);
-    });
+    window.addEventListener("orientationchange", updateSize);
 
     return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(timeout);
+      ro.disconnect();
       window.removeEventListener("resize", updateSize);
       window.removeEventListener("orientationchange", updateSize);
     };
-  }, [isOpen]);
+  }, [isOpen, activeTab]);
 
   // Get high-quality signature with proper trimming
   const handleSaveSignature = () => {
@@ -170,7 +180,7 @@ export const SignatureModal = ({
             </Button>
             <h2 className="text-lg font-semibold">Dibuja tu firma</h2>
             <Button variant="ghost" size="icon" onClick={handleClearCanvas}>
-              <RotateCcw className="w-5 h-5" />
+              <Trash2 className="w-5 h-5" />
             </Button>
           </div>
 
@@ -215,6 +225,7 @@ export const SignatureModal = ({
                           position: 'absolute',
                           top: 0,
                           left: 0,
+                           touchAction: "none",
                         },
                       }}
                       backgroundColor="transparent"
