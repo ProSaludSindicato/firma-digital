@@ -108,8 +108,14 @@ const Index = () => {
               />
             </div>
 
-            {/* Bottom action bar - always visible */}
-            <div className="flex-shrink-0 p-3 md:p-4 bg-background border-t border-border">
+            {/* Spacer for fixed bottom bar on mobile */}
+            <div className="flex-shrink-0 h-24 md:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} />
+            
+            {/* Bottom action bar - fixed on mobile, static on desktop */}
+            <div 
+              className="fixed bottom-0 left-0 right-0 md:relative p-3 md:p-4 bg-background border-t border-border z-50"
+              style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+            >
               {isSent ? (
                 <div className="flex flex-col items-center gap-2">
                   <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm">
