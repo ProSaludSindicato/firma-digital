@@ -363,7 +363,7 @@ export const SignatureModal = ({
           </div>
 
           {/* Tabs for mobile */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0 h-full">
             <TabsList className="grid w-full grid-cols-2 mx-3 mt-2 shrink-0 h-9" style={{ width: 'calc(100% - 1.5rem)' }}>
               <TabsTrigger value="draw" className="flex items-center gap-1.5 text-sm py-1">
                 <Pencil className="w-3.5 h-3.5" />
@@ -375,7 +375,7 @@ export const SignatureModal = ({
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="draw" className="flex-1 flex flex-col m-0 p-3 overflow-hidden min-h-0">
+            <TabsContent value="draw" className="flex-1 flex flex-col m-0 p-3 overflow-hidden min-h-0 mt-0">
               {/* Canvas container - takes all available space */}
               <div 
                 ref={containerRef}
@@ -422,10 +422,10 @@ export const SignatureModal = ({
               </div>
             </TabsContent>
 
-            <TabsContent value="upload" className="flex-1 flex flex-col m-0 p-3 overflow-hidden min-h-0">
+            <TabsContent value="upload" className="flex-1 flex flex-col m-0 p-3 overflow-hidden min-h-0 mt-0">
               {/* Upload area - same flex layout as draw tab */}
               <div 
-                className="flex-1 min-h-0 border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent flex items-center justify-center"
+                className="flex-1 min-h-0 border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent relative"
               >
                 <input
                   type="file"
@@ -436,7 +436,7 @@ export const SignatureModal = ({
                 />
                 <label
                   htmlFor="signature-modal-upload-mobile"
-                  className="cursor-pointer flex flex-col items-center justify-center w-full h-full"
+                  className="cursor-pointer absolute inset-0 flex flex-col items-center justify-center"
                 >
                   <Upload className="w-12 h-12 text-muted-foreground mb-3" />
                   <span className="text-base text-muted-foreground text-center px-4">
