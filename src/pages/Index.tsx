@@ -77,6 +77,7 @@ const Index = () => {
         showFinishButton={!!signature && !!signaturePosition}
         onFinish={handleFinishAndSend}
         isProcessing={isDownloading}
+        isSent={isSent}
       />
 
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -133,7 +134,7 @@ const Index = () => {
                     className="w-full max-w-md"
                   >
                     <Send className="w-4 h-4 mr-2" />
-                    {isDownloading ? "Procesando..." : "Finalizar"}
+                    {isDownloading ? "Procesando..." : "Finalizar y Enviar Convenio"}
                   </Button>
                 </div>
               )}
