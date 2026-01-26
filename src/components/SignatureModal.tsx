@@ -198,38 +198,169 @@ export const SignatureModal = ({
   };
 
   // Full-screen mobile modal with safe area support
+  // Detect landscape orientation for mobile
+  const [isLandscape, setIsLandscape] = useState(false);
+  
+  useEffect(() => {
+    if (!isMobile) return;
+    
+    const checkOrientation = () => {
+      setIsLandscape(window.innerWidth > window.innerHeight);
+    };
+    
+    checkOrientation();
+    window.addEventListener("resize", checkOrientation);
+    window.addEventListener("orientationchange", checkOrientation);
+    
+    return () => {
+      window.removeEventListener("resize", checkOrientation);
+      window.removeEventListener("orientationchange", checkOrientation);
+    };
+  }, [isMobile]);
+
   if (isMobile) {
+    // Landscape layout: horizontal with tabs on the left side
+    if (isLandscape) {
+      return (
+        <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+          <DialogContent className="w-screen h-[100dvh] max-w-none max-h-none m-0 p-0 rounded-none border-none flex flex-row [&>button]:hidden">
+            {/* Left sidebar with tabs and actions */}
+            <div 
+              className="flex flex-col justify-between bg-muted/50 border-r border-border shrink-0"
+              style={{ 
+                paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
+                paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+                paddingLeft: 'max(0.5rem, env(safe-area-inset-left))'
+              }}
+            >
+              {/* Top actions */}
+              <div className="flex flex-col gap-1 p-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+                  <X className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleClearCanvas}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {/* Vertical tabs */}
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col justify-center">
+                <TabsList className="flex flex-col h-auto bg-transparent gap-1 p-1">
+                  <TabsTrigger value="draw" className="flex items-center justify-center p-2 h-10 w-10 data-[state=active]:bg-background">
+                    <Pencil className="w-4 h-4" />
+                  </TabsTrigger>
+                  <TabsTrigger value="upload" className="flex items-center justify-center p-2 h-10 w-10 data-[state=active]:bg-background">
+                    <Upload className="w-4 h-4" />
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              {/* Bottom confirm button */}
+              <div className="p-1">
+                <Button 
+                  onClick={handleSaveSignature} 
+                  size="icon"
+                  className="h-10 w-10"
+                >
+                  <Check className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Main content area */}
+            <div 
+              className="flex-1 flex flex-col min-w-0 p-2"
+              style={{ 
+                paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
+                paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+                paddingRight: 'max(0.5rem, env(safe-area-inset-right))'
+              }}
+            >
+              {activeTab === "draw" ? (
+                <div 
+                  ref={containerRef}
+                  className="flex-1 min-h-0 border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent relative"
+                >
+                  {!hasStroke && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
+                      <p className="text-muted-foreground text-sm">Firma aquí</p>
+                    </div>
+                  )}
+                  <SignatureCanvas
+                    ref={signatureRef}
+                    onBegin={() => setHasStroke(true)}
+                    canvasProps={{
+                      className: "w-full h-full",
+                      style: {
+                        width: "100%",
+                        height: "100%",
+                        touchAction: "none",
+                      },
+                    }}
+                    backgroundColor="transparent"
+                    penColor="#1e293b"
+                    minWidth={1.5}
+                    maxWidth={3}
+                  />
+                </div>
+              ) : (
+                <div className="flex-1 border-2 border-dashed border-border rounded-lg text-center bg-accent flex items-center justify-center">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    id="signature-modal-upload-landscape"
+                  />
+                  <label
+                    htmlFor="signature-modal-upload-landscape"
+                    className="cursor-pointer flex flex-col items-center"
+                  >
+                    <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                    <span className="text-sm text-muted-foreground">
+                      Toca para subir
+                    </span>
+                  </label>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      );
+    }
+
+    // Portrait layout (original)
     return (
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent className="w-screen h-[100dvh] max-w-none max-h-none m-0 p-0 rounded-none border-none flex flex-col [&>button]:hidden">
           {/* Header with safe area padding */}
           <div 
-            className="flex items-center justify-between px-4 py-3 border-b bg-background shrink-0"
-            style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+            className="flex items-center justify-between px-4 py-2 border-b bg-background shrink-0"
+            style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
           >
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="w-5 h-5" />
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+              <X className="w-4 h-4" />
             </Button>
-            <h2 className="text-lg font-semibold">Dibuja tu firma</h2>
-            <Button variant="ghost" size="icon" onClick={handleClearCanvas}>
-              <Trash2 className="w-5 h-5" />
+            <h2 className="text-base font-semibold">Dibuja tu firma</h2>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleClearCanvas}>
+              <Trash2 className="w-4 h-4" />
             </Button>
           </div>
 
           {/* Tabs for mobile */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0">
-            <TabsList className="grid w-full grid-cols-2 mx-4 mt-2 shrink-0" style={{ width: 'calc(100% - 2rem)' }}>
-              <TabsTrigger value="draw" className="flex items-center gap-2">
-                <Pencil className="w-4 h-4" />
+            <TabsList className="grid w-full grid-cols-2 mx-3 mt-2 shrink-0 h-9" style={{ width: 'calc(100% - 1.5rem)' }}>
+              <TabsTrigger value="draw" className="flex items-center gap-1.5 text-sm py-1">
+                <Pencil className="w-3.5 h-3.5" />
                 Dibujar
               </TabsTrigger>
-              <TabsTrigger value="upload" className="flex items-center gap-2">
-                <Upload className="w-4 h-4" />
+              <TabsTrigger value="upload" className="flex items-center gap-1.5 text-sm py-1">
+                <Upload className="w-3.5 h-3.5" />
                 Subir imagen
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="draw" className="flex-1 flex flex-col m-0 p-4 overflow-hidden min-h-0">
+            <TabsContent value="draw" className="flex-1 flex flex-col m-0 p-3 overflow-hidden min-h-0">
               {/* Canvas container - takes all available space */}
               <div 
                 ref={containerRef}
@@ -262,23 +393,23 @@ export const SignatureModal = ({
 
               {/* Large confirm button with safe area padding */}
               <div 
-                className="shrink-0 pt-4"
+                className="shrink-0 pt-3"
                 style={{ paddingBottom: 'max(0rem, env(safe-area-inset-bottom))' }}
               >
                 <Button 
                   onClick={handleSaveSignature} 
                   size="lg" 
-                  className="w-full h-14 text-lg"
+                  className="w-full h-12 text-base"
                 >
-                  <Check className="w-5 h-5 mr-2" />
+                  <Check className="w-4 h-4 mr-2" />
                   Usar esta firma
                 </Button>
               </div>
             </TabsContent>
 
-            <TabsContent value="upload" className="flex-1 m-0 p-4">
+            <TabsContent value="upload" className="flex-1 m-0 p-3">
               <div 
-                className="h-full border-2 border-dashed border-border rounded-lg p-8 text-center bg-accent flex items-center justify-center"
+                className="h-full border-2 border-dashed border-border rounded-lg p-6 text-center bg-accent flex items-center justify-center"
                 style={{ marginBottom: 'env(safe-area-inset-bottom)' }}
               >
                 <input
@@ -292,11 +423,11 @@ export const SignatureModal = ({
                   htmlFor="signature-modal-upload-mobile"
                   className="cursor-pointer flex flex-col items-center"
                 >
-                  <Upload className="w-12 h-12 text-muted-foreground mb-4" />
-                  <span className="text-base text-muted-foreground">
+                  <Upload className="w-10 h-10 text-muted-foreground mb-3" />
+                  <span className="text-sm text-muted-foreground">
                     Toca para subir una imagen de tu firma
                   </span>
-                  <span className="text-sm text-muted-foreground mt-2">
+                  <span className="text-xs text-muted-foreground mt-1">
                     PNG, JPG o GIF
                   </span>
                 </label>
