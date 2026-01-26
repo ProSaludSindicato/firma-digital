@@ -414,13 +414,13 @@ export const PDFPageView = ({
               />
               {!isLocked && (
                 <>
-                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] leading-tight px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
-                    <Move className="w-3 h-3" />
-                    Arrastra para mover
+                  <div className="absolute -top-5 md:-top-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[9px] md:text-[10px] leading-tight px-1.5 md:px-2 py-0.5 rounded flex items-center gap-0.5 md:gap-1 whitespace-nowrap">
+                    <Move className="w-2.5 h-2.5 md:w-3 md:h-3" />
+                    <span className="hidden sm:inline">Arrastra para mover</span>
                   </div>
                   {/* Edit signature button - opens modal with current signature */}
                   <div
-                    className="absolute -top-1.5 -left-1.5 w-5 h-5 md:-top-2 md:-left-2 md:w-6 md:h-6 bg-primary rounded-full cursor-pointer flex items-center justify-center shadow-md hover:bg-primary/80 transition-colors"
+                    className="absolute -top-1 -left-1 md:-top-2 md:-left-2 w-4 h-4 md:w-6 md:h-6 bg-secondary border-2 border-secondary-foreground/20 rounded-full cursor-pointer flex items-center justify-center shadow-md hover:bg-secondary/80 transition-colors"
                     onClick={(e) => {
                       e.stopPropagation();
                       onPlaceholderClick();
@@ -428,15 +428,15 @@ export const PDFPageView = ({
                     onMouseDown={(e) => e.stopPropagation()}
                     onTouchStart={(e) => e.stopPropagation()}
                   >
-                    <Pencil className="w-2.5 h-2.5 md:w-3 md:h-3 text-primary-foreground" />
+                    <Pencil className="w-2 h-2 md:w-3 md:h-3 text-secondary-foreground" />
                   </div>
                   {/* Resize handle */}
                   <div
-                    className="absolute -bottom-1.5 -right-1.5 w-5 h-5 md:-bottom-2 md:-right-2 md:w-6 md:h-6 bg-primary rounded-full cursor-se-resize flex items-center justify-center shadow-md hover:bg-primary/80 transition-colors touch-none"
+                    className="absolute -bottom-1 -right-1 md:-bottom-2 md:-right-2 w-4 h-4 md:w-6 md:h-6 bg-primary rounded-full cursor-se-resize flex items-center justify-center shadow-md hover:bg-primary/80 transition-colors touch-none"
                     onMouseDown={handleSignatureResize}
                     onTouchStart={handleSignatureTouchResize}
                   >
-                    <Maximize2 className="w-2.5 h-2.5 md:w-3 md:h-3 text-primary-foreground rotate-90" />
+                    <Maximize2 className="w-2 h-2 md:w-3 md:h-3 text-primary-foreground rotate-90" />
                   </div>
                 </>
               )}

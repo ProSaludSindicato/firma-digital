@@ -68,13 +68,15 @@ export const usePDFSigner = () => {
       const signatureHeight = signaturePosition.height / scaleFactor;
       
       // x, y in signaturePosition are the CENTER of the signature box in canvas coords
-      // The visual signature inside the box has padding (p-1 = 4px) and border (2px) = 6px offset
-      // This makes the actual signature content appear higher than the box center
-      const visualPaddingOffset = 6; // pixels in canvas coordinates
+      // The visual signature inside the box has padding (p-1 = 4px) and border (2px)
+      // We use an offset to align the signature in the PDF with the visual position
+      // Adjusted to compensate for the padding/border offset in the viewer
+      const visualPaddingOffset = 4; // pixels in canvas coordinates
+      const horizontalOffset = 2; // pixels in canvas coordinates (moves signature right ~2mm)
       
       // Convert to PDF coords (bottom-left origin, Y pointing up)
       // pdf-lib drawImage uses bottom-left corner as reference point
-      const x = (signaturePosition.x - signaturePosition.width / 2) / scaleFactor;
+      const x = (signaturePosition.x - signaturePosition.width / 2) / scaleFactor + (horizontalOffset / scaleFactor);
       // Center Y in PDF = pageHeight - (canvas center Y / scaleFactor)
       // Bottom-left Y for drawImage = PDF center Y - (signatureHeight / 2)
       // Add padding offset to move signature UP (higher Y in PDF = higher on page)

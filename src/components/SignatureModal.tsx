@@ -129,25 +129,61 @@ export const SignatureModal = ({
     }
   }, [isLandscape]);
 
+  // Handle clearing signature and switching to new signature flow
+  const handleClearAndCreateNew = () => {
+    onClearSignature?.();
+    // Close modal - user will need to open again to create new signature
+    // This ensures clean state
+    onClose();
+  };
+
   // Reset state when reopening
   useEffect(() => {
     if (isOpen) {
       setHasStroke(false);
+      // When editing (has currentSignature), show preview. Otherwise show draw
       setActiveTab(currentSignature ? "preview" : "draw");
+      // Clear canvas when modal opens to ensure clean state
+      if (signatureRef.current) {
+        signatureRef.current.clear();
+      }
     }
   }, [isOpen, currentSignature]);
 
+
   // Get high-quality signature with proper trimming
   const handleSaveSignature = () => {
-    // If canvas is empty and we have a current signature, keep the current one
-    if (signatureRef.current?.isEmpty() && currentSignature) {
+    // Handle different tabs
+    if (activeTab === "preview") {
+      // In preview tab, just close (user wants to keep current signature)
       onClose();
       return;
     }
     
-    if (signatureRef.current && !signatureRef.current.isEmpty()) {
-      const canvas = signatureRef.current.getCanvas();
+    // For draw tab, check if we have a signature to save
+    if (activeTab === "draw") {
+      if (!signatureRef.current) {
+        onClose();
+        return;
+      }
       
+      // Check if canvas has content - verify both isEmpty() and actual pixel data
+      // Add a small delay to ensure canvas is fully rendered
+      const canvas = signatureRef.current.getCanvas();
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        onClose();
+        return;
+      }
+      
+      const isEmpty = signatureRef.current.isEmpty();
+      
+      if (isEmpty) {
+        // Canvas is empty - if we have a current signature, keep it; otherwise close
+        onClose();
+        return;
+      }
+      
+      // We have content, proceed to save
       // Create a new canvas for the trimmed, high-quality output
       const trimmedCanvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -276,12 +312,14 @@ export const SignatureModal = ({
                       <Eye className="w-5 h-5" />
                     </TabsTrigger>
                   )}
-                  <TabsTrigger 
-                    value="draw" 
-                    className="flex items-center justify-center p-2 h-12 w-12 data-[state=active]:bg-background touch-manipulation"
-                  >
-                    <Pencil className="w-5 h-5" />
-                  </TabsTrigger>
+                  {!currentSignature && (
+                    <TabsTrigger 
+                      value="draw" 
+                      className="flex items-center justify-center p-2 h-12 w-12 data-[state=active]:bg-background touch-manipulation"
+                    >
+                      <Pencil className="w-5 h-5" />
+                    </TabsTrigger>
+                  )}
                   <TabsTrigger 
                     value="upload" 
                     className="flex items-center justify-center p-2 h-12 w-12 data-[state=active]:bg-background touch-manipulation"
@@ -322,14 +360,11 @@ export const SignatureModal = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      onClearSignature?.();
-                      setActiveTab("draw");
-                    }}
+                    onClick={handleClearAndCreateNew}
                     className="mt-4"
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
-                    Limpiar
+                    Limpiar y crear nueva
                   </Button>
                 </div>
               ) : activeTab === "draw" ? (
@@ -397,7 +432,9 @@ export const SignatureModal = ({
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
               <X className="w-4 h-4" />
             </Button>
-            <h2 className="text-base font-semibold">Dibuja tu firma</h2>
+            <h2 className="text-base font-semibold">
+              {currentSignature ? "Tu firma" : "Dibuja tu firma"}
+            </h2>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleClearCanvas}>
               <Trash2 className="w-4 h-4" />
             </Button>
@@ -405,17 +442,19 @@ export const SignatureModal = ({
 
           {/* Tabs for mobile */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0 h-full">
-            <TabsList className={`grid w-full mx-3 mt-2 shrink-0 h-9 ${currentSignature ? 'grid-cols-3' : 'grid-cols-2'}`} style={{ width: 'calc(100% - 1.5rem)' }}>
+            <TabsList className={`grid w-full mx-3 mt-2 shrink-0 h-9 ${currentSignature ? 'grid-cols-2' : 'grid-cols-2'}`} style={{ width: 'calc(100% - 1.5rem)' }}>
               {currentSignature && (
                 <TabsTrigger value="preview" className="flex items-center gap-1.5 text-sm py-1">
                   <Eye className="w-3.5 h-3.5" />
                   Tu firma
                 </TabsTrigger>
               )}
-              <TabsTrigger value="draw" className="flex items-center gap-1.5 text-sm py-1">
-                <Pencil className="w-3.5 h-3.5" />
-                Dibujar
-              </TabsTrigger>
+              {!currentSignature && (
+                <TabsTrigger value="draw" className="flex items-center gap-1.5 text-sm py-1">
+                  <Pencil className="w-3.5 h-3.5" />
+                  Dibujar
+                </TabsTrigger>
+              )}
               <TabsTrigger value="upload" className="flex items-center gap-1.5 text-sm py-1">
                 <Upload className="w-3.5 h-3.5" />
                 Subir
@@ -437,15 +476,12 @@ export const SignatureModal = ({
                 >
                   <Button 
                     variant="outline"
-                    onClick={() => {
-                      onClearSignature?.();
-                      setActiveTab("draw");
-                    }}
+                    onClick={handleClearAndCreateNew}
                     size="lg" 
                     className="flex-1 h-12 text-base"
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
-                    Limpiar
+                    Limpiar y crear nueva
                   </Button>
                   <Button 
                     onClick={onClose}
@@ -551,21 +587,23 @@ export const SignatureModal = ({
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg md:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Agregar tu firma</DialogTitle>
+          <DialogTitle>{currentSignature ? "Editar tu firma" : "Agregar tu firma"}</DialogTitle>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className={`grid w-full mb-4 ${currentSignature ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          <TabsList className={`grid w-full mb-4 ${currentSignature ? 'grid-cols-2' : 'grid-cols-2'}`}>
             {currentSignature && (
               <TabsTrigger value="preview" className="flex items-center gap-2">
                 <Eye className="w-4 h-4" />
                 Tu firma
               </TabsTrigger>
             )}
-            <TabsTrigger value="draw" className="flex items-center gap-2">
-              <Pencil className="w-4 h-4" />
-              Dibujar
-            </TabsTrigger>
+            {!currentSignature && (
+              <TabsTrigger value="draw" className="flex items-center gap-2">
+                <Pencil className="w-4 h-4" />
+                Dibujar
+              </TabsTrigger>
+            )}
             <TabsTrigger value="upload" className="flex items-center gap-2">
               <Upload className="w-4 h-4" />
               Subir imagen
@@ -584,14 +622,11 @@ export const SignatureModal = ({
               <div className="flex gap-2 mt-4">
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    onClearSignature?.();
-                    setActiveTab("draw");
-                  }}
+                  onClick={handleClearAndCreateNew}
                   className="flex-1"
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
-                  Limpiar y dibujar nueva
+                  Limpiar y crear nueva
                 </Button>
                 <Button onClick={onClose} className="flex-1">
                   <Check className="w-4 h-4 mr-2" />

@@ -128,8 +128,9 @@ export const PDFViewer = ({
       onSignatureCreate(sig);
 
       if (placeholderPosition) {
-        const defaultWidth = 150;
-        const defaultHeight = 60;
+        // Smaller default size on mobile to avoid needing to resize
+        const defaultWidth = isMobile ? 100 : 150;
+        const defaultHeight = isMobile ? 40 : 60;
 
         onSignaturePositionChange({
           x: placeholderPosition.x,
@@ -143,7 +144,7 @@ export const PDFViewer = ({
         setPlaceholderPosition(null);
       }
     },
-    [placeholderPosition, onSignatureCreate, onSignaturePositionChange, scale]
+    [placeholderPosition, onSignatureCreate, onSignaturePositionChange, scale, isMobile]
   );
 
   // Handle clearing signature from modal - restore placeholder at the same position
