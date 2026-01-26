@@ -26,6 +26,7 @@ export const SignatureModal = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState("draw");
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+  const [hasStroke, setHasStroke] = useState(false);
   const isMobile = useIsMobile();
 
   // Get device pixel ratio for high-DPI displays
@@ -33,19 +34,41 @@ export const SignatureModal = ({
     return typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 3) : 1;
   };
 
+  const setFallbackCanvasSize = () => {
+    if (typeof window === "undefined") return;
+    const pixelRatio = getPixelRatio();
+
+    // Conservative fallback that works even before the dialog finishes layout.
+    // (We refine this immediately via ResizeObserver.)
+    const displayWidth = Math.max(280, window.innerWidth - 32);
+    const displayHeight = Math.max(240, window.innerHeight - 260);
+
+    setCanvasSize({
+      width: Math.floor(displayWidth * pixelRatio),
+      height: Math.floor(displayHeight * pixelRatio),
+    });
+  };
+
   // Update canvas size when container resizes (critical on mobile where layout settles after open)
   useEffect(() => {
     if (!isOpen) return;
     if (activeTab !== "draw") return;
     const el = containerRef.current;
-    if (!el) return;
+    if (!el) {
+      // Ensure we render a drawable canvas even if the ref isn't ready yet.
+      setFallbackCanvasSize();
+      return;
+    }
 
     const updateSize = () => {
       const displayWidth = el.clientWidth;
       const displayHeight = el.clientHeight;
 
       // Avoid locking canvas into a 0x0 state during initial layout
-      if (displayWidth < 8 || displayHeight < 8) return;
+      if (displayWidth < 8 || displayHeight < 8) {
+        setFallbackCanvasSize();
+        return;
+      }
 
       const pixelRatio = getPixelRatio();
       setCanvasSize({
@@ -59,8 +82,8 @@ export const SignatureModal = ({
     const timeout = window.setTimeout(updateSize, 50);
 
     // Keep in sync with actual container size
-    const ro = new ResizeObserver(updateSize);
-    ro.observe(el);
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateSize) : null;
+    ro?.observe(el);
 
     window.addEventListener("resize", updateSize);
     window.addEventListener("orientationchange", updateSize);
@@ -68,11 +91,16 @@ export const SignatureModal = ({
     return () => {
       cancelAnimationFrame(raf);
       window.clearTimeout(timeout);
-      ro.disconnect();
+      ro?.disconnect();
       window.removeEventListener("resize", updateSize);
       window.removeEventListener("orientationchange", updateSize);
     };
   }, [isOpen, activeTab]);
+
+  // Reset placeholder state when reopening
+  useEffect(() => {
+    if (isOpen) setHasStroke(false);
+  }, [isOpen]);
 
   // Get high-quality signature with proper trimming
   const handleSaveSignature = () => {
@@ -147,6 +175,7 @@ export const SignatureModal = ({
 
   const handleClearCanvas = () => {
     signatureRef.current?.clear();
+    setHasStroke(false);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -201,31 +230,31 @@ export const SignatureModal = ({
               {/* Canvas container - takes all available space */}
               <div 
                 ref={containerRef}
-                className="flex-1 border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent relative"
+                className="flex-1 min-h-64 border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent relative touch-none"
               >
-                {canvasSize.width === 0 && (
+                {!hasStroke && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
                     <p className="text-muted-foreground text-sm">Firma aquí</p>
                   </div>
                 )}
-                {canvasSize.width > 0 && (() => {
+
+                {(() => {
                   const pixelRatio = getPixelRatio();
-                  const displayWidth = canvasSize.width / pixelRatio;
-                  const displayHeight = canvasSize.height / pixelRatio;
-                  
+
                   return (
                     <SignatureCanvas
                       ref={signatureRef}
+                      onBegin={() => setHasStroke(true)}
                       canvasProps={{
-                        width: canvasSize.width,
-                        height: canvasSize.height,
-                        style: { 
-                          width: `${displayWidth}px`, 
-                          height: `${displayHeight}px`,
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                           touchAction: "none",
+                        width: Math.max(1, canvasSize.width),
+                        height: Math.max(1, canvasSize.height),
+                        style: {
+                          width: "100%",
+                          height: "100%",
+                          position: "absolute",
+                          inset: 0,
+                          touchAction: "none",
+                          pointerEvents: "auto",
                         },
                       }}
                       backgroundColor="transparent"
@@ -303,7 +332,7 @@ export const SignatureModal = ({
                 ref={signatureRef}
                 canvasProps={{
                   className: "w-full h-56 md:h-64",
-                  style: { width: "100%", height: "100%" },
+                  style: { width: "100%", height: "100%", touchAction: "none" },
                 }}
                 backgroundColor="transparent"
                 penColor="#1e293b"
