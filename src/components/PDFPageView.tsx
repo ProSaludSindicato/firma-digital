@@ -38,17 +38,26 @@ export const PDFPageView = ({
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
 
-  // Render the current page
+  // Render the current page with higher resolution for better quality
   useEffect(() => {
     const renderPage = async () => {
       if (!pdfDoc || !canvasRef.current) return;
 
       const page = await pdfDoc.getPage(pageNumber);
+      
+      // Use higher pixel ratio for sharper text rendering
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, 3);
       const viewport = page.getViewport({ scale });
+      const scaledViewport = page.getViewport({ scale: scale * pixelRatio });
 
       const canvas = canvasRef.current;
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
+      // Set canvas internal size to high-res
+      canvas.width = scaledViewport.width;
+      canvas.height = scaledViewport.height;
+      
+      // Set display size to normal
+      canvas.style.width = `${viewport.width}px`;
+      canvas.style.height = `${viewport.height}px`;
 
       setCanvasSize({ width: viewport.width, height: viewport.height });
 
@@ -56,7 +65,7 @@ export const PDFPageView = ({
       if (context) {
         await page.render({
           canvasContext: context,
-          viewport,
+          viewport: scaledViewport,
         }).promise;
       }
     };
