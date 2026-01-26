@@ -9,7 +9,9 @@ interface PDFPageViewProps {
   scale: number;
   signature: string | null;
   signaturePosition: { x: number; y: number; page: number; width: number; height: number; scale: number } | null;
-  onSignaturePositionChange: (position: { x: number; y: number; page: number; width: number; height: number; scale: number } | null) => void;
+  onSignaturePositionChange: (
+    position: { x: number; y: number; page: number; width: number; height: number; scale: number } | null,
+  ) => void;
   placeholderPosition: { x: number; y: number; page: number } | null;
   onPlaceholderPositionChange: (position: { x: number; y: number; page: number } | null) => void;
   onPlaceholderClick: () => void;
@@ -83,7 +85,7 @@ export const PDFPageView = ({
         });
       }
     },
-    [isDragging, isResizing, signature, canvasSize, pageNumber, onPlaceholderPositionChange]
+    [isDragging, isResizing, signature, canvasSize, pageNumber, onPlaceholderPositionChange],
   );
 
   // Handle placeholder drag (mouse)
@@ -121,7 +123,7 @@ export const PDFPageView = ({
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    [placeholderPosition, canvasSize, pageNumber, onPlaceholderPositionChange]
+    [placeholderPosition, canvasSize, pageNumber, onPlaceholderPositionChange],
   );
 
   // Handle placeholder drag (touch)
@@ -160,7 +162,7 @@ export const PDFPageView = ({
       document.addEventListener("touchmove", handleTouchMove, { passive: false });
       document.addEventListener("touchend", handleTouchEnd);
     },
-    [placeholderPosition, canvasSize, pageNumber, onPlaceholderPositionChange]
+    [placeholderPosition, canvasSize, pageNumber, onPlaceholderPositionChange],
   );
 
   // Handle signature drag (mouse)
@@ -204,7 +206,7 @@ export const PDFPageView = ({
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    [signaturePosition, canvasSize, pageNumber, onSignaturePositionChange]
+    [signaturePosition, canvasSize, pageNumber, onSignaturePositionChange],
   );
 
   // Handle signature drag (touch)
@@ -249,7 +251,7 @@ export const PDFPageView = ({
       document.addEventListener("touchmove", handleTouchMove, { passive: false });
       document.addEventListener("touchend", handleTouchEnd);
     },
-    [signaturePosition, canvasSize, pageNumber, onSignaturePositionChange]
+    [signaturePosition, canvasSize, pageNumber, onSignaturePositionChange],
   );
 
   // Handle signature resize (mouse)
@@ -291,7 +293,7 @@ export const PDFPageView = ({
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    [signaturePosition, onSignaturePositionChange]
+    [signaturePosition, onSignaturePositionChange],
   );
 
   // Handle signature resize (touch)
@@ -335,18 +337,14 @@ export const PDFPageView = ({
       document.addEventListener("touchmove", handleTouchMove, { passive: false });
       document.addEventListener("touchend", handleTouchEnd);
     },
-    [signaturePosition, onSignaturePositionChange]
+    [signaturePosition, onSignaturePositionChange],
   );
 
   const showPlaceholder = !signature && placeholderPosition && placeholderPosition.page === pageNumber;
   const showSignature = signature && signaturePosition && signaturePosition.page === pageNumber;
 
   return (
-    <div
-      ref={containerRef}
-      className="relative inline-block cursor-crosshair"
-      onClick={handleCanvasClick}
-    >
+    <div ref={containerRef} className="relative inline-block cursor-crosshair" onClick={handleCanvasClick}>
       <canvas ref={canvasRef} className="block shadow-lg rounded" />
 
       {/* Placeholder button */}
@@ -363,72 +361,73 @@ export const PDFPageView = ({
       )}
 
       {/* Actual signature */}
-      {showSignature && (() => {
-        // Calculate scale ratio to adjust position when zoom changes
-        const scaleRatio = scale / signaturePosition.scale;
-        const adjustedX = signaturePosition.x * scaleRatio;
-        const adjustedY = signaturePosition.y * scaleRatio;
-        const adjustedWidth = signaturePosition.width * scaleRatio;
-        const adjustedHeight = signaturePosition.height * scaleRatio;
+      {showSignature &&
+        (() => {
+          // Calculate scale ratio to adjust position when zoom changes
+          const scaleRatio = scale / signaturePosition.scale;
+          const adjustedX = signaturePosition.x * scaleRatio;
+          const adjustedY = signaturePosition.y * scaleRatio;
+          const adjustedWidth = signaturePosition.width * scaleRatio;
+          const adjustedHeight = signaturePosition.height * scaleRatio;
 
-        return (
-          <div
-            className={`absolute select-none z-10 border-2 rounded-md p-1 transition-colors touch-none ${
-              isLocked 
-                ? "border-muted-foreground/50 bg-muted/30 cursor-default" 
-                : "border-primary border-dashed bg-primary/5 hover:bg-primary/10 cursor-move"
-            }`}
-            style={{
-              left: adjustedX - adjustedWidth / 2,
-              top: adjustedY - adjustedHeight / 2,
-              width: adjustedWidth,
-            }}
-            onMouseDown={isLocked ? undefined : handleSignatureDrag}
-            onTouchStart={isLocked ? undefined : handleSignatureTouchDrag}
-          >
-            <img
-              src={signature}
-              alt="Firma"
-              className="w-full h-auto pointer-events-none"
-              style={{ maxHeight: adjustedHeight - 8 }}
-              draggable={false}
-            />
-            {!isLocked && (
-              <>
-                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
-                  <Move className="w-3 h-3" />
-                  Arrastra para mover
+          return (
+            <div
+              className={`absolute select-none z-10 border-2 rounded-md p-1 transition-colors touch-none ${
+                isLocked
+                  ? "border-muted-foreground/50 bg-muted/30 cursor-default"
+                  : "border-primary border-dashed bg-primary/5 hover:bg-primary/10 cursor-move"
+              }`}
+              style={{
+                left: adjustedX - adjustedWidth / 2,
+                top: adjustedY - adjustedHeight / 2,
+                width: adjustedWidth,
+              }}
+              onMouseDown={isLocked ? undefined : handleSignatureDrag}
+              onTouchStart={isLocked ? undefined : handleSignatureTouchDrag}
+            >
+              <img
+                src={signature}
+                alt="Firma"
+                className="w-full h-auto pointer-events-none"
+                style={{ maxHeight: adjustedHeight - 8 }}
+                draggable={false}
+              />
+              {!isLocked && (
+                <>
+                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
+                    <Move className="w-3 h-3" />
+                    Arrastra para mover
+                  </div>
+                  {/* Delete signature button */}
+                  <div
+                    className="absolute -top-2 -left-2 w-6 h-6 bg-destructive rounded-full cursor-pointer flex items-center justify-center shadow-md hover:bg-destructive/80 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onClearSignature();
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                  >
+                    <Trash2 className="w-3 h-3 text-destructive-foreground" />
+                  </div>
+                  {/* Resize handle */}
+                  <div
+                    className="absolute -bottom-2 -right-2 w-6 h-6 bg-primary rounded-full cursor-se-resize flex items-center justify-center shadow-md hover:bg-primary/80 transition-colors touch-none"
+                    onMouseDown={handleSignatureResize}
+                    onTouchStart={handleSignatureTouchResize}
+                  >
+                    <Maximize2 className="w-3 h-3 text-primary-foreground rotate-90" />
+                  </div>
+                </>
+              )}
+              {isLocked && (
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-muted text-muted-foreground text-[10px] leading-tight px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
+                  Documento enviado
                 </div>
-                {/* Delete signature button */}
-                <div
-                  className="absolute -top-2 -left-2 w-6 h-6 bg-destructive rounded-full cursor-pointer flex items-center justify-center shadow-md hover:bg-destructive/80 transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onClearSignature();
-                  }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onTouchStart={(e) => e.stopPropagation()}
-                >
-                  <Trash2 className="w-3 h-3 text-destructive-foreground" />
-                </div>
-                {/* Resize handle */}
-                <div
-                  className="absolute -bottom-2 -right-2 w-6 h-6 bg-primary rounded-full cursor-se-resize flex items-center justify-center shadow-md hover:bg-primary/80 transition-colors touch-none"
-                  onMouseDown={handleSignatureResize}
-                  onTouchStart={handleSignatureTouchResize}
-                >
-                  <Maximize2 className="w-3 h-3 text-primary-foreground rotate-90" />
-                </div>
-              </>
-            )}
-            {isLocked && (
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
-                Documento enviado
-              </div>
-            )}
-          </div>
-        );
-      })()}
+              )}
+            </div>
+          );
+        })()}
 
       {/* Instruction overlay */}
       {!signature && !placeholderPosition && (
