@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { X, MousePointerClick, Move, PenLine, FileSignature, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -123,21 +123,21 @@ export const SignatureTutorial = ({ isOpen, onClose }: SignatureTutorialProps) =
 export const useSignatureTutorial = () => {
   const [showTutorial, setShowTutorial] = useState(false);
 
-  const checkAndShowTutorial = () => {
+  const checkAndShowTutorial = useCallback(() => {
     const hasSeenTutorial = localStorage.getItem(TUTORIAL_STORAGE_KEY);
     if (!hasSeenTutorial) {
       setShowTutorial(true);
     }
-  };
+  }, []);
 
-  const closeTutorial = () => {
+  const closeTutorial = useCallback(() => {
     setShowTutorial(false);
-  };
+  }, []);
 
   // Reset tutorial (useful for testing)
-  const resetTutorial = () => {
+  const resetTutorial = useCallback(() => {
     localStorage.removeItem(TUTORIAL_STORAGE_KEY);
-  };
+  }, []);
 
   return {
     showTutorial,
