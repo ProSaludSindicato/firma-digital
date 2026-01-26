@@ -129,11 +129,9 @@ export const SignatureModal = ({
                     canvasProps={{
                       width: canvasSize.width,
                       height: canvasSize.height,
-                      className: "touch-none",
                       style: { 
                         width: '100%', 
                         height: '100%',
-                        touchAction: 'none'
                       },
                     }}
                     backgroundColor="transparent"
