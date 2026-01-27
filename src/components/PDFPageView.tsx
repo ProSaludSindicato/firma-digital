@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, memo } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import { Move, Maximize2, Pencil } from "lucide-react";
 import { SignaturePlaceholder } from "./SignaturePlaceholder";
@@ -20,7 +20,7 @@ interface PDFPageViewProps {
   fileName?: string;
 }
 
-export const PDFPageView = ({
+const PDFPageViewComponent = ({
   pdfDoc,
   pageNumber,
   scale,
@@ -460,3 +460,17 @@ export const PDFPageView = ({
     </div>
   );
 };
+
+// Memoize component to prevent unnecessary re-renders
+export const PDFPageView = memo(PDFPageViewComponent, (prevProps, nextProps) => {
+  return (
+    prevProps.pdfDoc === nextProps.pdfDoc &&
+    prevProps.pageNumber === nextProps.pageNumber &&
+    prevProps.scale === nextProps.scale &&
+    prevProps.signature === nextProps.signature &&
+    JSON.stringify(prevProps.signaturePosition) === JSON.stringify(nextProps.signaturePosition) &&
+    JSON.stringify(prevProps.placeholderPosition) === JSON.stringify(nextProps.placeholderPosition) &&
+    prevProps.isLocked === nextProps.isLocked &&
+    prevProps.fileName === nextProps.fileName
+  );
+});

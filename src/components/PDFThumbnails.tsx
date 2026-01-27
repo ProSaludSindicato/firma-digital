@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, memo } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -14,7 +14,7 @@ interface PDFThumbnailsProps {
   onToggle: () => void;
 }
 
-export const PDFThumbnails = ({
+const PDFThumbnailsComponent = ({
   pdfDoc,
   currentPage,
   onPageSelect,
@@ -30,24 +30,32 @@ export const PDFThumbnails = ({
 
       const thumbs: string[] = [];
       const scale = 0.3;
+      const numPages = pdfDoc.numPages;
 
-      for (let i = 1; i <= pdfDoc.numPages; i++) {
-        const page = await pdfDoc.getPage(i);
-        const viewport = page.getViewport({ scale });
+      // Generate thumbnails with error handling
+      for (let i = 1; i <= numPages; i++) {
+        try {
+          const page = await pdfDoc.getPage(i);
+          const viewport = page.getViewport({ scale });
 
-        const canvas = document.createElement("canvas");
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
+          const canvas = document.createElement("canvas");
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
 
-        const context = canvas.getContext("2d");
-        if (context) {
-          await page.render({
-            canvasContext: context,
-            viewport,
-          }).promise;
+          const context = canvas.getContext("2d");
+          if (context) {
+            await page.render({
+              canvasContext: context,
+              viewport,
+            }).promise;
+          }
+
+          thumbs.push(canvas.toDataURL());
+        } catch (error) {
+          console.error(`Error generando miniatura para página ${i}:`, error);
+          // Push placeholder for failed thumbnails
+          thumbs.push('');
         }
-
-        thumbs.push(canvas.toDataURL());
       }
 
       setThumbnails(thumbs);
@@ -55,6 +63,24 @@ export const PDFThumbnails = ({
 
     generateThumbnails();
   }, [pdfDoc]);
+
+  // Scroll to current page thumbnail when it changes
+  useEffect(() => {
+    if (thumbnails.length > 0 && currentPage > 0) {
+      // Use setTimeout to ensure DOM is updated
+      setTimeout(() => {
+        const thumbnailElement = document.querySelector(
+          `[data-thumbnail-page="${currentPage}"]`
+        );
+        if (thumbnailElement) {
+          thumbnailElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+          });
+        }
+      }, 100);
+    }
+  }, [currentPage, thumbnails.length]);
 
   // Toggle button always visible
   const ToggleButton = (
@@ -95,8 +121,8 @@ export const PDFThumbnails = ({
   }
 
   return (
-    <div className="w-24 md:w-32 bg-muted/50 border-r border-border flex flex-col">
-      <div className="p-2 border-b border-border flex justify-end">
+    <div className="w-24 md:w-32 bg-muted/50 border-r border-border flex flex-col h-full">
+      <div className="p-2 border-b border-border flex justify-end shrink-0">
         {ToggleButton}
       </div>
       <ScrollArea className="flex-1">
@@ -104,24 +130,34 @@ export const PDFThumbnails = ({
           {thumbnails.map((thumb, index) => (
             <button
               key={index}
+              data-thumbnail-page={index + 1}
               onClick={() => onPageSelect(index + 1)}
               className={cn(
-                "w-full relative rounded border-2 overflow-hidden transition-all hover:border-primary/50",
+                "w-full relative rounded border-2 overflow-hidden transition-all hover:border-primary/50 flex-shrink-0",
                 currentPage === index + 1
                   ? "border-primary shadow-md"
                   : "border-transparent"
               )}
             >
-              <img
-                src={thumb}
-                alt={`Página ${index + 1}`}
-                className="w-full h-auto"
-              />
-              <div className="absolute bottom-0 left-0 right-0 bg-background/80 text-xs py-0.5 text-center font-medium">
-                {index + 1}
-              </div>
-              {signaturePage === index + 1 && (
-                <div className="absolute top-1 right-1 w-3 h-3 bg-primary rounded-full border-2 border-background" />
+              {thumb ? (
+                <>
+                  <img
+                    src={thumb}
+                    alt={`Página ${index + 1}`}
+                    className="w-full h-auto"
+                    loading="lazy"
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 bg-background/80 text-xs py-0.5 text-center font-medium">
+                    {index + 1}
+                  </div>
+                  {signaturePage === index + 1 && (
+                    <div className="absolute top-1 right-1 w-3 h-3 bg-primary rounded-full border-2 border-background" />
+                  )}
+                </>
+              ) : (
+                <div className="w-full aspect-[3/4] bg-muted flex items-center justify-center">
+                  <span className="text-xs text-muted-foreground">Error</span>
+                </div>
               )}
             </button>
           ))}
@@ -130,3 +166,15 @@ export const PDFThumbnails = ({
     </div>
   );
 };
+
+// Memoize component to prevent unnecessary re-renders
+export const PDFThumbnails = memo(PDFThumbnailsComponent, (prevProps, nextProps) => {
+  return (
+    prevProps.pdfDoc === nextProps.pdfDoc &&
+    prevProps.currentPage === nextProps.currentPage &&
+    prevProps.signaturePage === nextProps.signaturePage &&
+    prevProps.isCollapsed === nextProps.isCollapsed &&
+    prevProps.onPageSelect === nextProps.onPageSelect &&
+    prevProps.onToggle === nextProps.onToggle
+  );
+});

@@ -10,6 +10,9 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { validateImageFile, validateImageDimensions } from "@/lib/validation";
+import { compressImage, validateAndCompressImage } from "@/lib/imageCompression";
+import { toast } from "@/hooks/use-toast";
 
 interface SignatureModalProps {
   isOpen: boolean;
@@ -152,7 +155,7 @@ export const SignatureModal = ({
 
 
   // Get high-quality signature with proper trimming
-  const handleSaveSignature = () => {
+  const handleSaveSignature = async () => {
     // Handle different tabs
     if (activeTab === "preview") {
       // In preview tab, just close (user wants to keep current signature)
@@ -239,11 +242,70 @@ export const SignatureModal = ({
           0, 0, trimmedWidth, trimmedHeight
         );
         
+        // For drawn signatures, keep PNG with transparency
+        // Only resize if too large, but maintain PNG format to preserve transparency
         const dataUrl = trimmedCanvas.toDataURL("image/png", 1.0);
-        onSignatureCreate(dataUrl);
+        
+        // Only compress/resize if the image is very large, but keep PNG format
+        try {
+          const img = new Image();
+          img.onload = async () => {
+            // Only resize if larger than max dimensions
+            if (img.width > 800 || img.height > 400) {
+              const compressed = await compressImage(dataUrl, {
+                maxWidth: 800,
+                maxHeight: 400,
+                quality: 1.0, // Maximum quality for PNG
+                format: 'png', // Keep PNG to preserve transparency
+              });
+              onSignatureCreate(compressed);
+            } else {
+              // Use original if already small enough
+              onSignatureCreate(dataUrl);
+            }
+          };
+          img.onerror = () => {
+            // Fallback to original if image load fails
+            onSignatureCreate(dataUrl);
+          };
+          img.src = dataUrl;
+        } catch (error) {
+          // Fallback to original if compression fails
+          console.warn('Error procesando firma, usando original:', error);
+          onSignatureCreate(dataUrl);
+        }
       } else {
+        // For drawn signatures, keep PNG with transparency
         const dataUrl = signatureRef.current.toDataURL("image/png");
-        onSignatureCreate(dataUrl);
+        
+        // Only resize if too large, but maintain PNG format
+        try {
+          const img = new Image();
+          img.onload = async () => {
+            // Only resize if larger than max dimensions
+            if (img.width > 800 || img.height > 400) {
+              const compressed = await compressImage(dataUrl, {
+                maxWidth: 800,
+                maxHeight: 400,
+                quality: 1.0, // Maximum quality for PNG
+                format: 'png', // Keep PNG to preserve transparency
+              });
+              onSignatureCreate(compressed);
+            } else {
+              // Use original if already small enough
+              onSignatureCreate(dataUrl);
+            }
+          };
+          img.onerror = () => {
+            // Fallback to original if image load fails
+            onSignatureCreate(dataUrl);
+          };
+          img.src = dataUrl;
+        } catch (error) {
+          // Fallback to original if compression fails
+          console.warn('Error procesando firma, usando original:', error);
+          onSignatureCreate(dataUrl);
+        }
       }
       
       onClose();
@@ -255,16 +317,67 @@ export const SignatureModal = ({
     setHasStroke(false);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        onSignatureCreate(result);
+    if (!file) return;
+
+    try {
+      // Validate image file
+      const validation = validateImageFile(file);
+      if (!validation.valid) {
+        toast({
+          title: "Error de validación",
+          description: validation.error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate and compress image
+      const compressedImage = await validateAndCompressImage(file, {
+        maxWidth: 800,
+        maxHeight: 400,
+        quality: 0.9,
+        format: 'jpeg',
+      });
+
+      // Verify dimensions after compression
+      const img = new Image();
+      img.onload = () => {
+        const dimValidation = validateImageDimensions(img.width, img.height);
+        if (!dimValidation.valid) {
+          toast({
+            title: "Error de validación",
+            description: dimValidation.error,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        onSignatureCreate(compressedImage);
         onClose();
       };
-      reader.readAsDataURL(file);
+      img.onerror = () => {
+        toast({
+          title: "Error",
+          description: "No se pudo cargar la imagen. Por favor, intenta con otra imagen.",
+          variant: "destructive",
+        });
+      };
+      img.src = compressedImage;
+    } catch (error) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Error al procesar la imagen";
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      // Reset input to allow selecting the same file again
+      e.target.value = '';
     }
   };
 
@@ -478,18 +591,20 @@ export const SignatureModal = ({
                     variant="outline"
                     onClick={handleClearAndCreateNew}
                     size="lg" 
-                    className="flex-1 h-12 text-base"
+                    className="flex-1 h-12 text-xs sm:text-sm md:text-base px-2 sm:px-4"
                   >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Limpiar y crear nueva
+                    <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" />
+                    <span className="truncate text-xs sm:text-sm md:text-base">
+                      {isMobile ? "Limpiar" : "Limpiar y crear nueva"}
+                    </span>
                   </Button>
                   <Button 
                     onClick={onClose}
                     size="lg" 
-                    className="flex-1 h-12 text-base"
+                    className="flex-1 h-12 text-xs sm:text-sm md:text-base px-2 sm:px-4 min-w-0"
                   >
-                    <Check className="w-4 h-4 mr-2" />
-                    Mantener
+                    <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" />
+                    <span className="truncate">Mantener</span>
                   </Button>
                 </div>
               </TabsContent>
@@ -543,7 +658,7 @@ export const SignatureModal = ({
             </TabsContent>
 
             <TabsContent value="upload" className="flex-1 flex flex-col m-0 p-3 overflow-hidden min-h-0 mt-0">
-              {/* Upload area - same flex layout as draw tab */}
+              {/* Upload area - same layout and position as draw tab */}
               <div 
                 className="flex-1 min-h-0 border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent relative"
               >

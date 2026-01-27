@@ -103,6 +103,22 @@ export const usePDFSigner = () => {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error al firmar el PDF:", error);
+      
+      // Provide more descriptive error messages
+      let errorMessage = "Error desconocido al procesar el PDF";
+      
+      if (error instanceof Error) {
+        if (error.message.includes("corrupt") || error.message.includes("invalid")) {
+          errorMessage = "El archivo PDF está corrupto o no es válido. Por favor, verifica el archivo.";
+        } else if (error.message.includes("memory") || error.message.includes("size")) {
+          errorMessage = "El archivo PDF es demasiado grande para procesar. Intenta con un archivo más pequeño.";
+        } else {
+          errorMessage = `Error al procesar el PDF: ${error.message}`;
+        }
+      }
+      
+      // Re-throw with better message for UI handling
+      throw new Error(errorMessage);
     } finally {
       setIsDownloading(false);
     }

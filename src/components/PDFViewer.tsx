@@ -7,6 +7,7 @@ import { PDFPageView } from "./PDFPageView";
 import { SignatureModal } from "./SignatureModal";
 import { SignatureTutorial, useSignatureTutorial } from "./SignatureTutorial";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Configure PDF.js worker using Vite's import.meta.url resolution
@@ -122,6 +123,82 @@ export const PDFViewer = ({
   const handlePlaceholderClick = useCallback(() => {
     setIsModalOpen(true);
   }, []);
+
+  const handleZoomIn = useCallback(() => {
+    setScale((s) => Math.min(2, s + 0.2));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setScale((s) => Math.max(0.5, s - 0.2));
+  }, []);
+
+  const handleFirstPage = useCallback(() => {
+    setCurrentPage(1);
+  }, []);
+
+  const handleLastPage = useCallback(() => {
+    setCurrentPage(totalPages);
+  }, [totalPages]);
+
+  const handleCloseModal = useCallback(() => {
+    setIsModalOpen(false);
+  }, []);
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts(
+    [
+      {
+        key: 'ArrowLeft',
+        handler: () => handlePrevPage(),
+        description: 'Página anterior',
+      },
+      {
+        key: 'ArrowRight',
+        handler: () => handleNextPage(),
+        description: 'Página siguiente',
+      },
+      {
+        key: 'Home',
+        handler: () => handleFirstPage(),
+        description: 'Primera página',
+      },
+      {
+        key: 'End',
+        handler: () => handleLastPage(),
+        description: 'Última página',
+      },
+      {
+        key: '+',
+        handler: () => handleZoomIn(),
+        description: 'Acercar',
+      },
+      {
+        key: '=',
+        handler: () => handleZoomIn(),
+        description: 'Acercar',
+      },
+      {
+        key: '-',
+        handler: () => handleZoomOut(),
+        description: 'Alejar',
+      },
+      {
+        key: '_',
+        handler: () => handleZoomOut(),
+        description: 'Alejar',
+      },
+      {
+        key: 'Escape',
+        handler: () => {
+          if (isModalOpen) {
+            handleCloseModal();
+          }
+        },
+        description: 'Cerrar modal',
+      },
+    ],
+    !isLoading && pdfDoc !== null && !isLocked
+  );
 
   const handleSignatureCreate = useCallback(
     (sig: string) => {
