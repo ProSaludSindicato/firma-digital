@@ -1,15 +1,17 @@
 import { useState, useCallback, useEffect } from "react";
-import { Upload, FileText, Image as ImageIcon, X, Download } from "lucide-react";
+import { Upload, FileText, Image as ImageIcon, X, Download, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { validatePDFFile, validatePDFIntegrity, validateImageFile } from "@/lib/validation";
 import { validateAndCompressImage } from "@/lib/imageCompression";
 import { toast } from "@/hooks/use-toast";
 import { AutoSignatureConfig } from "@/hooks/useAutoPDFSigner";
 import { PDFDocument } from "pdf-lib";
-import { DEFAULT_AUTO_SIGN_CONFIG, AUTO_SIGN_IMAGE_OPTIONS } from "@/lib/autoSignConfig";
+import { DEFAULT_AUTO_SIGN_CONFIG, AUTO_SIGN_IMAGE_OPTIONS, AI_SEARCH_CONFIG } from "@/lib/autoSignConfig";
+import { findTextInPDF, calculateSignaturePosition } from "@/lib/geminiService";
 
 interface AutoSignatureUploaderProps {
   onPDFSelect: (file: File | null) => void;
@@ -19,6 +21,7 @@ interface AutoSignatureUploaderProps {
   signatureImage: string | null;
   signatureConfig: AutoSignatureConfig | null;
   onTotalPagesChange: (pages: number) => void;
+  onAISearch?: (enabled: boolean, apiKey: string) => void;
 }
 
 export const AutoSignatureUploader = ({
@@ -29,9 +32,15 @@ export const AutoSignatureUploader = ({
   signatureImage,
   signatureConfig,
   onTotalPagesChange,
+  onAISearch,
 }: AutoSignatureUploaderProps) => {
   const [isValidatingPDF, setIsValidatingPDF] = useState(false);
   const [isValidatingImage, setIsValidatingImage] = useState(false);
+  const [useAI, setUseAI] = useState(false);
+  const [geminiApiKey, setGeminiApiKey] = useState("");
+  const [aiSearchPage, setAiSearchPage] = useState<number | null>(null);
+  const [isSearchingAI, setIsSearchingAI] = useState(false);
+  const [totalPages, setTotalPages] = useState(0);
   const [localConfig, setLocalConfig] = useState<AutoSignatureConfig>(
     signatureConfig || DEFAULT_AUTO_SIGN_CONFIG
   );
@@ -52,7 +61,9 @@ export const AutoSignatureUploader = ({
         const arrayBuffer = await pdfFile.arrayBuffer();
         const pdfDoc = await PDFDocument.load(arrayBuffer);
         const pages = pdfDoc.getPages();
-        onTotalPagesChange(pages.length);
+        const pageCount = pages.length;
+        setTotalPages(pageCount);
+        onTotalPagesChange(pageCount);
 
         // Si no hay configuración previa, establecer valores por defecto basados en la primera página
         if (!signatureConfig && pages.length > 0) {
@@ -74,6 +85,66 @@ export const AutoSignatureUploader = ({
 
     loadPDFInfo();
   }, [pdfFile, onTotalPagesChange, signatureConfig]);
+
+  // Búsqueda con IA cuando se habilita y hay un PDF
+  const handleAISearch = useCallback(async () => {
+    if (!pdfFile || !geminiApiKey || isSearchingAI) return;
+
+    setIsSearchingAI(true);
+    try {
+      const textLocation = await findTextInPDF(
+        pdfFile,
+        AI_SEARCH_CONFIG.searchText,
+        geminiApiKey,
+        aiSearchPage || undefined
+      );
+
+      if (textLocation) {
+        const signaturePos = calculateSignaturePosition(
+          textLocation,
+          AI_SEARCH_CONFIG.offsetX,
+          AI_SEARCH_CONFIG.offsetY,
+          localConfig.width,
+          localConfig.height
+        );
+
+        const newConfig: AutoSignatureConfig = {
+          page: signaturePos.page,
+          x: signaturePos.x,
+          y: signaturePos.y,
+          width: localConfig.width,
+          height: localConfig.height,
+        };
+
+        setLocalConfig(newConfig);
+        onConfigChange(newConfig);
+
+        toast({
+          title: "✓ Texto encontrado",
+          description: `Firma ubicada automáticamente cerca de "${AI_SEARCH_CONFIG.searchText}" en la página ${signaturePos.page}`,
+        });
+      } else {
+        toast({
+          title: "Texto no encontrado",
+          description: `No se encontró el texto "${AI_SEARCH_CONFIG.searchText}" en el PDF. Usa posición manual.`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error al buscar texto con IA";
+      toast({
+        title: "Error en búsqueda con IA",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSearchingAI(false);
+    }
+  }, [pdfFile, geminiApiKey, aiSearchPage, localConfig.width, localConfig.height, onConfigChange, isSearchingAI]);
+
+  // Nota: La búsqueda se ejecuta manualmente cuando el usuario hace clic en el botón
+  // No se ejecuta automáticamente para dar más control al usuario
 
   const handlePDFValidation = useCallback(
     async (file: File | null) => {
@@ -325,12 +396,131 @@ export const AutoSignatureUploader = ({
         </CardContent>
       </Card>
 
+      {/* AI Search Configuration */}
+      {pdfFile && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5" />
+              Búsqueda Automática con IA
+            </CardTitle>
+            <CardDescription>
+              Usa IA para encontrar automáticamente el texto "{AI_SEARCH_CONFIG.searchText}" y ubicar la firma
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="use-ai">Habilitar búsqueda con IA</Label>
+                <p className="text-sm text-muted-foreground">
+                  La IA buscará el texto y ajustará la posición automáticamente
+                </p>
+              </div>
+              <Switch
+                id="use-ai"
+                checked={useAI}
+                onCheckedChange={setUseAI}
+                disabled={isSearchingAI}
+              />
+            </div>
+            {useAI && (
+              <div className="space-y-4 p-4 bg-muted/50 rounded-lg border">
+                <div className="space-y-2">
+                  <Label htmlFor="gemini-api-key" className="text-base font-semibold">
+                    🔑 API Key de Google Gemini
+                  </Label>
+                  <Input
+                    id="gemini-api-key"
+                    type="password"
+                    placeholder="Pega aquí tu API key de Gemini"
+                    value={geminiApiKey}
+                    onChange={(e) => setGeminiApiKey(e.target.value)}
+                    disabled={isSearchingAI}
+                    className="font-mono text-sm"
+                  />
+                  <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <span>💡</span>
+                    <div>
+                      <p className="mb-1">
+                        <strong>¿Dónde obtener la API key?</strong>
+                      </p>
+                      <ol className="list-decimal list-inside space-y-1 ml-2">
+                        <li>
+                          Ve a{" "}
+                          <a
+                            href="https://makersuite.google.com/app/apikey"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline font-semibold"
+                          >
+                            Google AI Studio
+                          </a>
+                        </li>
+                        <li>Haz clic en "Get API Key" o "Crear API Key"</li>
+                        <li>Copia la clave generada</li>
+                        <li>Pégala en el campo de arriba</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="ai-search-page">
+                    📄 Página donde buscar (opcional)
+                  </Label>
+                  <Input
+                    id="ai-search-page"
+                    type="number"
+                    min="1"
+                    max={totalPages || undefined}
+                    placeholder={`Dejar vacío para buscar en todo el documento (1-${totalPages || "?"})`}
+                    value={aiSearchPage || ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setAiSearchPage(val ? parseInt(val) : null);
+                    }}
+                    disabled={isSearchingAI}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Especifica la página para reducir el tiempo de búsqueda y el uso de tokens. 
+                    Si se deja vacío, buscará en todo el documento.
+                  </p>
+                </div>
+
+                {isSearchingAI && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 bg-background rounded border">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Buscando "{AI_SEARCH_CONFIG.searchText}" en el PDF{aiSearchPage ? ` (página ${aiSearchPage})` : ""}...</span>
+                  </div>
+                )}
+
+                {useAI && geminiApiKey && !isSearchingAI && (
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    onClick={handleAISearch}
+                    className="w-full"
+                    disabled={!geminiApiKey.trim()}
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Buscar texto y ubicar firma
+                  </Button>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Configuration */}
       <Card>
         <CardHeader>
           <CardTitle>Configuración de Posición</CardTitle>
           <CardDescription>
-            Especifica en qué página y posición se insertará la firma (valores en puntos PDF)
+            {useAI
+              ? "La posición se ajustará automáticamente cuando se encuentre el texto. Puedes modificarla manualmente si es necesario."
+              : "Especifica en qué página y posición se insertará la firma (valores en puntos PDF)"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

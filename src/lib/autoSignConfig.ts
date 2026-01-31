@@ -23,3 +23,27 @@ export const AUTO_SIGN_IMAGE_OPTIONS = {
   // El formato se detecta automáticamente basado en el tipo de archivo
 };
 
+/**
+ * Configuración para búsqueda de texto con IA
+ */
+export const AI_SEARCH_CONFIG = {
+  searchText: "JORGE IVAN ÁLVAREZ SOTO", // Texto de referencia para ubicar la firma
+  offsetX: 0, // Offset horizontal desde el texto (puntos PDF)
+  offsetY: -30, // Offset vertical desde el texto (puntos PDF, negativo = arriba)
+  model: "gemini-2.5-flash", // Modelo de Gemini a usar (puede ser gemini-1.5-flash como alternativa)
+};
+
+/**
+ * Obtiene la API key de Gemini desde las variables de entorno
+ * En producción, esto debería venir de variables de entorno del servidor
+ */
+export const getGeminiApiKey = (): string | null => {
+  // Intentar obtener de variable de entorno (si está disponible)
+  if (typeof window !== "undefined") {
+    // En el cliente, podrías usar un input o configuración
+    // Por ahora, retornamos null y se pedirá al usuario
+    return null;
+  }
+  return null;
+};
+
