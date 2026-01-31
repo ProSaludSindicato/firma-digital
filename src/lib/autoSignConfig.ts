@@ -7,9 +7,9 @@ import { AutoSignatureConfig } from "@/hooks/useAutoPDFSigner";
 export const DEFAULT_AUTO_SIGN_CONFIG: AutoSignatureConfig = {
   page: 2, // Primera página por defecto
   x: 80, // 50 puntos desde la izquierda
-  y: 250, // 50 puntos desde abajo
-  width: 50, // Ancho de 150 puntos (aproximadamente 5.3 cm)
-  height: 66, // Alto de 60 puntos (aproximadamente 2.1 cm)
+  y: 255, // 50 puntos desde abajo
+  width: 42, // Ancho de 150 puntos (aproximadamente 5.3 cm)
+  height: 55, // Alto de 60 puntos (aproximadamente 2.1 cm)
 };
 
 /**

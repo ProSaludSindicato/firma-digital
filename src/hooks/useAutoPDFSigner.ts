@@ -1,5 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { PDFDocument } from "pdf-lib";
+import firmaDefault from "@/firma_default.png";
 
 export interface AutoSignatureConfig {
   page: number; // Número de página (1-indexed)
@@ -16,6 +17,37 @@ export const useAutoPDFSigner = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedPDFUrl, setProcessedPDFUrl] = useState<string | null>(null);
+  const [isLoadingDefaultImage, setIsLoadingDefaultImage] = useState(true);
+
+  // Cargar imagen de firma por defecto al inicializar
+  useEffect(() => {
+    const loadDefaultSignature = async () => {
+      try {
+        // Convertir la imagen importada a data URL
+        const response = await fetch(firmaDefault);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        
+        reader.onloadend = () => {
+          const dataUrl = reader.result as string;
+          setSignatureImage(dataUrl);
+          setIsLoadingDefaultImage(false);
+        };
+        
+        reader.onerror = () => {
+          console.warn("No se pudo cargar la imagen de firma por defecto");
+          setIsLoadingDefaultImage(false);
+        };
+        
+        reader.readAsDataURL(blob);
+      } catch (error) {
+        console.warn("Error al cargar la imagen de firma por defecto:", error);
+        setIsLoadingDefaultImage(false);
+      }
+    };
+
+    loadDefaultSignature();
+  }, []);
 
   const handlePDFSelect = useCallback((file: File | null) => {
     // Limpiar PDF procesado anterior si existe
@@ -203,6 +235,7 @@ export const useAutoPDFSigner = () => {
     isProcessing,
     canProcess,
     processedPDFUrl,
+    isLoadingDefaultImage,
     handlePDFSelect,
     handleSignatureImageSelect,
     handleConfigChange,

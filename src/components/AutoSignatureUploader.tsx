@@ -281,7 +281,7 @@ export const AutoSignatureUploader = ({
                   />
                   <div>
                     <p className="font-medium">Imagen de firma cargada</p>
-                    <p className="text-sm text-muted-foreground">PNG o JPG</p>
+                    <p className="text-sm text-muted-foreground">PNG o JPG (puedes cambiarla)</p>
                   </div>
                 </div>
                 <Button
