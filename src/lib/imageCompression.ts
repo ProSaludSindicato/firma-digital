@@ -63,10 +63,22 @@ export const compressImage = (
         canvas.width = Math.round(width);
         canvas.height = Math.round(height);
         
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { 
+          // Preservar transparencia para PNG
+          alpha: opts.format === 'png' 
+        });
         if (!ctx) {
           reject(new Error('No se pudo obtener el contexto del canvas'));
           return;
+        }
+        
+        // Para PNG, asegurar que el canvas tenga fondo transparente
+        if (opts.format === 'png') {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        } else {
+          // Para JPEG, establecer fondo blanco
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
         
         // Enable high-quality image smoothing
