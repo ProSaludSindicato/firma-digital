@@ -345,6 +345,7 @@ export const PDFViewer = ({
             signaturePage={signaturePosition?.page || null}
             isCollapsed={isSidebarCollapsed}
             onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            documentScale={scale}
           />
         </div>
 

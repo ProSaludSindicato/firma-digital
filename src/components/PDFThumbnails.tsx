@@ -12,6 +12,7 @@ interface PDFThumbnailsProps {
   signaturePage: number | null;
   isCollapsed: boolean;
   onToggle: () => void;
+  documentScale: number; // Scale of the main document to make thumbnails proportional
 }
 
 const PDFThumbnailsComponent = ({
@@ -21,6 +22,7 @@ const PDFThumbnailsComponent = ({
   signaturePage,
   isCollapsed,
   onToggle,
+  documentScale,
 }: PDFThumbnailsProps) => {
   const [thumbnails, setThumbnails] = useState<string[]>([]);
 
@@ -29,7 +31,11 @@ const PDFThumbnailsComponent = ({
       if (!pdfDoc) return;
 
       const thumbs: string[] = [];
-      const scale = 0.3;
+      // Calculate thumbnail scale proportionally to document scale
+      // Base scale is 0.3, and we scale it proportionally to document scale
+      // This ensures thumbnails are proportional to the main document zoom
+      const baseThumbnailScale = 0.3;
+      const scale = baseThumbnailScale * documentScale;
       const numPages = pdfDoc.numPages;
 
       // Generate thumbnails with error handling
@@ -62,7 +68,7 @@ const PDFThumbnailsComponent = ({
     };
 
     generateThumbnails();
-  }, [pdfDoc]);
+  }, [pdfDoc, documentScale]);
 
   // Scroll to current page thumbnail when it changes
   useEffect(() => {
@@ -107,9 +113,18 @@ const PDFThumbnailsComponent = ({
     );
   }
 
+  // Calculate sidebar width proportionally to document scale
+  // Base width is 96px (w-24), scales up with document zoom
+  // Clamp between 96px and 192px to avoid too small or too large sidebars
+  const baseWidth = 96; // w-24 = 96px
+  const sidebarWidth = Math.min(192, Math.max(96, baseWidth * documentScale));
+
   if (!pdfDoc || thumbnails.length === 0) {
     return (
-      <div className="w-24 md:w-32 bg-muted/50 border-r border-border flex flex-col">
+      <div 
+        className="bg-muted/50 border-r border-border flex flex-col"
+        style={{ width: `${sidebarWidth}px` }}
+      >
         <div className="p-2 border-b border-border flex justify-end">
           {ToggleButton}
         </div>
@@ -121,7 +136,10 @@ const PDFThumbnailsComponent = ({
   }
 
   return (
-    <div className="w-24 md:w-32 bg-muted/50 border-r border-border flex flex-col h-full">
+    <div 
+      className="bg-muted/50 border-r border-border flex flex-col h-full"
+      style={{ width: `${sidebarWidth}px` }}
+    >
       <div className="p-2 border-b border-border flex justify-end shrink-0">
         {ToggleButton}
       </div>
@@ -174,6 +192,7 @@ export const PDFThumbnails = memo(PDFThumbnailsComponent, (prevProps, nextProps)
     prevProps.currentPage === nextProps.currentPage &&
     prevProps.signaturePage === nextProps.signaturePage &&
     prevProps.isCollapsed === nextProps.isCollapsed &&
+    prevProps.documentScale === nextProps.documentScale &&
     prevProps.onPageSelect === nextProps.onPageSelect &&
     prevProps.onToggle === nextProps.onToggle
   );
