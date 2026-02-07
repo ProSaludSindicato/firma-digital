@@ -11,7 +11,7 @@ import { toast } from "@/hooks/use-toast";
 import { AutoSignatureConfig } from "@/hooks/useAutoPDFSigner";
 import { PDFDocument } from "pdf-lib";
 import { DEFAULT_AUTO_SIGN_CONFIG, AUTO_SIGN_IMAGE_OPTIONS, AI_SEARCH_CONFIG } from "@/lib/autoSignConfig";
-import { findTextInPDF, calculateSignaturePosition } from "@/lib/geminiService";
+import { createSignatureLocationProvider, calculateSignaturePosition } from "@/lib/signatureLocationService";
 
 interface AutoSignatureUploaderProps {
   onPDFSelect: (file: File | null) => void;
@@ -37,7 +37,6 @@ export const AutoSignatureUploader = ({
   const [isValidatingPDF, setIsValidatingPDF] = useState(false);
   const [isValidatingImage, setIsValidatingImage] = useState(false);
   const [useAI, setUseAI] = useState(false);
-  const [geminiApiKey, setGeminiApiKey] = useState("");
   const [aiSearchPage, setAiSearchPage] = useState<number | null>(null);
   const [isSearchingAI, setIsSearchingAI] = useState(false);
   const [totalPages, setTotalPages] = useState(0);
@@ -88,24 +87,22 @@ export const AutoSignatureUploader = ({
 
   // Búsqueda con IA cuando se habilita y hay un PDF
   const handleAISearch = useCallback(async () => {
-    if (!pdfFile || !geminiApiKey || isSearchingAI) return;
+    if (!pdfFile || isSearchingAI) return;
 
     setIsSearchingAI(true);
     try {
-      const textLocation = await findTextInPDF(
+      const provider = createSignatureLocationProvider();
+      const textLocation = await provider.findTextInPDF({
         pdfFile,
-        AI_SEARCH_CONFIG.searchText,
-        geminiApiKey,
-        aiSearchPage || undefined
-      );
+        searchText: AI_SEARCH_CONFIG.searchText,
+        pageNumber: aiSearchPage || undefined,
+      });
 
       if (textLocation) {
         const signaturePos = calculateSignaturePosition(
           textLocation,
           AI_SEARCH_CONFIG.offsetX,
           AI_SEARCH_CONFIG.offsetY,
-          localConfig.width,
-          localConfig.height
         );
 
         const newConfig: AutoSignatureConfig = {
@@ -141,7 +138,7 @@ export const AutoSignatureUploader = ({
     } finally {
       setIsSearchingAI(false);
     }
-  }, [pdfFile, geminiApiKey, aiSearchPage, localConfig.width, localConfig.height, onConfigChange, isSearchingAI]);
+  }, [pdfFile, aiSearchPage, localConfig.width, localConfig.height, onConfigChange, isSearchingAI]);
 
   // Nota: La búsqueda se ejecuta manualmente cuando el usuario hace clic en el botón
   // No se ejecuta automáticamente para dar más control al usuario
@@ -425,43 +422,11 @@ export const AutoSignatureUploader = ({
             </div>
             {useAI && (
               <div className="space-y-4 p-4 bg-muted/50 rounded-lg border">
-                <div className="space-y-2">
-                  <Label htmlFor="gemini-api-key" className="text-base font-semibold">
-                    🔑 API Key de Google Gemini
-                  </Label>
-                  <Input
-                    id="gemini-api-key"
-                    type="password"
-                    placeholder="Pega aquí tu API key de Gemini"
-                    value={geminiApiKey}
-                    onChange={(e) => setGeminiApiKey(e.target.value)}
-                    disabled={isSearchingAI}
-                    className="font-mono text-sm"
-                  />
-                  <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                    <span>💡</span>
-                    <div>
-                      <p className="mb-1">
-                        <strong>¿Dónde obtener la API key?</strong>
-                      </p>
-                      <ol className="list-decimal list-inside space-y-1 ml-2">
-                        <li>
-                          Ve a{" "}
-                          <a
-                            href="https://makersuite.google.com/app/apikey"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline font-semibold"
-                          >
-                            Google AI Studio
-                          </a>
-                        </li>
-                        <li>Haz clic en "Get API Key" o "Crear API Key"</li>
-                        <li>Copia la clave generada</li>
-                        <li>Pégala en el campo de arriba</li>
-                      </ol>
-                    </div>
-                  </div>
+                <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <span>💡</span>
+                  <p>
+                    La IA analizará el documento para encontrar el texto <strong>"{AI_SEARCH_CONFIG.searchText}"</strong> y ubicar la firma automáticamente. No requiere configuración adicional.
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -482,8 +447,7 @@ export const AutoSignatureUploader = ({
                     disabled={isSearchingAI}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Especifica la página para reducir el tiempo de búsqueda y el uso de tokens. 
-                    Si se deja vacío, buscará en todo el documento.
+                    Especifica la página para reducir el tiempo de búsqueda.
                   </p>
                 </div>
 
@@ -494,14 +458,13 @@ export const AutoSignatureUploader = ({
                   </div>
                 )}
 
-                {useAI && geminiApiKey && !isSearchingAI && (
+                {useAI && !isSearchingAI && (
                   <Button
                     type="button"
                     variant="default"
                     size="sm"
                     onClick={handleAISearch}
                     className="w-full"
-                    disabled={!geminiApiKey.trim()}
                   >
                     <Sparkles className="w-4 h-4 mr-2" />
                     Buscar texto y ubicar firma
