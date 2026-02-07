@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback, memo } from "react";
 import * as pdfjsLib from "pdfjs-dist";
-import { Move, Maximize2, Pencil } from "lucide-react";
+import { Move, Maximize2, Pencil, PenLine } from "lucide-react";
 import { SignaturePlaceholder } from "./SignaturePlaceholder";
 
 interface PDFPageViewProps {
@@ -18,6 +18,7 @@ interface PDFPageViewProps {
   onClearSignature: () => void;
   isLocked?: boolean;
   fileName?: string;
+  isPlacementMode?: boolean;
 }
 
 const PDFPageViewComponent = ({
@@ -33,6 +34,7 @@ const PDFPageViewComponent = ({
   onClearSignature,
   isLocked = false,
   fileName,
+  isPlacementMode = false,
 }: PDFPageViewProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -355,7 +357,11 @@ const PDFPageViewComponent = ({
   const showSignature = signature && signaturePosition && signaturePosition.page === pageNumber;
 
   return (
-    <div ref={containerRef} className="relative inline-block cursor-crosshair" onClick={handleCanvasClick}>
+    <div 
+      ref={containerRef} 
+      className={`relative inline-block ${isPlacementMode ? 'cursor-crosshair' : 'cursor-default'}`} 
+      onClick={handleCanvasClick}
+    >
       <canvas ref={canvasRef} className="block shadow-lg rounded" />
       
       {/* File name footer - visible only on mobile */}
@@ -449,14 +455,17 @@ const PDFPageViewComponent = ({
           );
         })()}
 
-      {/* Instruction overlay
-      {!signature && !placeholderPosition && (
+      {/* Instruction overlay when placement mode is active */}
+      {isPlacementMode && !signature && !placeholderPosition && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none rounded">
-          <p className="bg-secondary text-secondary-foreground px-4 py-3 rounded-lg shadow-xl font-semibold text-sm md:text-base border border-border">
-            Haz clic donde deseas agregar tu firma
-          </p>
+          <div className="bg-primary/90 text-primary-foreground px-4 py-3 rounded-lg shadow-xl font-semibold text-sm md:text-base border-2 border-primary animate-pulse">
+            <div className="flex items-center gap-2">
+              <PenLine className="w-4 h-4 md:w-5 md:h-5" />
+              <span>Haz clic donde deseas agregar tu firma</span>
+            </div>
+          </div>
         </div>
-      )}*/}
+      )}
     </div>
   );
 };
@@ -471,6 +480,7 @@ export const PDFPageView = memo(PDFPageViewComponent, (prevProps, nextProps) => 
     JSON.stringify(prevProps.signaturePosition) === JSON.stringify(nextProps.signaturePosition) &&
     JSON.stringify(prevProps.placeholderPosition) === JSON.stringify(nextProps.placeholderPosition) &&
     prevProps.isLocked === nextProps.isLocked &&
-    prevProps.fileName === nextProps.fileName
+    prevProps.fileName === nextProps.fileName &&
+    prevProps.isPlacementMode === nextProps.isPlacementMode
   );
 });

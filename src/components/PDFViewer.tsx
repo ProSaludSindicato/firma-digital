@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist";
-import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, FileSignature, Loader2 } from "lucide-react";
+import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Loader2, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PDFThumbnails } from "./PDFThumbnails";
 import { PDFPageView } from "./PDFPageView";
@@ -48,6 +48,7 @@ export const PDFViewer = ({
   const [placeholderPosition, setPlaceholderPosition] = useState<{ x: number; y: number; page: number } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isPlacementMode, setIsPlacementMode] = useState(false);
   const isMobile = useIsMobile();
   const { showTutorial, checkAndShowTutorial, closeTutorial } = useSignatureTutorial();
 
@@ -114,15 +115,27 @@ export const PDFViewer = ({
     setCurrentPage((p) => Math.min(totalPages, p + 1));
   }, [totalPages]);
 
-  const handleGoToSignaturePage = useCallback(() => {
-    if (totalPages >= SIGNATURE_PAGE) {
-      setCurrentPage(SIGNATURE_PAGE);
-    }
-  }, [totalPages]);
 
   const handlePlaceholderClick = useCallback(() => {
     setIsModalOpen(true);
+    setIsPlacementMode(false); // Desactivar modo de colocación al abrir modal
   }, []);
+
+  const handleActivatePlacementMode = useCallback(() => {
+    if (!signature) {
+      if (isPlacementMode) {
+        // Si ya está activo, desactivarlo
+        setIsPlacementMode(false);
+      } else {
+        // Activar modo de colocación
+        setIsPlacementMode(true);
+        // Si no estamos en la página de firma, ir a ella
+        if (currentPage !== SIGNATURE_PAGE && totalPages >= SIGNATURE_PAGE) {
+          setCurrentPage(SIGNATURE_PAGE);
+        }
+      }
+    }
+  }, [signature, currentPage, totalPages, isPlacementMode]);
 
   const handleZoomIn = useCallback(() => {
     setScale((s) => Math.min(2, s + 0.2));
@@ -192,9 +205,11 @@ export const PDFViewer = ({
         handler: () => {
           if (isModalOpen) {
             handleCloseModal();
+          } else if (isPlacementMode) {
+            setIsPlacementMode(false);
           }
         },
-        description: 'Cerrar modal',
+        description: 'Cerrar modal o cancelar modo de colocación',
       },
     ],
     !isLoading && pdfDoc !== null && !isLocked
@@ -219,6 +234,7 @@ export const PDFViewer = ({
         });
 
         setPlaceholderPosition(null);
+        setIsPlacementMode(false); // Desactivar modo de colocación después de crear firma
       }
     },
     [placeholderPosition, onSignatureCreate, onSignaturePositionChange, scale, isMobile]
@@ -314,17 +330,23 @@ export const PDFViewer = ({
           </Button>
         </div>
 
-        {/* Go to signature page button - visible when not on signature page and no signature yet */}
-        {!isOnSignaturePage && !signature && totalPages >= SIGNATURE_PAGE && (
+        {/* Add signature button - visible when no signature yet */}
+        {!signature && totalPages >= SIGNATURE_PAGE && (
           <Button
-            variant="outline"
+            variant={isPlacementMode ? "default" : "outline"}
             size="sm"
-            onClick={handleGoToSignaturePage}
-            className="h-7 md:h-8 text-xs gap-1 bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
+            onClick={handleActivatePlacementMode}
+            className={`h-7 md:h-8 text-xs gap-1 ${
+              isPlacementMode
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
+            }`}
           >
-            <FileSignature className="w-3 h-3" />
-            <span className="hidden sm:inline">Ir a firmar</span>
-            <span className="sm:hidden">Pág {SIGNATURE_PAGE}</span>
+            <PenLine className="w-3 h-3" />
+            <span className="hidden sm:inline">
+              {isPlacementMode ? "Modo activo: Haz clic en el documento" : "Ingresar firma"}
+            </span>
+            <span className="sm:hidden">{isPlacementMode ? "Activo" : "Firmar"}</span>
           </Button>
         )}
 
@@ -372,8 +394,15 @@ export const PDFViewer = ({
               signaturePosition={signaturePosition}
               onSignaturePositionChange={onSignaturePositionChange}
               placeholderPosition={placeholderPosition}
-              onPlaceholderPositionChange={setPlaceholderPosition}
+              onPlaceholderPositionChange={(position) => {
+                setPlaceholderPosition(position);
+                // Desactivar modo de colocación cuando se coloca el placeholder
+                if (position) {
+                  setIsPlacementMode(false);
+                }
+              }}
               onPlaceholderClick={handlePlaceholderClick}
+              isPlacementMode={isPlacementMode}
               onClearSignature={onClearSignature}
               isLocked={isLocked}
               fileName={file.name}
