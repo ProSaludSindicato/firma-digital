@@ -29,25 +29,35 @@ serve(async (req) => {
       );
     }
 
-    const prompt = `Analiza este PDF${pageNumber ? ` (especialmente la página ${pageNumber})` : ""} y encuentra el texto exacto "${searchText}". 
+    const prompt = `Eres un analizador de documentos PDF. Tu tarea es encontrar la ubicación EXACTA de un bloque de texto de firma en el documento.
 
-IMPORTANTE: Debes devolver SOLO un objeto JSON válido con las coordenadas donde aparece el texto. El formato exacto es:
+TEXTO A BUSCAR (bloque de firma):
+"${searchText}"
 
-{
-  "page": número_de_página_empezando_en_1,
-  "x": coordenada_x_en_puntos_pdf_desde_la_izquierda,
-  "y": coordenada_y_en_puntos_pdf_desde_abajo,
-  "width": ancho_aproximado_del_texto_en_puntos,
-  "height": alto_aproximado_del_texto_en_puntos
-}
+Este texto normalmente aparece como parte de un bloque de firma al final de una página, posiblemente con una línea de guiones encima (------) y debajo puede tener un cargo como "PRESIDENTE" y un número de cédula.
 
-Las coordenadas deben estar en el sistema de puntos PDF (72 puntos = 1 pulgada). El origen (0,0) está en la esquina inferior izquierda de la página.
+INSTRUCCIONES:
+1. ${pageNumber ? `Busca PRIMERO en la página ${pageNumber}.` : "Busca en TODAS las páginas del documento, especialmente en las últimas páginas."}
+2. Localiza el texto EXACTO "${searchText}" - no confundas con menciones del mismo nombre en el cuerpo del documento.
+3. Busca específicamente el bloque de firma (generalmente al final de la página, con formato diferente al texto del cuerpo).
+4. Las coordenadas DEBEN estar en puntos PDF (72 puntos = 1 pulgada).
+5. El origen (0,0) está en la esquina INFERIOR IZQUIERDA de la página.
+6. Para una página tamaño carta (612 x 792 puntos), si el texto está casi al final de la página, la coordenada Y será un valor BAJO (cercano a 50-150).
 
-${pageNumber ? `Busca PRIMERO en la página ${pageNumber}. Si no lo encuentras ahí, busca en otras páginas.` : ""}
+IMPORTANTE - DIFERENCIA ENTRE MENCIONES:
+- El nombre "${searchText}" puede aparecer VARIAS VECES en el documento (en el cuerpo del texto como mención).
+- Debes encontrar la aparición que es parte del BLOQUE DE FIRMA, que se distingue por:
+  * Estar separado del texto principal
+  * Tener formato de firma (centrado o alineado, con línea de guiones encima)
+  * Estar acompañado de cargo y número de documento
+  * Generalmente al FINAL de la última o penúltima página
 
-Si el texto no se encuentra, devuelve exactamente: {"page": null, "x": null, "y": null, "width": null, "height": null}
+Devuelve SOLO un JSON con este formato exacto:
+{"page": número_página_1_indexed, "x": coordenada_x, "y": coordenada_y_desde_abajo, "width": ancho_texto, "height": alto_bloque_firma}
 
-NO agregues explicaciones, solo el JSON.`;
+Si NO encuentras el bloque de firma, devuelve: {"page": null, "x": null, "y": null, "width": null, "height": null}
+
+NO agregues explicaciones, SOLO el JSON.`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -58,7 +68,7 @@ NO agregues explicaciones, solo el JSON.`;
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-2.5-pro",
           messages: [
             {
               role: "user",
