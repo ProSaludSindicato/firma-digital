@@ -29,35 +29,31 @@ serve(async (req) => {
       );
     }
 
-    const prompt = `Eres un analizador de documentos PDF. Tu tarea es encontrar la ubicación EXACTA de un bloque de texto de firma en el documento.
+    const prompt = `Analiza este documento PDF y encuentra la ubicación del BLOQUE DE FIRMA.
 
-TEXTO A BUSCAR (bloque de firma):
-"${searchText}"
+CÓMO IDENTIFICAR EL BLOQUE DE FIRMA:
+- Busca la palabra "PRESIDENTE" - aparece UNA SOLA VEZ en todo el documento y es parte del bloque de firma.
+- El bloque completo tiene esta estructura (3 líneas consecutivas):
+  Línea 1: "${searchText}" (nombre del firmante)
+  Línea 2: "PRESIDENTE" (cargo)
+  Línea 3: Un número de cédula (ej: "C.C. 71.396.099 de Caldas")
 
-Este texto normalmente aparece como parte de un bloque de firma al final de una página, posiblemente con una línea de guiones encima (------) y debajo puede tener un cargo como "PRESIDENTE" y un número de cédula.
+DÓNDE BUSCAR:
+${pageNumber ? `Busca en la página ${pageNumber}.` : "Busca en las últimas páginas del documento."}
+El bloque está hacia el FINAL de la página, después de todo el texto del documento.
 
-INSTRUCCIONES:
-1. ${pageNumber ? `Busca PRIMERO en la página ${pageNumber}.` : "Busca en TODAS las páginas del documento, especialmente en las últimas páginas."}
-2. Localiza el texto EXACTO "${searchText}" - no confundas con menciones del mismo nombre en el cuerpo del documento.
-3. Busca específicamente el bloque de firma (generalmente al final de la página, con formato diferente al texto del cuerpo).
-4. Las coordenadas DEBEN estar en puntos PDF (72 puntos = 1 pulgada).
-5. El origen (0,0) está en la esquina INFERIOR IZQUIERDA de la página.
-6. Para una página tamaño carta (612 x 792 puntos), si el texto está casi al final de la página, la coordenada Y será un valor BAJO (cercano a 50-150).
+COORDENADAS:
+- Sistema PDF: origen (0,0) en esquina INFERIOR IZQUIERDA.
+- Unidades: puntos PDF (72 puntos = 1 pulgada).
+- Página carta = 612 x 792 puntos.
+- Si el bloque está en el tercio inferior de la página, Y estará entre 50-250.
+- Devuelve las coordenadas del NOMBRE "${searchText}" (primera línea del bloque).
 
-IMPORTANTE - DIFERENCIA ENTRE MENCIONES:
-- El nombre "${searchText}" puede aparecer VARIAS VECES en el documento (en el cuerpo del texto como mención).
-- Debes encontrar la aparición que es parte del BLOQUE DE FIRMA, que se distingue por:
-  * Estar separado del texto principal
-  * Tener formato de firma (centrado o alineado, con línea de guiones encima)
-  * Estar acompañado de cargo y número de documento
-  * Generalmente al FINAL de la última o penúltima página
+RESPUESTA - devuelve ÚNICAMENTE este JSON sin formato markdown, sin backticks, sin explicaciones:
+{"page":N,"x":X,"y":Y,"width":W,"height":H}
 
-Devuelve SOLO un JSON con este formato exacto:
-{"page": número_página_1_indexed, "x": coordenada_x, "y": coordenada_y_desde_abajo, "width": ancho_texto, "height": alto_bloque_firma}
-
-Si NO encuentras el bloque de firma, devuelve: {"page": null, "x": null, "y": null, "width": null, "height": null}
-
-NO agregues explicaciones, SOLO el JSON.`;
+Si no encuentras el bloque:
+{"page":null,"x":null,"y":null,"width":null,"height":null}`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -87,7 +83,7 @@ NO agregues explicaciones, SOLO el JSON.`;
             },
           ],
           temperature: 0.1,
-          max_tokens: 300,
+          max_tokens: 500,
         }),
       }
     );
@@ -123,8 +119,12 @@ NO agregues explicaciones, SOLO el JSON.`;
       );
     }
 
-    // Extract JSON from response
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    // Extract JSON from response - handle markdown code fences
+    let cleanedResponse = responseText;
+    // Remove markdown code fences if present (```json ... ``` or ``` ... ```)
+    cleanedResponse = cleanedResponse.replace(/```(?:json)?\s*/gi, "").replace(/```/g, "").trim();
+    
+    const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.error("No JSON found in response:", responseText);
       return new Response(

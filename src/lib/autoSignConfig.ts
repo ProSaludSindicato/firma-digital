@@ -28,6 +28,7 @@ export const AUTO_SIGN_IMAGE_OPTIONS = {
  */
 export const AI_SEARCH_CONFIG = {
   searchText: "JORGE IVAN ÁLVAREZ SOTO", // Texto de referencia para ubicar la firma
+  anchorText: "PRESIDENTE", // Texto ancla único en el documento (aparece solo en el bloque de firma)
   defaultSearchPage: 2, // Página por defecto donde buscar la firma
   offsetX: 0, // Offset horizontal desde el texto (puntos PDF)
   offsetY: -30, // Offset vertical desde el texto (puntos PDF, negativo = arriba)
