@@ -32,9 +32,9 @@ const PDFThumbnailsComponent = ({
 
       const thumbs: string[] = [];
       // Calculate thumbnail scale proportionally to document scale
-      // Base scale is 0.3, and we scale it proportionally to document scale
-      // This ensures thumbnails are proportional to the main document zoom
-      const baseThumbnailScale = 0.3;
+      // Base scale increased significantly to make thumbnails appear much larger
+      // With zoom 160% (1.6), this will produce: 0.86 * 1.6 = 1.376 (larger than previous 200% zoom size)
+      const baseThumbnailScale = 0.86;
       const scale = baseThumbnailScale * documentScale;
       const numPages = pdfDoc.numPages;
 
@@ -115,9 +115,9 @@ const PDFThumbnailsComponent = ({
 
   // Calculate sidebar width proportionally to document scale
   // Base width is 96px (w-24), scales up with document zoom
-  // Clamp between 96px and 192px to avoid too small or too large sidebars
+  // Increased max width to 240px to accommodate larger thumbnails
   const baseWidth = 96; // w-24 = 96px
-  const sidebarWidth = Math.min(192, Math.max(96, baseWidth * documentScale));
+  const sidebarWidth = Math.min(240, Math.max(96, baseWidth * documentScale));
 
   if (!pdfDoc || thumbnails.length === 0) {
     return (

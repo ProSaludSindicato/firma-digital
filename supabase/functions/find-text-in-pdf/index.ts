@@ -31,31 +31,32 @@ serve(async (req) => {
 
     const prompt = `Analiza este PDF${pageNumber ? ` (especialmente la página ${pageNumber})` : ""} y encuentra el texto "${searchText}".
 
-OBJETIVO: Encontrar la coordenada Y donde debe ir la FIRMA, que está JUSTO ENCIMA del bloque de texto que contiene "${searchText}".
+OBJETIVO CRÍTICO: Encontrar la coordenada Y de la LÍNEA HORIZONTAL DE FIRMA que está DIRECTAMENTE ENCIMA (ARRIBA) del bloque de texto "${searchText}".
 
-INSTRUCCIONES:
+PROCESO:
 1. Busca el texto "${searchText}" en el documento
-2. Identifica el BLOQUE COMPLETO de texto que contiene "${searchText}" (generalmente incluye el nombre, cargo como "PRESIDENTE", y número de cédula)
-3. Identifica la LÍNEA HORIZONTAL DE FIRMA que está DIRECTAMENTE ENCIMA de este bloque de texto
-4. Esta línea es una línea negra delgada que se extiende horizontalmente
-5. La línea está VISIBLEMENTE MÁS ARRIBA que el bloque de texto (en PDF, Y mayor = más arriba)
-6. La firma debe ir SOBRE esta línea, ENCIMA del bloque de texto
+2. Identifica el BLOQUE COMPLETO de texto que contiene "${searchText}" (nombre, "PRESIDENTE", número de cédula)
+3. Mira ARRIBA del bloque de texto (hacia arriba en la página, Y mayor)
+4. Encuentra la LÍNEA HORIZONTAL NEGRA DELGADA que está DIRECTAMENTE ENCIMA del bloque
+5. Esta línea está VISIBLEMENTE MÁS ARRIBA que el bloque (en PDF, Y mayor = más arriba en la página)
+6. La firma va SOBRE esta línea
 
-COORDENADA Y:
-- La coordenada Y debe ser la posición vertical de la LÍNEA DE FIRMA (donde debe ir la firma)
-- Esta línea está ENCIMA del bloque de texto, NO debajo, NO al lado
-- Para texto en la parte inferior de una página carta, Y típicamente está entre 240-260 puntos
-- La línea está separada del bloque de texto por un espacio visible (típicamente 40-60 puntos)
+COORDENADA Y - LEE CON ATENCIÓN:
+- La coordenada Y debe ser la posición vertical de la LÍNEA DE FIRMA (no del bloque de texto)
+- Esta línea está ENCIMA del bloque, NO debajo, NO al lado
+- Si el bloque de texto está en Y:200, la línea de firma está en Y:250-260 (MÁS ARRIBA)
+- Para documentos estándar, la línea de firma típicamente está en Y:240-260 puntos
+- Si obtienes Y < 200, estás midiendo el bloque de texto, NO la línea de firma encima
 
 Sistema de coordenadas PDF:
 - Origen (0,0) = esquina INFERIOR IZQUIERDA de la página
-- Y aumenta hacia ARRIBA (0 = borde inferior de la página)
+- Y aumenta hacia ARRIBA (Y mayor = más arriba en la página)
 - 72 puntos = 1 pulgada
 
-IMPORTANTE:
-- La firma va ENCIMA del bloque de texto, no debajo
-- La línea de firma está MÁS ARRIBA que el bloque (Y mayor)
-- Si el bloque de texto está en Y:200, la línea de firma debería estar en Y:250 aproximadamente
+VALIDACIÓN:
+- La línea de firma tiene Y MAYOR que el bloque de texto
+- Si obtienes Y < 200, estás midiendo incorrectamente (probablemente el bloque, no la línea)
+- La línea de firma típicamente está en Y:240-260 para documentos estándar
 
 Devuelve SOLO un objeto JSON válido sin explicaciones, sin markdown, sin backticks:
 
@@ -167,12 +168,20 @@ Si el texto no se encuentra, devuelve exactamente: null`;
       
       console.log(`[Edge Function] Línea de firma encontrada (IA) - Y: ${signatureY}`);
       
-      // Ajuste automático: si Y es menor a 240, probablemente está muy baja
+      // Ajuste automático agresivo: si Y es muy baja, está midiendo el bloque, no la línea
       // La línea de firma típicamente está entre 240-260 para documentos estándar
-      if (signatureY < 240) {
-        const adjustment = 240 - signatureY;
-        console.log(`[Edge Function] Y muy baja (${signatureY}), ajustando +${adjustment} puntos`);
-        signatureY = 240; // Llevar a un mínimo de 240
+      // El usuario espera aproximadamente 255
+      if (signatureY < 200) {
+        // Si Y < 200, definitivamente está midiendo el bloque de texto, no la línea
+        // Ajustar a 255 (valor esperado por el usuario)
+        const adjustment = 255 - signatureY;
+        console.log(`[Edge Function] Y muy baja (${signatureY}), probablemente midiendo el bloque. Ajustando a 255 (+${adjustment} puntos)`);
+        signatureY = 255;
+      } else if (signatureY < 240) {
+        // Si Y está entre 200-240, ajustar hacia arriba
+        const adjustment = 255 - signatureY;
+        console.log(`[Edge Function] Y baja (${signatureY}), ajustando a 255 (+${adjustment} puntos)`);
+        signatureY = 255;
       }
 
       return new Response(

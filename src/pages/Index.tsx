@@ -126,6 +126,7 @@ const Index = () => {
         onFinish={handleFinishAndSend}
         isProcessing={isDownloading}
         isSent={isSent}
+        title="Convenio de afiliación ProSalud"
       />
 
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">

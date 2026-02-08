@@ -6,14 +6,15 @@ interface HeaderProps {
   onFinish?: () => void;
   isProcessing?: boolean;
   isSent?: boolean;
+  title?: string;
 }
 
-export const Header = ({ showFinishButton, onFinish, isProcessing, isSent }: HeaderProps) => {
+export const Header = ({ showFinishButton, onFinish, isProcessing, isSent, title = "Convenio de afiliación ProSalud" }: HeaderProps) => {
   return (
     <header className="sticky top-0 z-50 px-3 md:px-6 py-2 md:py-3" style={{ backgroundColor: "hsl(220 50% 18%)" }}>
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
-        <p className="text-xs md:text-sm text-primary-foreground/90 flex-1">
-          Página 2: haga clic en el área marcada para firmar ✍️
+        <p className="text-xs md:text-sm text-primary-foreground/90 flex-1 font-medium">
+          {title}
         </p>
         {showFinishButton && !isSent && (
           <Button

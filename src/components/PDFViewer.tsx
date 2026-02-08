@@ -225,8 +225,9 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
 
       if (placeholderPosition) {
         // Smaller default size on mobile to avoid needing to resize
+        // Increased height on desktop for better visibility
         const defaultWidth = isMobile ? 100 : 150;
-        const defaultHeight = isMobile ? 40 : 60;
+        const defaultHeight = isMobile ? 40 : 80;
 
         onSignaturePositionChange({
           x: placeholderPosition.x,
