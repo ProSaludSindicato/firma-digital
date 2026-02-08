@@ -29,31 +29,44 @@ serve(async (req) => {
       );
     }
 
-    const prompt = `Analiza este documento PDF y encuentra la ubicación del BLOQUE DE FIRMA.
+    const prompt = `Analiza este PDF${pageNumber ? ` (especialmente la página ${pageNumber})` : ""} y encuentra el texto "${searchText}".
 
-CÓMO IDENTIFICAR EL BLOQUE DE FIRMA:
-- Busca la palabra "PRESIDENTE" - aparece UNA SOLA VEZ en todo el documento y es parte del bloque de firma.
-- El bloque completo tiene esta estructura (3 líneas consecutivas):
-  Línea 1: "${searchText}" (nombre del firmante)
-  Línea 2: "PRESIDENTE" (cargo)
-  Línea 3: Un número de cédula (ej: "C.C. 71.396.099 de Caldas")
+OBJETIVO: Encontrar la coordenada Y donde debe ir la FIRMA, que está JUSTO ENCIMA del bloque de texto que contiene "${searchText}".
 
-DÓNDE BUSCAR:
-${pageNumber ? `Busca en la página ${pageNumber}.` : "Busca en las últimas páginas del documento."}
-El bloque está hacia el FINAL de la página, después de todo el texto del documento.
+INSTRUCCIONES:
+1. Busca el texto "${searchText}" en el documento
+2. Identifica el BLOQUE COMPLETO de texto que contiene "${searchText}" (generalmente incluye el nombre, cargo como "PRESIDENTE", y número de cédula)
+3. Identifica la LÍNEA HORIZONTAL DE FIRMA que está DIRECTAMENTE ENCIMA de este bloque de texto
+4. Esta línea es una línea negra delgada que se extiende horizontalmente
+5. La línea está VISIBLEMENTE MÁS ARRIBA que el bloque de texto (en PDF, Y mayor = más arriba)
+6. La firma debe ir SOBRE esta línea, ENCIMA del bloque de texto
 
-COORDENADAS:
-- Sistema PDF: origen (0,0) en esquina INFERIOR IZQUIERDA.
-- Unidades: puntos PDF (72 puntos = 1 pulgada).
-- Página carta = 612 x 792 puntos.
-- Si el bloque está en el tercio inferior de la página, Y estará entre 50-250.
-- Devuelve las coordenadas del NOMBRE "${searchText}" (primera línea del bloque).
+COORDENADA Y:
+- La coordenada Y debe ser la posición vertical de la LÍNEA DE FIRMA (donde debe ir la firma)
+- Esta línea está ENCIMA del bloque de texto, NO debajo, NO al lado
+- Para texto en la parte inferior de una página carta, Y típicamente está entre 240-260 puntos
+- La línea está separada del bloque de texto por un espacio visible (típicamente 40-60 puntos)
 
-RESPUESTA - devuelve ÚNICAMENTE este JSON sin formato markdown, sin backticks, sin explicaciones:
-{"page":N,"x":X,"y":Y,"width":W,"height":H}
+Sistema de coordenadas PDF:
+- Origen (0,0) = esquina INFERIOR IZQUIERDA de la página
+- Y aumenta hacia ARRIBA (0 = borde inferior de la página)
+- 72 puntos = 1 pulgada
 
-Si no encuentras el bloque:
-{"page":null,"x":null,"y":null,"width":null,"height":null}`;
+IMPORTANTE:
+- La firma va ENCIMA del bloque de texto, no debajo
+- La línea de firma está MÁS ARRIBA que el bloque (Y mayor)
+- Si el bloque de texto está en Y:200, la línea de firma debería estar en Y:250 aproximadamente
+
+Devuelve SOLO un objeto JSON válido sin explicaciones, sin markdown, sin backticks:
+
+{
+  "page": número_de_página_empezando_en_1,
+  "y": coordenada_y_de_la_línea_de_firma_encima_del_bloque
+}
+
+${pageNumber ? `Busca PRIMERO en la página ${pageNumber}. Si no lo encuentras ahí, busca en otras páginas.` : ""}
+
+Si el texto no se encuentra, devuelve exactamente: null`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -64,7 +77,7 @@ Si no encuentras el bloque:
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-pro",
+          model: "google/gemini-2.5-flash",
           messages: [
             {
               role: "user",
@@ -82,8 +95,8 @@ Si no encuentras el bloque:
               ],
             },
           ],
-          temperature: 0.1,
-          max_tokens: 16000,
+          temperature: 0,
+          max_tokens: 300,
         }),
       }
     );
@@ -139,21 +152,37 @@ Si no encuentras el bloque:
       const location = JSON.parse(jsonMatch[0]);
 
       // Validate the location data
-      if (!location.page || !location.x || !location.y) {
+      if (!location.page || !location.y) {
         return new Response(
           JSON.stringify({ location: null }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
+      // X siempre es 80 (fijado temporalmente)
+      const signatureX = 80;
+      
+      // Y viene directamente de la IA (ya es la posición de la línea de firma)
+      let signatureY = location.y;
+      
+      console.log(`[Edge Function] Línea de firma encontrada (IA) - Y: ${signatureY}`);
+      
+      // Ajuste automático: si Y es menor a 240, probablemente está muy baja
+      // La línea de firma típicamente está entre 240-260 para documentos estándar
+      if (signatureY < 240) {
+        const adjustment = 240 - signatureY;
+        console.log(`[Edge Function] Y muy baja (${signatureY}), ajustando +${adjustment} puntos`);
+        signatureY = 240; // Llevar a un mínimo de 240
+      }
+
       return new Response(
         JSON.stringify({
           location: {
             page: location.page,
-            x: location.x,
-            y: location.y,
-            width: location.width || 100,
-            height: location.height || 20,
+            x: signatureX, // X fijado en 80
+            y: signatureY, // Y de la línea de firma (ajustada si es necesario)
+            width: 150,
+            height: 0, // Alto debe ser 0 para línea de firma
           },
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

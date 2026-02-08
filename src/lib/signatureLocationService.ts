@@ -116,15 +116,17 @@ export function createSignatureLocationProvider(): SignatureLocationProvider {
 // ─── Utilidad de posición ─────────────────────────────────────
 
 /**
- * Calcula la posición de la firma relativa al texto encontrado
+ * Calcula la posición de la firma relativa a la línea de firma encontrada
+ * Nota: X siempre es 80 (fijado temporalmente)
+ * Y viene de la IA (posición de la línea de firma encima del bloque)
  */
 export function calculateSignaturePosition(
   textLocation: TextLocation,
   offsetX: number = 0,
-  offsetY: number = -30,
+  offsetY: number = 0, // Por defecto 0, ya que las coordenadas son de la línea de firma
 ): SignaturePosition {
   return {
-    x: Math.max(0, textLocation.x + offsetX),
+    x: 80, // X fijado en 80 (temporalmente)
     y: Math.max(0, textLocation.y + offsetY),
     page: textLocation.page,
   };
