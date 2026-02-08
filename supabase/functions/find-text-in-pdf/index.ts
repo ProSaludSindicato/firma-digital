@@ -83,7 +83,7 @@ Si no encuentras el bloque:
             },
           ],
           temperature: 0.1,
-          max_tokens: 500,
+          max_tokens: 16000,
         }),
       }
     );
@@ -110,7 +110,9 @@ Si no encuentras el bloque:
     }
 
     const data = await response.json();
+    const finishReason = data.choices?.[0]?.finish_reason;
     const responseText = data.choices?.[0]?.message?.content?.trim();
+    console.log("AI finish_reason:", finishReason, "response length:", responseText?.length);
 
     if (!responseText) {
       return new Response(
