@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { Download, Send, AlertTriangle, CheckCircle, FileText, Upload } from "lucide-react";
+import { useState, useRef } from "react";
+import { Download, Send, AlertTriangle, CheckCircle, FileText, Upload, PenLine } from "lucide-react";
 import { Header } from "@/components/Header";
 import { PDFUploader } from "@/components/PDFUploader";
-import { PDFViewer } from "@/components/PDFViewer";
+import { PDFViewer, PDFViewerRef } from "@/components/PDFViewer";
 import { Button } from "@/components/ui/button";
 import { usePDFSigner } from "@/hooks/usePDFSigner";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
@@ -21,6 +21,7 @@ import {
 const Index = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isSent, setIsSent] = useState(false);
+  const pdfViewerRef = useRef<PDFViewerRef>(null);
 
   const {
     pdfFile,
@@ -38,7 +39,13 @@ const Index = () => {
   } = usePDFSigner();
 
   const handleFinishAndSend = () => {
-    setShowConfirmDialog(true);
+    if (!signature) {
+      // Si no hay firma, activar modo de colocación
+      pdfViewerRef.current?.activatePlacementMode();
+    } else {
+      // Si hay firma, mostrar diálogo de confirmación
+      setShowConfirmDialog(true);
+    }
   };
 
   // Keyboard shortcuts
@@ -49,7 +56,7 @@ const Index = () => {
         ctrlKey: true,
         metaKey: true,
         handler: async () => {
-          if (canDownload && !isDownloading && !isSent) {
+          if (!isDownloading && !isSent) {
             handleFinishAndSend();
           } else if (isSent && !isDownloading) {
             try {
@@ -59,7 +66,7 @@ const Index = () => {
             }
           }
         },
-        description: 'Finalizar y enviar / Descargar',
+        description: 'Ingresar firma / Finalizar y enviar / Descargar',
       },
     ],
     !!pdfFile
@@ -180,6 +187,7 @@ const Index = () => {
             {/* PDF Viewer - full width on mobile */}
             <div className="flex-1 min-h-0 overflow-hidden">
               <PDFViewer
+                ref={pdfViewerRef}
                 file={pdfFile}
                 signature={signature}
                 signaturePosition={signaturePosition}
@@ -213,20 +221,32 @@ const Index = () => {
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2">
-                  {!canDownload && pdfFile && (
+                  {!signature && pdfFile && (
                     <p className="text-xs text-muted-foreground text-center">
-                      {!signature
-                        ? "Haz clic donde deseas agregar tu firma"
-                        : "Ajuste la posición de la firma si es necesario"}
+                      Haz clic en "Ingresar firma" y luego en el documento donde deseas colocar tu firma
+                    </p>
+                  )}
+                  {signature && !canDownload && pdfFile && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      Ajuste la posición de la firma si es necesario
                     </p>
                   )}
                   <Button
                     onClick={handleFinishAndSend}
-                    disabled={!canDownload || isDownloading}
+                    disabled={isDownloading}
                     className="w-full max-w-md"
                   >
-                    <Send className="w-4 h-4 mr-2" />
-                    {isDownloading ? "Procesando..." : "Finalizar y Enviar Convenio"}
+                    {signature ? (
+                      <>
+                        <Send className="w-4 h-4 mr-2" />
+                        {isDownloading ? "Procesando..." : "Finalizar y Enviar Convenio"}
+                      </>
+                    ) : (
+                      <>
+                        <PenLine className="w-4 h-4 mr-2" />
+                        Ingresar firma
+                      </>
+                    )}
                   </Button>
                 </div>
               )}

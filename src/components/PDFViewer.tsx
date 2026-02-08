@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useImperativeHandle, forwardRef } from "react";
 import * as pdfjsLib from "pdfjs-dist";
-import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Loader2, PenLine } from "lucide-react";
+import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PDFThumbnails } from "./PDFThumbnails";
 import { PDFPageView } from "./PDFPageView";
@@ -31,7 +31,11 @@ interface PDFViewerProps {
   isLocked?: boolean;
 }
 
-export const PDFViewer = ({
+export interface PDFViewerRef {
+  activatePlacementMode: () => void;
+}
+
+export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
   file,
   signature,
   signaturePosition,
@@ -40,7 +44,7 @@ export const PDFViewer = ({
   onClearSignature,
   onTotalPagesChange,
   isLocked = false,
-}: PDFViewerProps) => {
+}, ref) => {
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -123,19 +127,19 @@ export const PDFViewer = ({
 
   const handleActivatePlacementMode = useCallback(() => {
     if (!signature) {
-      if (isPlacementMode) {
-        // Si ya está activo, desactivarlo
-        setIsPlacementMode(false);
-      } else {
-        // Activar modo de colocación
-        setIsPlacementMode(true);
-        // Si no estamos en la página de firma, ir a ella
-        if (currentPage !== SIGNATURE_PAGE && totalPages >= SIGNATURE_PAGE) {
-          setCurrentPage(SIGNATURE_PAGE);
-        }
+      // Activar modo de colocación
+      setIsPlacementMode(true);
+      // Si no estamos en la página de firma, ir a ella
+      if (currentPage !== SIGNATURE_PAGE && totalPages >= SIGNATURE_PAGE) {
+        setCurrentPage(SIGNATURE_PAGE);
       }
     }
-  }, [signature, currentPage, totalPages, isPlacementMode]);
+  }, [signature, currentPage, totalPages]);
+
+  // Exponer función para activar modo de colocación desde el componente padre
+  useImperativeHandle(ref, () => ({
+    activatePlacementMode: handleActivatePlacementMode,
+  }), [handleActivatePlacementMode]);
 
   const handleZoomIn = useCallback(() => {
     setScale((s) => Math.min(2, s + 0.2));
@@ -330,26 +334,6 @@ export const PDFViewer = ({
           </Button>
         </div>
 
-        {/* Add signature button - visible when no signature yet */}
-        {!signature && totalPages >= SIGNATURE_PAGE && (
-          <Button
-            variant={isPlacementMode ? "default" : "outline"}
-            size="sm"
-            onClick={handleActivatePlacementMode}
-            className={`h-7 md:h-8 text-xs gap-1 ${
-              isPlacementMode
-                ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                : "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
-            }`}
-          >
-            <PenLine className="w-3 h-3" />
-            <span className="hidden sm:inline">
-              {isPlacementMode ? "Modo activo: Haz clic en el documento" : "Ingresar firma"}
-            </span>
-            <span className="sm:hidden">{isPlacementMode ? "Activo" : "Firmar"}</span>
-          </Button>
-        )}
-
         {/* File name - hidden on mobile, full on desktop */}
         <span className="text-xs text-muted-foreground hidden md:block">
           {file.name}
@@ -422,4 +406,6 @@ export const PDFViewer = ({
       <SignatureTutorial isOpen={showTutorial} onClose={closeTutorial} />
     </div>
   );
-};
+});
+
+PDFViewer.displayName = "PDFViewer";
