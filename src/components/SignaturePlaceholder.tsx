@@ -27,12 +27,12 @@ export const SignaturePlaceholder = ({ onClick, onDragStart, onTouchDragStart, s
           }}
           variant="outline"
           size={isMobile ? "xs" : "default"}
-          className={`bg-primary/10 border-primary border-2 border-dashed hover:bg-primary/20 text-primary font-medium shadow-lg pointer-events-auto ${
+          className={`bg-yellow-50 dark:bg-yellow-950/30 border-primary border-2 border-dashed hover:bg-yellow-100 dark:hover:bg-yellow-950/50 text-primary font-semibold shadow-lg pointer-events-auto ${
             isMobile ? "h-8 py-1.5" : "h-12 py-3"
           }`}
         >
-          <PenLine className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-          {isMobile ? "Firmar" : "Agregar firma aquí"}
+          <PenLine className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2" />
+          {isMobile ? "Firmar" : "Firma aquí"}
         </Button>
         {!isMobile && (
           <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-muted text-muted-foreground text-[10px] leading-tight px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">

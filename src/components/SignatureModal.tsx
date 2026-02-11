@@ -700,7 +700,7 @@ export const SignatureModal = ({
   // Desktop modal (original behavior)
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg md:max-w-xl">
+      <DialogContent className="sm:max-w-lg md:max-w-xl lg:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{currentSignature ? "Editar tu firma" : "Agregar tu firma"}</DialogTitle>
         </DialogHeader>
@@ -727,7 +727,7 @@ export const SignatureModal = ({
 
           {currentSignature && (
             <TabsContent value="preview" className="mt-0">
-              <div className="border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent p-4 flex items-center justify-center min-h-[200px]">
+              <div className="border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent p-4 flex items-center justify-center min-h-[300px] md:min-h-[400px]">
                 <img
                   src={currentSignature}
                   alt="Tu firma actual"
@@ -752,11 +752,11 @@ export const SignatureModal = ({
           )}
 
           <TabsContent value="draw" className="mt-0">
-            <div className="border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent">
+            <div className="border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent h-[300px] md:h-[380px]">
               <SignatureCanvas
                 ref={signatureRef}
                 canvasProps={{
-                  className: "w-full h-72 md:h-80",
+                  className: "w-full h-full",
                   style: { width: "100%", height: "100%", touchAction: "none" },
                 }}
                 backgroundColor="transparent"

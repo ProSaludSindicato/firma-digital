@@ -217,7 +217,7 @@ const Index = () => {
                   </div>
                   <Button onClick={downloadSignedPDF} disabled={isDownloading} className="w-full max-w-md">
                     <Download className="w-4 h-4 mr-2" />
-                    {isDownloading ? "Procesando..." : "Descargar PDF firmado"}
+                    {isDownloading ? "Procesando..." : "Descargar copia firmada"}
                   </Button>
                 </div>
               ) : (
@@ -240,7 +240,7 @@ const Index = () => {
                     {signature ? (
                       <>
                         <Send className="w-4 h-4 mr-2" />
-                        {isDownloading ? "Procesando..." : "Finalizar y Enviar Convenio"}
+                        {isDownloading ? "Procesando..." : "Enviar convenio firmado"}
                       </>
                     ) : (
                       <>
@@ -264,13 +264,25 @@ const Index = () => {
               <AlertTriangle className="w-5 h-5 text-destructive" />
               Confirmar envío del convenio
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-left space-y-2">
+            <AlertDialogDescription className="text-left space-y-3">
               <p>
-                <strong>Al confirmar, la firma quedará integrada al documento y no podrá modificarse.</strong>
+                <strong>Al enviar este convenio confirmas que la información es correcta y que aceptas el convenio.</strong>
               </p>
-              <p className="text-muted-foreground">
-                Asegúrese de que la firma esté correctamente ubicada antes de continuar. Una vez enviado, podrá
-                descargar una copia del documento firmado.
+              <div className="bg-muted/50 p-3 rounded-md space-y-2 text-sm">
+                <p className="text-muted-foreground">
+                  <strong className="text-foreground">Importante:</strong> La firma quedará integrada al documento y no podrá modificarse.
+                </p>
+                <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <CheckCircle className="w-4 h-4 mt-0.5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                  <span>Documento firmado digitalmente</span>
+                </div>
+                <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <CheckCircle className="w-4 h-4 mt-0.5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                  <span>Fecha y hora: {new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</span>
+                </div>
+              </div>
+              <p className="text-muted-foreground text-sm">
+                Una vez enviado, se enviará una copia a tu correo y podrás descargar el documento firmado.
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
