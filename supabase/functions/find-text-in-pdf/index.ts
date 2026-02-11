@@ -29,45 +29,29 @@ serve(async (req) => {
       );
     }
 
-    const prompt = `Analiza este PDF${pageNumber ? ` (especialmente la página ${pageNumber})` : ""} y encuentra el texto "${searchText}".
+    const prompt = `Analiza este documento PDF${pageNumber ? ` (página ${pageNumber})` : ""}.
 
-OBJETIVO CRÍTICO: Encontrar la coordenada Y de la LÍNEA HORIZONTAL DE FIRMA que está DIRECTAMENTE ENCIMA (ARRIBA) del bloque de texto "${searchText}".
+TAREA: Encuentra la palabra "PRESIDENTE" en el documento. Esta palabra aparece UNA SOLA VEZ en todo el documento, dentro de un bloque de firma que tiene esta estructura:
 
-PROCESO:
-1. Busca el texto "${searchText}" en el documento
-2. Identifica el BLOQUE COMPLETO de texto que contiene "${searchText}" (nombre, "PRESIDENTE", número de cédula)
-3. Mira ARRIBA del bloque de texto (hacia arriba en la página, Y mayor)
-4. Encuentra la LÍNEA HORIZONTAL NEGRA DELGADA que está DIRECTAMENTE ENCIMA del bloque
-5. Esta línea está VISIBLEMENTE MÁS ARRIBA que el bloque (en PDF, Y mayor = más arriba en la página)
-6. La firma va SOBRE esta línea
+${searchText}
+PRESIDENTE
+C.C. 71.396.099 de Caldas
 
-COORDENADA Y - LEE CON ATENCIÓN:
-- La coordenada Y debe ser la posición vertical de la LÍNEA DE FIRMA (no del bloque de texto)
-- Esta línea está ENCIMA del bloque, NO debajo, NO al lado
-- Si el bloque de texto está en Y:200, la línea de firma está en Y:250-260 (MÁS ARRIBA)
-- Para documentos estándar, la línea de firma típicamente está en Y:240-260 puntos
-- Si obtienes Y < 200, estás midiendo el bloque de texto, NO la línea de firma encima
+Necesito la coordenada Y del BORDE SUPERIOR de la primera línea de texto de este bloque (la línea que dice "${searchText}").
 
 Sistema de coordenadas PDF:
-- Origen (0,0) = esquina INFERIOR IZQUIERDA de la página
-- Y aumenta hacia ARRIBA (Y mayor = más arriba en la página)
+- Origen (0,0) = esquina INFERIOR IZQUIERDA
+- Y aumenta hacia ARRIBA
 - 72 puntos = 1 pulgada
+- Página tamaño carta: 612 x 792 puntos
 
-VALIDACIÓN:
-- La línea de firma tiene Y MAYOR que el bloque de texto
-- Si obtienes Y < 200, estás midiendo incorrectamente (probablemente el bloque, no la línea)
-- La línea de firma típicamente está en Y:240-260 para documentos estándar
+IMPORTANTE: Este bloque está cerca del FINAL de la página (parte inferior), así que la coordenada Y será un valor BAJO (típicamente entre 150-250 puntos).
 
-Devuelve SOLO un objeto JSON válido sin explicaciones, sin markdown, sin backticks:
+Devuelve SOLO un JSON sin explicaciones:
+{"page": número_de_página, "y": coordenada_y_borde_superior_del_nombre}
 
-{
-  "page": número_de_página_empezando_en_1,
-  "y": coordenada_y_de_la_línea_de_firma_encima_del_bloque
-}
-
-${pageNumber ? `Busca PRIMERO en la página ${pageNumber}. Si no lo encuentras ahí, busca en otras páginas.` : ""}
-
-Si el texto no se encuentra, devuelve exactamente: null`;
+${pageNumber ? `Busca PRIMERO en la página ${pageNumber}.` : ""}
+Si no encuentras "PRESIDENTE", devuelve: null`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -78,7 +62,7 @@ Si el texto no se encuentra, devuelve exactamente: null`;
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-2.5-pro",
           messages: [
             {
               role: "user",
@@ -97,7 +81,7 @@ Si el texto no se encuentra, devuelve exactamente: null`;
             },
           ],
           temperature: 0,
-          max_tokens: 300,
+          max_tokens: 16000,
         }),
       }
     );
@@ -163,26 +147,14 @@ Si el texto no se encuentra, devuelve exactamente: null`;
       // X siempre es 80 (fijado temporalmente)
       const signatureX = 80;
       
-      // Y viene directamente de la IA (ya es la posición de la línea de firma)
-      let signatureY = location.y;
+      // La IA devuelve la Y del borde superior del nombre (primera línea del bloque)
+      // La línea de firma está ~52 puntos ARRIBA del nombre
+      // Offset calibrado: 255 (posición correcta) - 203 (posición del texto) = 52
+      const SIGNATURE_LINE_OFFSET = 52;
+      const rawY = location.y;
+      const signatureY = rawY + SIGNATURE_LINE_OFFSET;
       
-      console.log(`[Edge Function] Línea de firma encontrada (IA) - Y: ${signatureY}`);
-      
-      // Ajuste automático agresivo: si Y es muy baja, está midiendo el bloque, no la línea
-      // La línea de firma típicamente está entre 240-260 para documentos estándar
-      // El usuario espera aproximadamente 255
-      if (signatureY < 200) {
-        // Si Y < 200, definitivamente está midiendo el bloque de texto, no la línea
-        // Ajustar a 255 (valor esperado por el usuario)
-        const adjustment = 255 - signatureY;
-        console.log(`[Edge Function] Y muy baja (${signatureY}), probablemente midiendo el bloque. Ajustando a 255 (+${adjustment} puntos)`);
-        signatureY = 255;
-      } else if (signatureY < 240) {
-        // Si Y está entre 200-240, ajustar hacia arriba
-        const adjustment = 255 - signatureY;
-        console.log(`[Edge Function] Y baja (${signatureY}), ajustando a 255 (+${adjustment} puntos)`);
-        signatureY = 255;
-      }
+      console.log(`[Edge Function] Texto encontrado en Y: ${rawY}, firma en Y: ${signatureY} (+${SIGNATURE_LINE_OFFSET} offset)`);
 
       return new Response(
         JSON.stringify({
