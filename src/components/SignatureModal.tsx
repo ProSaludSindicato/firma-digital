@@ -697,20 +697,19 @@ export const SignatureModal = ({
     );
   }
 
-  // Desktop modal (original behavior)
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg md:max-w-xl lg:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{currentSignature ? "Editar tu firma" : "Agregar tu firma"}</DialogTitle>
+          <DialogTitle className="text-lg">{currentSignature ? "Tu firma" : "Agregar firma"}</DialogTitle>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className={`grid w-full mb-4 ${currentSignature ? 'grid-cols-2' : 'grid-cols-2'}`}>
+          <TabsList className="grid w-full mb-4 grid-cols-2">
             {currentSignature && (
               <TabsTrigger value="preview" className="flex items-center gap-2">
                 <Eye className="w-4 h-4" />
-                Tu firma
+                Vista previa
               </TabsTrigger>
             )}
             {!currentSignature && (
@@ -727,7 +726,7 @@ export const SignatureModal = ({
 
           {currentSignature && (
             <TabsContent value="preview" className="mt-0">
-              <div className="border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent p-4 flex items-center justify-center min-h-[300px] md:min-h-[400px]">
+              <div className="border border-border rounded-lg overflow-hidden bg-white dark:bg-accent p-6 flex items-center justify-center min-h-[280px] md:min-h-[360px]">
                 <img
                   src={currentSignature}
                   alt="Tu firma actual"
@@ -741,18 +740,22 @@ export const SignatureModal = ({
                   className="flex-1"
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
-                  Limpiar y crear nueva
+                  Crear nueva
                 </Button>
                 <Button onClick={onClose} className="flex-1">
                   <Check className="w-4 h-4 mr-2" />
-                  Mantener firma
+                  Mantener
                 </Button>
               </div>
             </TabsContent>
           )}
 
           <TabsContent value="draw" className="mt-0">
-            <div className="border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent h-[300px] md:h-[380px]">
+            <div className="border border-border rounded-lg overflow-hidden bg-white dark:bg-accent h-[280px] md:h-[360px] relative">
+              <div className="absolute bottom-16 left-8 right-8 border-b border-muted-foreground/15 pointer-events-none" />
+              <div className="absolute bottom-[52px] left-8 text-[10px] text-muted-foreground/30 pointer-events-none select-none">
+                Firma
+              </div>
               <SignatureCanvas
                 ref={signatureRef}
                 canvasProps={{
@@ -769,16 +772,18 @@ export const SignatureModal = ({
                 onClick={handleClearCanvas}
                 className="flex-1"
               >
+                <Trash2 className="w-4 h-4 mr-2" />
                 Limpiar
               </Button>
               <Button onClick={handleSaveSignature} className="flex-1">
+                <Check className="w-4 h-4 mr-2" />
                 Usar firma
               </Button>
             </div>
           </TabsContent>
 
           <TabsContent value="upload" className="mt-0">
-            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center bg-accent">
+            <div className="border border-border rounded-lg p-10 text-center bg-white dark:bg-accent hover:bg-muted/30 transition-colors">
               <input
                 type="file"
                 accept="image/png, image/jpeg"
@@ -788,15 +793,19 @@ export const SignatureModal = ({
               />
               <label
                 htmlFor="signature-modal-upload"
-                className="cursor-pointer flex flex-col items-center"
+                className="cursor-pointer flex flex-col items-center gap-3"
               >
-                <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                <span className="text-sm text-muted-foreground">
-                  Haz clic para subir una imagen de tu firma
-                </span>
-                <span className="text-xs text-muted-foreground mt-1">
-                  PNG o JPG
-                </span>
+                <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center">
+                  <Upload className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-foreground block">
+                    Sube una imagen de tu firma
+                  </span>
+                  <span className="text-xs text-muted-foreground mt-0.5 block">
+                    PNG o JPG, máximo 5MB
+                  </span>
+                </div>
               </label>
             </div>
           </TabsContent>

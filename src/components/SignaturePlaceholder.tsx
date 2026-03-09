@@ -1,5 +1,4 @@
-import { PenLine, Move } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { PenLine } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface SignaturePlaceholderProps {
@@ -19,27 +18,19 @@ export const SignaturePlaceholder = ({ onClick, onDragStart, onTouchDragStart, s
       onMouseDown={onDragStart}
       onTouchStart={onTouchDragStart}
     >
-      <div className="relative">
-        <Button
-          onClick={(e) => {
-            e.stopPropagation();
-            onClick();
-          }}
-          variant="outline"
-          size={isMobile ? "xs" : "default"}
-          className={`bg-yellow-50 dark:bg-yellow-950/30 border-primary border-2 border-dashed hover:bg-yellow-100 dark:hover:bg-yellow-950/50 text-primary font-semibold shadow-lg pointer-events-auto ${
-            isMobile ? "h-8 py-1.5" : "h-12 py-3"
-          }`}
-        >
-          <PenLine className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2" />
+      <div
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick();
+        }}
+        className={`flex items-center gap-1.5 bg-primary/5 dark:bg-primary/10 border-2 border-primary/60 border-dashed rounded-lg shadow-sm cursor-pointer hover:bg-primary/10 dark:hover:bg-primary/15 hover:border-primary transition-colors pointer-events-auto ${
+          isMobile ? "h-9 px-3 py-1.5" : "h-11 px-4 py-2"
+        }`}
+      >
+        <PenLine className="w-4 h-4 text-primary flex-shrink-0" />
+        <span className="text-xs sm:text-sm font-medium text-primary whitespace-nowrap">
           {isMobile ? "Firmar" : "Firma aquí"}
-        </Button>
-        {!isMobile && (
-          <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-muted text-muted-foreground text-[10px] leading-tight px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
-            <Move className="w-3 h-3" />
-            Arrastra para mover
-          </div>
-        )}
+        </span>
       </div>
     </div>
   );

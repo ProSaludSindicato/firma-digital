@@ -148,7 +148,12 @@ const PDFThumbnailsComponent = ({
           {thumbnails.map((thumb, index) => (
             <button
               key={index}
+              type="button"
               data-thumbnail-page={index + 1}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onPageSelect(index + 1);
+              }}
               onClick={() => onPageSelect(index + 1)}
               className={cn(
                 "w-full relative rounded border-2 overflow-hidden transition-all hover:border-primary/50 flex-shrink-0",

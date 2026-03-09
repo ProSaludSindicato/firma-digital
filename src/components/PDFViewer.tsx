@@ -8,6 +8,7 @@ import { SignatureModal } from "./SignatureModal";
 import { SignatureTutorial, useSignatureTutorial } from "./SignatureTutorial";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Configure PDF.js worker using Vite's import.meta.url resolution
@@ -100,10 +101,12 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
     };
   }, [file, onTotalPagesChange]);
 
-  // Show tutorial when PDF loads for the first time (separate effect to avoid re-renders)
   useEffect(() => {
     if (pdfDoc) {
       checkAndShowTutorial();
+      if (!signature) {
+        setIsPlacementMode(true);
+      }
     }
   }, [pdfDoc, checkAndShowTutorial]);
 
@@ -127,14 +130,26 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
 
   const handleActivatePlacementMode = useCallback(() => {
     if (!signature) {
-      // Activar modo de colocación
       setIsPlacementMode(true);
-      // Si no estamos en la página de firma, ir a ella
       if (currentPage !== SIGNATURE_PAGE && totalPages >= SIGNATURE_PAGE) {
         setCurrentPage(SIGNATURE_PAGE);
+        toast({
+          title: "Ir a la página de firma",
+          description: `La firma debe colocarse en la página ${SIGNATURE_PAGE}. Se ha cambiado a esa página.`,
+          className: "bg-green-600 text-white border-green-700 [&_button]:text-white [&_button]:opacity-90 [&_button:hover]:opacity-100",
+        });
       }
     }
   }, [signature, currentPage, totalPages]);
+
+  const handleWrongPageClick = useCallback((_currentPage: number, expectedPage: number) => {
+    setCurrentPage(expectedPage);
+    toast({
+      title: "Ir a la página de firma",
+      description: `La firma debe colocarse en la página ${expectedPage}. Se ha cambiado a esa página.`,
+      className: "bg-green-600 text-white border-green-700 [&_button]:text-white [&_button]:opacity-90 [&_button:hover]:opacity-100",
+    });
+  }, []);
 
   // Exponer función para activar modo de colocación desde el componente padre
   useImperativeHandle(ref, () => ({
@@ -262,56 +277,53 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden">
-      {/* Toolbar - compact on mobile */}
-      <div className="flex items-center justify-between gap-2 bg-card p-2 md:p-3 border-b border-border flex-shrink-0">
-        {/* Zoom controls */}
-        <div className="flex items-center gap-1">
+      <div className="flex items-center justify-between gap-3 bg-card px-3 py-2 md:px-4 md:py-2.5 border-b border-border flex-shrink-0 shadow-sm">
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-background px-1.5 py-1">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setScale((s) => Math.max(0.5, s - 0.2))}
-            className="h-7 w-7 md:h-8 md:w-8"
+            className="h-8 w-8 md:h-9 md:w-9 text-foreground hover:bg-muted hover:text-foreground"
           >
             <ZoomOut className="w-4 h-4" />
           </Button>
-          <span className="text-xs font-medium text-muted-foreground min-w-[40px] text-center">
+          <span className="text-xs font-semibold text-foreground min-w-[42px] text-center tabular-nums">
             {Math.round(scale * 100)}%
           </span>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setScale((s) => Math.min(2, s + 0.2))}
-            className="h-7 w-7 md:h-8 md:w-8"
+            className="h-8 w-8 md:h-9 md:w-9 text-foreground hover:bg-muted hover:text-foreground"
           >
             <ZoomIn className="w-4 h-4" />
           </Button>
         </div>
 
-        {/* Page navigation - Enhanced for mobile */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-background px-1.5 py-1">
           <Button
             variant="ghost"
             size="icon"
             onClick={handlePrevPage}
             disabled={currentPage <= 1}
-            className="h-8 w-8 md:h-8 md:w-8"
+            className="h-8 w-8 md:h-9 md:w-9 text-foreground hover:bg-muted hover:text-foreground disabled:opacity-40"
           >
-            <ChevronLeft className="w-5 h-5 md:w-4 md:h-4" />
+            <ChevronLeft className="w-4 h-4" />
           </Button>
           
-          {/* Page number buttons for quick navigation */}
           {totalPages <= 5 ? (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                 <button
                   key={page}
+                  type="button"
                   onClick={() => handlePageSelect(page)}
-                  className={`w-7 h-7 rounded-full text-xs font-medium transition-all ${
+                  className={`min-w-[28px] h-7 px-1.5 rounded-md text-xs font-semibold transition-all ${
                     currentPage === page
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-primary text-primary-foreground shadow-sm"
                       : page === SIGNATURE_PAGE
-                      ? "bg-primary/20 text-primary border border-primary/50"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      ? "text-primary bg-primary/15 hover:bg-primary/25"
+                      : "text-foreground bg-transparent hover:bg-muted"
                   }`}
                 >
                   {page}
@@ -319,7 +331,7 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
               ))}
             </div>
           ) : (
-            <span className="text-xs font-medium text-foreground min-w-[50px] text-center">
+            <span className="text-xs font-semibold text-foreground min-w-[56px] text-center tabular-nums px-1">
               {currentPage} / {totalPages}
             </span>
           )}
@@ -329,14 +341,13 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
             size="icon"
             onClick={handleNextPage}
             disabled={currentPage >= totalPages}
-            className="h-8 w-8 md:h-8 md:w-8"
+            className="h-8 w-8 md:h-9 md:w-9 text-foreground hover:bg-muted hover:text-foreground disabled:opacity-40"
           >
-            <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
+            <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
 
-        {/* File name - hidden on mobile, full on desktop */}
-        <span className="text-xs text-muted-foreground hidden md:block">
+        <span className="text-xs text-muted-foreground hidden md:block truncate max-w-[200px] font-medium">
           {file.name}
         </span>
       </div>
@@ -381,12 +392,13 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
               placeholderPosition={placeholderPosition}
               onPlaceholderPositionChange={(position) => {
                 setPlaceholderPosition(position);
-                // Desactivar modo de colocación cuando se coloca el placeholder
                 if (position) {
                   setIsPlacementMode(false);
                 }
               }}
               onPlaceholderClick={handlePlaceholderClick}
+              signaturePageNumber={SIGNATURE_PAGE}
+              onWrongPageClick={handleWrongPageClick}
               isPlacementMode={isPlacementMode}
               onClearSignature={onClearSignature}
               isLocked={isLocked}

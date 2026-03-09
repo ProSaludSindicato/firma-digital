@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback, memo } from "react";
 import * as pdfjsLib from "pdfjs-dist";
-import { Move, Maximize2, Pencil, PenLine } from "lucide-react";
+import { Maximize2, Pencil, PenLine } from "lucide-react";
 import { SignaturePlaceholder } from "./SignaturePlaceholder";
 
 interface PDFPageViewProps {
@@ -16,6 +16,9 @@ interface PDFPageViewProps {
   onPlaceholderPositionChange: (position: { x: number; y: number; page: number } | null) => void;
   onPlaceholderClick: () => void;
   onClearSignature: () => void;
+  /** Página en la que se permite colocar la firma (p. ej. 2). Si el usuario hace clic en otra página, se llama a onWrongPageClick. */
+  signaturePageNumber: number;
+  onWrongPageClick?: (currentPage: number, expectedPage: number) => void;
   isLocked?: boolean;
   fileName?: string;
   isPlacementMode?: boolean;
@@ -32,6 +35,8 @@ const PDFPageViewComponent = ({
   onPlaceholderPositionChange,
   onPlaceholderClick,
   onClearSignature,
+  signaturePageNumber,
+  onWrongPageClick,
   isLocked = false,
   fileName,
   isPlacementMode = false,
@@ -77,10 +82,15 @@ const PDFPageViewComponent = ({
     renderPage();
   }, [pdfDoc, pageNumber, scale]);
 
-  // Handle click to place placeholder
+  // Handle click to place placeholder (solo en la página de firma permitida)
   const handleCanvasClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (isDragging || isResizing || signature) return;
+
+      if (pageNumber !== signaturePageNumber) {
+        onWrongPageClick?.(pageNumber, signaturePageNumber);
+        return;
+      }
 
       const container = containerRef.current;
       if (!container) return;
@@ -98,7 +108,7 @@ const PDFPageViewComponent = ({
         });
       }
     },
-    [isDragging, isResizing, signature, canvasSize, pageNumber, onPlaceholderPositionChange],
+    [isDragging, isResizing, signature, signaturePageNumber, onWrongPageClick, canvasSize, pageNumber, onPlaceholderPositionChange],
   );
 
   // Handle placeholder drag (mouse)
@@ -398,10 +408,10 @@ const PDFPageViewComponent = ({
 
           return (
             <div
-              className={`absolute select-none z-10 border-2 rounded-md p-1 transition-colors touch-none ${
+              className={`absolute select-none z-10 border-2 rounded-lg p-1 transition-colors touch-none ${
                 isLocked
-                  ? "border-muted-foreground/50 bg-muted/30 cursor-default"
-                  : "border-primary border-dashed bg-primary/5 hover:bg-primary/10 cursor-move"
+                  ? "border-muted-foreground/30 bg-muted/10 cursor-default"
+                  : "border-primary/40 border-dashed bg-white/50 dark:bg-white/5 hover:border-primary/60 cursor-move"
               }`}
               style={{
                 left: adjustedX - adjustedWidth / 2,
@@ -420,13 +430,8 @@ const PDFPageViewComponent = ({
               />
               {!isLocked && (
                 <>
-                  <div className="absolute -top-5 md:-top-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[9px] md:text-[10px] leading-tight px-1.5 md:px-2 py-0.5 rounded flex items-center gap-0.5 md:gap-1 whitespace-nowrap">
-                    <Move className="w-2.5 h-2.5 md:w-3 md:h-3" />
-                    <span className="hidden sm:inline">Arrastra para mover</span>
-                  </div>
-                  {/* Edit signature button - opens modal with current signature */}
                   <div
-                    className="absolute -top-1 -left-1 md:-top-2 md:-left-2 w-4 h-4 md:w-6 md:h-6 bg-secondary border-2 border-secondary-foreground/20 rounded-full cursor-pointer flex items-center justify-center shadow-md hover:bg-secondary/80 transition-colors"
+                    className="absolute -top-1.5 -left-1.5 md:-top-2 md:-left-2 w-5 h-5 md:w-6 md:h-6 bg-background border border-border rounded-full cursor-pointer flex items-center justify-center shadow-sm hover:bg-muted transition-colors"
                     onClick={(e) => {
                       e.stopPropagation();
                       onPlaceholderClick();
@@ -434,35 +439,31 @@ const PDFPageViewComponent = ({
                     onMouseDown={(e) => e.stopPropagation()}
                     onTouchStart={(e) => e.stopPropagation()}
                   >
-                    <Pencil className="w-2 h-2 md:w-3 md:h-3 text-secondary-foreground" />
+                    <Pencil className="w-2.5 h-2.5 md:w-3 md:h-3 text-muted-foreground" />
                   </div>
-                  {/* Resize handle */}
                   <div
-                    className="absolute -bottom-1 -right-1 md:-bottom-2 md:-right-2 w-4 h-4 md:w-6 md:h-6 bg-primary rounded-full cursor-se-resize flex items-center justify-center shadow-md hover:bg-primary/80 transition-colors touch-none"
+                    className="absolute -bottom-1.5 -right-1.5 md:-bottom-2 md:-right-2 w-5 h-5 md:w-6 md:h-6 bg-primary/80 rounded-full cursor-se-resize flex items-center justify-center shadow-sm hover:bg-primary transition-colors touch-none"
                     onMouseDown={handleSignatureResize}
                     onTouchStart={handleSignatureTouchResize}
                   >
-                    <Maximize2 className="w-2 h-2 md:w-3 md:h-3 text-primary-foreground rotate-90" />
+                    <Maximize2 className="w-2.5 h-2.5 md:w-3 md:h-3 text-primary-foreground rotate-90" />
                   </div>
                 </>
               )}
               {isLocked && (
-                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-muted text-muted-foreground text-[10px] leading-tight px-2 py-0.5 rounded flex items-center gap-1 whitespace-nowrap">
-                  Documento enviado
+                <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 text-[10px] leading-tight px-2 py-0.5 rounded-full flex items-center gap-1 whitespace-nowrap border border-green-200 dark:border-green-800">
+                  Enviado
                 </div>
               )}
             </div>
           );
         })()}
 
-      {/* Instruction overlay when placement mode is active */}
       {isPlacementMode && !signature && !placeholderPosition && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none rounded">
-          <div className="bg-primary/90 text-primary-foreground px-4 py-3 rounded-lg shadow-xl font-semibold text-sm md:text-base border-2 border-primary animate-pulse">
-            <div className="flex items-center gap-2">
-              <PenLine className="w-4 h-4 md:w-5 md:h-5" />
-              <span>Haz clic donde deseas agregar tu firma</span>
-            </div>
+        <div className="absolute inset-0 bg-primary/[0.03] dark:bg-primary/[0.06] pointer-events-none rounded flex items-end justify-center pb-6">
+          <div className="bg-foreground/85 dark:bg-foreground/90 text-background px-5 py-2.5 rounded-full shadow-lg text-sm font-medium flex items-center gap-2 backdrop-blur-sm">
+            <PenLine className="w-4 h-4" />
+            Haz clic donde deseas colocar tu firma
           </div>
         </div>
       )}
@@ -479,6 +480,7 @@ export const PDFPageView = memo(PDFPageViewComponent, (prevProps, nextProps) => 
     prevProps.signature === nextProps.signature &&
     JSON.stringify(prevProps.signaturePosition) === JSON.stringify(nextProps.signaturePosition) &&
     JSON.stringify(prevProps.placeholderPosition) === JSON.stringify(nextProps.placeholderPosition) &&
+    prevProps.signaturePageNumber === nextProps.signaturePageNumber &&
     prevProps.isLocked === nextProps.isLocked &&
     prevProps.fileName === nextProps.fileName &&
     prevProps.isPlacementMode === nextProps.isPlacementMode

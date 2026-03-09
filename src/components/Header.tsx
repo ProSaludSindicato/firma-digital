@@ -1,4 +1,3 @@
-import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface HeaderProps {
@@ -11,9 +10,9 @@ interface HeaderProps {
 
 export const Header = ({ showFinishButton, onFinish, isProcessing, isSent, title = "Convenio de afiliación ProSalud" }: HeaderProps) => {
   return (
-    <header className="sticky top-0 z-50 px-3 md:px-6 py-2 md:py-3" style={{ backgroundColor: "hsl(220 50% 18%)" }}>
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
-        <p className="text-xs md:text-sm text-primary-foreground/90 flex-1 font-medium">
+    <header className="sticky top-0 z-50 bg-background border-b border-border/60">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 px-4 md:px-6 h-12 md:h-14">
+        <p className="text-sm md:text-base text-foreground font-semibold truncate">
           {title}
         </p>
         {showFinishButton && !isSent && (
@@ -21,9 +20,9 @@ export const Header = ({ showFinishButton, onFinish, isProcessing, isSent, title
             onClick={onFinish}
             disabled={isProcessing}
             size="sm"
-            className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 font-semibold px-4 py-1 h-8"
+            className="font-medium px-5 h-8"
           >
-            {isProcessing ? "..." : "Finalizar"}
+            {isProcessing ? "Procesando..." : "Enviar"}
           </Button>
         )}
       </div>

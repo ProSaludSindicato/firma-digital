@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { MousePointerClick, Move, PenLine, FileSignature, ChevronRight, Send } from "lucide-react";
+import { MousePointerClick, PenLine, ChevronRight, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,29 +17,19 @@ interface TutorialStep {
 
 const TUTORIAL_STEPS: TutorialStep[] = [
   {
-    icon: <FileSignature className="w-8 h-8 text-primary" />,
-    title: "Navega al área de firma",
-    description: "Usa el botón 'Ir a firmar' o la navegación de páginas para ir a la página donde debes firmar.",
-  },
-  {
     icon: <MousePointerClick className="w-8 h-8 text-primary" />,
-    title: "Toca donde deseas firmar",
-    description: "Haz clic o toca en el documento donde quieres colocar tu firma. Aparecerá un marcador.",
-  },
-  {
-    icon: <Move className="w-8 h-8 text-primary" />,
-    title: "Ajusta la posición",
-    description: "Puedes arrastrar el marcador para moverlo a la ubicación exacta donde deseas tu firma.",
+    title: "Haz clic en el documento",
+    description: "Toca o haz clic en el lugar del documento donde quieres colocar tu firma.",
   },
   {
     icon: <PenLine className="w-8 h-8 text-primary" />,
-    title: "Crea tu firma",
-    description: "Toca el marcador para abrir el panel de firma. Puedes dibujar tu firma o subir una imagen.",
+    title: "Dibuja o sube tu firma",
+    description: "Toca el marcador para abrir el panel donde puedes dibujar tu firma o subir una imagen.",
   },
   {
     icon: <Send className="w-8 h-8 text-primary" />,
-    title: "Revisa y envía",
-    description: "Una vez colocada tu firma, revisa el documento y presiona 'Finalizar y Enviar Convenio'.",
+    title: "Envía tu documento",
+    description: "Revisa la posición de tu firma y presiona 'Enviar' cuando estés listo.",
   },
 ];
 
@@ -126,12 +116,10 @@ export const SignatureTutorial = ({ isOpen, onClose }: SignatureTutorialProps) =
   );
 };
 
-// Hook to manage tutorial visibility - shows every time PDF loads
 export const useSignatureTutorial = () => {
   const [showTutorial, setShowTutorial] = useState(false);
 
   const checkAndShowTutorial = useCallback(() => {
-    // Always show tutorial when PDF loads
     setShowTutorial(true);
   }, []);
 

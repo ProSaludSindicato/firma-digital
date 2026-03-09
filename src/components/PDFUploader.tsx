@@ -90,15 +90,12 @@ export const PDFUploader = ({ onFileSelect, fileName, onError }: PDFUploaderProp
     <div
       onDrop={handleDrop}
       onDragOver={(e) => e.preventDefault()}
-      className={`relative flex flex-col items-center justify-center w-full max-w-3xl mx-auto p-8 sm:p-10 md:p-12 border-2 border-dashed rounded-2xl bg-card transition-all duration-300 group shadow-xl hover:shadow-2xl ${
-        isValidating 
-          ? "opacity-50 cursor-wait border-muted" 
-          : "hover:border-primary hover:bg-primary/5 cursor-pointer border-primary/30"
+      className={`relative flex flex-col items-center justify-center w-full mx-auto p-8 sm:p-10 md:p-14 border-2 border-dashed rounded-xl bg-card/80 transition-all duration-200 group ${
+        isValidating
+          ? "opacity-50 cursor-wait border-muted"
+          : "hover:border-primary/50 hover:bg-card cursor-pointer border-border"
       }`}
     >
-      {/* Animated background gradient on hover */}
-      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/10 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
-      
       <input
         type="file"
         accept=".pdf"
@@ -112,8 +109,8 @@ export const PDFUploader = ({ onFileSelect, fileName, onError }: PDFUploaderProp
       >
         {fileName ? (
           <>
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4 shadow-md">
-              <FileText className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <FileText className="w-7 h-7 sm:w-8 sm:h-8 text-primary" />
             </div>
             <p className="text-base sm:text-lg font-semibold text-foreground mb-1">{fileName}</p>
             <p className="text-xs sm:text-sm text-muted-foreground">
@@ -122,26 +119,22 @@ export const PDFUploader = ({ onFileSelect, fileName, onError }: PDFUploaderProp
           </>
         ) : (
           <>
-            <div className="relative mb-5 sm:mb-6">
-              {/* Glow effect */}
-              <div className="absolute inset-0 bg-primary/30 rounded-full blur-2xl group-hover:bg-primary/40 transition-colors duration-300" />
-              <div className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-300 border-2 border-primary/20">
-                <Upload className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-primary group-hover:scale-110 transition-transform duration-300" />
-              </div>
+            <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-primary/8 flex items-center justify-center mb-5 group-hover:bg-primary/12 transition-colors">
+              <Upload className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 text-primary/70 group-hover:text-primary transition-colors" />
             </div>
-            <p className="text-lg sm:text-xl md:text-2xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+            <p className="text-base sm:text-lg md:text-xl font-semibold text-foreground mb-1.5 group-hover:text-primary transition-colors">
               Arrastra tu PDF aquí
             </p>
-            <p className="text-sm sm:text-base text-muted-foreground mb-1">
-              o haz clic para seleccionar un archivo
+            <p className="text-sm text-muted-foreground mb-1">
+              o haz clic para seleccionar
             </p>
-            <p className="text-xs text-muted-foreground/60">
-              PDF (máx. 10MB)
+            <p className="text-xs text-muted-foreground/50">
+              PDF, máximo 10MB
             </p>
             {isValidating && (
-              <div className="flex items-center gap-2 mt-4 px-4 py-2 rounded-lg bg-primary/10 border border-primary/20">
+              <div className="flex items-center gap-2 mt-4 px-4 py-2 rounded-lg bg-primary/5 border border-primary/15">
                 <AlertCircle className="w-4 h-4 text-primary animate-pulse" />
-                <span className="text-sm text-primary font-medium">Validando archivo...</span>
+                <span className="text-sm text-primary font-medium">Validando...</span>
               </div>
             )}
           </>

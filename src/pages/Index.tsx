@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Download, Send, AlertTriangle, CheckCircle, FileText, Upload, PenLine } from "lucide-react";
+import { Download, Send, CheckCircle, PenLine, Check } from "lucide-react";
 import { Header } from "@/components/Header";
 import { PDFUploader } from "@/components/PDFUploader";
 import { PDFViewer, PDFViewerRef } from "@/components/PDFViewer";
@@ -83,9 +83,9 @@ const Index = () => {
 
       // Mostrar toast de éxito con estilo verde
       toast({
-        title: "✓ Convenio enviado exitosamente",
-        description: "Su convenio firmado ha sido recibido correctamente. Se descargará automáticamente.",
-        className: "bg-green-500 text-white border-green-600",
+        title: "Documento enviado",
+        description: "Tu documento firmado ha sido enviado correctamente. Se descargará automáticamente.",
+        className: "bg-green-600 text-white border-green-700",
       });
 
       // Descargar automáticamente el PDF
@@ -132,55 +132,34 @@ const Index = () => {
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {!pdfFile ? (
           <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 min-h-0">
-            {/* Compact Header */}
-            <div className="text-center max-w-2xl space-y-1.5 sm:space-y-2 mb-4 sm:mb-6 flex-shrink-0">
-              {/* Title */}
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-                Firma tus documentos PDF
+            <div className="text-center max-w-2xl space-y-2 mb-6 sm:mb-8 flex-shrink-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+                Firma tu documento
               </h1>
-              
-              {/* Subtitle */}
-              <p className="text-xs sm:text-sm text-muted-foreground max-w-xl mx-auto">
-                Sube tu documento, haz clic donde deseas firmar, y descarga el PDF firmado listo para enviar.
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                Sube tu PDF, coloca tu firma y descárgalo listo para enviar.
               </p>
             </div>
 
-            {/* Upload Section - Main Focus */}
-            <div className="w-full max-w-3xl flex-shrink-0 mb-4 sm:mb-6">
+            <div className="w-full max-w-2xl flex-shrink-0 mb-6 sm:mb-8">
               <PDFUploader onFileSelect={handleFileSelect} />
             </div>
 
-            {/* Compact Features */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-3 max-w-xl w-full flex-shrink-0">
-              <div className="flex flex-col items-center p-3 sm:p-4 rounded-lg bg-card/50 border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                  <Upload className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-                </div>
-                <h3 className="font-semibold text-xs sm:text-sm mb-1 text-center">Fácil</h3>
-                <p className="text-[10px] sm:text-xs text-muted-foreground text-center">
-                  Arrastra y suelta
-                </p>
-              </div>
-              
-              <div className="flex flex-col items-center p-3 sm:p-4 rounded-lg bg-card/50 border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                  <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-                </div>
-                <h3 className="font-semibold text-xs sm:text-sm mb-1 text-center">Firma</h3>
-                <p className="text-[10px] sm:text-xs text-muted-foreground text-center">
-                  Dibuja o sube
-                </p>
-              </div>
-              
-              <div className="flex flex-col items-center p-3 sm:p-4 rounded-lg bg-card/50 border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                  <Download className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-                </div>
-                <h3 className="font-semibold text-xs sm:text-sm mb-1 text-center">Descarga</h3>
-                <p className="text-[10px] sm:text-xs text-muted-foreground text-center">
-                  PDF listo
-                </p>
-              </div>
+            <div className="flex items-center justify-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground/70 flex-shrink-0">
+              <span className="flex items-center gap-1.5">
+                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-semibold">1</span>
+                Sube tu PDF
+              </span>
+              <div className="w-4 sm:w-6 h-px bg-border" />
+              <span className="flex items-center gap-1.5">
+                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-semibold">2</span>
+                Agrega tu firma
+              </span>
+              <div className="w-4 sm:w-6 h-px bg-border" />
+              <span className="flex items-center gap-1.5">
+                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-semibold">3</span>
+                Descarga
+              </span>
             </div>
           </div>
         ) : (
@@ -201,94 +180,110 @@ const Index = () => {
               />
             </div>
 
-            {/* Spacer for fixed bottom bar on mobile */}
-            <div className="flex-shrink-0 h-24 md:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }} />
+            <div className="flex-shrink-0 h-[88px] md:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }} />
 
-            {/* Bottom action bar - fixed on mobile, static on desktop */}
-            <div
-              className="fixed bottom-0 left-0 right-0 md:relative p-3 md:p-4 bg-background border-t border-border z-50"
-              style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
-            >
-              {isSent ? (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm">
-                    <CheckCircle className="w-5 h-5" />
-                    <span className="font-semibold">¡Convenio enviado correctamente!</span>
-                  </div>
-                  <Button onClick={downloadSignedPDF} disabled={isDownloading} className="w-full max-w-md">
-                    <Download className="w-4 h-4 mr-2" />
-                    {isDownloading ? "Procesando..." : "Descargar copia firmada"}
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2">
-                  {!signature && pdfFile && (
-                    <p className="text-xs text-muted-foreground text-center">
-                      Haz clic en "Ingresar firma" y luego en el documento donde deseas colocar tu firma
-                    </p>
-                  )}
-                  {signature && !canDownload && pdfFile && (
-                    <p className="text-xs text-muted-foreground text-center">
-                      Ajuste la posición de la firma si es necesario
-                    </p>
-                  )}
-                  <Button
-                    onClick={handleFinishAndSend}
-                    disabled={isDownloading}
-                    className="w-full max-w-md"
-                  >
-                    {signature ? (
+            {(() => {
+              const completedSteps = isSent ? 3 : signature ? 2 : 1;
+              const stepLabels = [
+                "Documento cargado",
+                "Agrega tu firma",
+                "Listo para enviar",
+              ];
+              return (
+                <div
+                  className="fixed bottom-0 left-0 right-0 md:relative bg-background/95 backdrop-blur-sm border-t border-border/60 z-50"
+                  style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+                >
+                  <div className="flex flex-col items-center gap-2.5 px-4 py-3 md:py-4 max-w-lg mx-auto">
+                    {isSent ? (
                       <>
-                        <Send className="w-4 h-4 mr-2" />
-                        {isDownloading ? "Procesando..." : "Enviar convenio firmado"}
+                        <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm font-medium">
+                          <CheckCircle className="w-4 h-4" />
+                          Documento enviado correctamente
+                        </div>
+                        <Button onClick={downloadSignedPDF} disabled={isDownloading} className="w-full" size="lg">
+                          <Download className="w-4 h-4 mr-2" />
+                          {isDownloading ? "Procesando..." : "Descargar copia firmada"}
+                        </Button>
                       </>
                     ) : (
                       <>
-                        <PenLine className="w-4 h-4 mr-2" />
-                        Ingresar firma
+                        <div className="flex items-center gap-2 w-full">
+                          <div className="flex items-center gap-1 flex-1">
+                            {[1, 2, 3].map((s) => (
+                              <div
+                                key={s}
+                                className={`h-1 rounded-full flex-1 transition-all duration-300 ${
+                                  s <= completedSteps ? "bg-primary" : "bg-border"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-[11px] text-muted-foreground/70 whitespace-nowrap">
+                            {isSent ? "Completado" : `${completedSteps} de 3`}
+                          </span>
+                        </div>
+
+                        <Button
+                          onClick={handleFinishAndSend}
+                          disabled={isDownloading}
+                          className="w-full"
+                          size="lg"
+                        >
+                          {signature ? (
+                            <>
+                              <Send className="w-4 h-4 mr-2" />
+                              {isDownloading ? "Procesando..." : "Enviar documento firmado"}
+                            </>
+                          ) : (
+                            <>
+                              <PenLine className="w-4 h-4 mr-2" />
+                              Agregar firma
+                            </>
+                          )}
+                        </Button>
+
+                        <p className="text-[11px] text-muted-foreground/60 text-center">
+                          {!signature ? stepLabels[1] : stepLabels[2]}
+                        </p>
                       </>
                     )}
-                  </Button>
+                  </div>
                 </div>
-              )}
-            </div>
+              );
+            })()}
           </div>
         )}
       </main>
 
-      {/* Confirmation Dialog */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-destructive" />
-              Confirmar envío del convenio
+            <AlertDialogTitle>
+              Confirmar envío
             </AlertDialogTitle>
             <AlertDialogDescription className="text-left space-y-3">
               <p>
-                <strong>Al enviar este convenio confirmas que la información es correcta y que aceptas el convenio.</strong>
+                Al enviar confirmas que la información es correcta y aceptas los términos del documento.
               </p>
-              <div className="bg-muted/50 p-3 rounded-md space-y-2 text-sm">
-                <p className="text-muted-foreground">
-                  <strong className="text-foreground">Importante:</strong> La firma quedará integrada al documento y no podrá modificarse.
-                </p>
-                <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                  <CheckCircle className="w-4 h-4 mt-0.5 text-green-600 dark:text-green-400 flex-shrink-0" />
+              <div className="bg-muted/30 p-3 rounded-lg space-y-1.5 text-sm">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400 flex-shrink-0" />
                   <span>Documento firmado digitalmente</span>
                 </div>
-                <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                  <CheckCircle className="w-4 h-4 mt-0.5 text-green-600 dark:text-green-400 flex-shrink-0" />
-                  <span>Fecha y hora: {new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</span>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                  <span>{new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</span>
                 </div>
               </div>
-              <p className="text-muted-foreground text-sm">
-                Una vez enviado, se enviará una copia a tu correo y podrás descargar el documento firmado.
+              <p className="text-muted-foreground text-xs">
+                La firma quedará integrada al documento. Podrás descargar una copia.
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmSend}>Confirmar y Enviar</AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirmSend}>Confirmar y enviar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
