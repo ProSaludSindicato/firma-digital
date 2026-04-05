@@ -222,7 +222,7 @@ function createViewerSteps(layout: 'compact' | 'wide'): Step[] {
           content: pdfAreaTourContent,
         };
 
-  return [
+  const steps: Step[] = [
     {
       target: 'body',
       placement: 'center',
@@ -282,7 +282,13 @@ function createViewerSteps(layout: 'compact' | 'wide'): Step[] {
         </div>
       ),
     },
-    {
+  ];
+
+  // The thumbnails panel uses `hidden md:block` so it is invisible on mobile.
+  // Including it on compact layout causes Joyride to show only a dark overlay
+  // with no tooltip, blocking all interaction. Skip it on mobile entirely.
+  if (layout === 'wide') {
+    steps.push({
       target: '#tour-pdf-thumbnails',
       placement: 'right',
       disableBeacon: true,
@@ -294,31 +300,34 @@ function createViewerSteps(layout: 'compact' | 'wide'): Step[] {
       ),
       content:
         'Vista rápida de todas las páginas. Haz clic en cualquier miniatura para saltar directamente a esa página. Puedes colapsar este panel para ganar espacio.',
-    },
-    pdfAreaStep,
-    {
-      target: '#tour-footer-action',
-      placement: 'top',
-      disableBeacon: true,
-      title: (
-        <span className="flex items-center gap-2">
-          <PenLine className="w-4 h-4 text-primary flex-shrink-0" />
-          Botón de acción principal
-        </span>
-      ),
-      content: (
-        <div className="space-y-1.5">
-          <p>
-            Toca <strong>"Agregar firma"</strong> para abrir el panel de firma digital y
-            continuar con el proceso.
-          </p>
-          <p className="text-xs text-muted-foreground/70">
-            En la siguiente fase aprenderás a crear y posicionar tu firma.
-          </p>
-        </div>
-      ),
-    },
-  ];
+    });
+  }
+
+  steps.push(pdfAreaStep);
+  steps.push({
+    target: '#tour-footer-action',
+    placement: 'top',
+    disableBeacon: true,
+    title: (
+      <span className="flex items-center gap-2">
+        <PenLine className="w-4 h-4 text-primary flex-shrink-0" />
+        Botón de acción principal
+      </span>
+    ),
+    content: (
+      <div className="space-y-1.5">
+        <p>
+          Toca <strong>"Agregar firma"</strong> para abrir el panel de firma digital y
+          continuar con el proceso.
+        </p>
+        <p className="text-xs text-muted-foreground/70">
+          En la siguiente fase aprenderás a crear y posicionar tu firma.
+        </p>
+      </div>
+    ),
+  });
+
+  return steps;
 }
 
 /* ─── modal phase — appears when the signature modal opens ─────────────────── */

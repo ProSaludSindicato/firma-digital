@@ -251,14 +251,11 @@ const Index = () => {
               />
             </div>
 
-            {/* Spacer for fixed mobile footer */}
-            <div className="flex-shrink-0 h-[72px] md:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }} />
-
             {(() => {
               const completedSteps = isSent ? 3 : signature ? 2 : 1;
               return (
                 <div
-                  className="fixed bottom-0 left-0 right-0 md:relative bg-background/95 backdrop-blur-sm border-t border-border/50 z-50"
+                  className="flex-shrink-0 w-full bg-background/95 backdrop-blur-sm border-t border-border/50 z-50"
                   style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
                 >
                   <div className="flex flex-col items-center gap-1.5 px-3 py-2 md:py-2.5 max-w-lg mx-auto">
