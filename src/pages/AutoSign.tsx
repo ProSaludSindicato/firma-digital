@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { Download, AlertTriangle, CheckCircle, FileText, Eye } from "lucide-react";
+import { Download, CheckCircle, Eye } from "lucide-react";
 import { Header } from "@/components/Header";
 import { AutoSignatureUploader } from "@/components/AutoSignatureUploader";
 import { PDFPreview } from "@/components/PDFPreview";
 import { Button } from "@/components/ui/button";
 import { useAutoPDFSigner } from "@/hooks/useAutoPDFSigner";
+import { useAuditTrail } from "@/hooks/useAuditTrail";
 import { toast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -16,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { appConfig } from "@/lib/appConfig";
 
 const AutoSign = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -39,6 +41,8 @@ const AutoSign = () => {
     cleanupProcessedPDF,
   } = useAutoPDFSigner();
 
+  const { trackEvent, getAuditLog } = useAuditTrail();
+
   const handleProcessPDF = () => {
     if (!canProcess) return;
     setShowConfirmDialog(true);
@@ -46,15 +50,19 @@ const AutoSign = () => {
 
   const handleConfirmProcess = async () => {
     try {
-      // Procesar y generar URL para previsualización
+      trackEvent("document_submitted", { fileName: pdfFile?.name });
       await processAndPreviewPDF();
       setIsProcessed(true);
       setShowConfirmDialog(false);
+      trackEvent("document_confirmed");
+
+      const auditLog = getAuditLog();
+      console.log("[AuditTrail] Auto-sign completed:", JSON.stringify(auditLog, null, 2));
 
       toast({
-        title: "✓ PDF procesado exitosamente",
+        title: "PDF procesado",
         description: "El documento con la firma ha sido generado. Puedes previsualizarlo o descargarlo.",
-        className: "bg-green-500 text-white border-green-600",
+        className: "bg-green-600 text-white border-green-700",
       });
     } catch (error) {
       const errorMessage =
@@ -97,30 +105,28 @@ const AutoSign = () => {
   }, [cleanupProcessedPDF]);
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
+    <div className="h-dvh bg-background flex flex-col overflow-hidden">
       <Header
         showFinishButton={canProcess}
         onFinish={handleProcessPDF}
         isProcessing={isProcessing}
         isSent={isProcessed}
+        title={appConfig.autoSignHeaderTitle}
       />
 
-      <main className="flex-1 flex flex-col min-h-0 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto">
         {!pdfFile || !signatureImage ? (
-          <div className="flex-1 flex flex-col items-center p-4 sm:p-6 min-h-full">
-            {/* Header */}
-            <div className="text-center max-w-2xl space-y-1.5 sm:space-y-2 mb-4 sm:mb-6 flex-shrink-0">
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-                Firma Automática de Documentos
+          <div className="min-h-full max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10 flex flex-col gap-6">
+            <div className="text-center max-w-2xl mx-auto space-y-2">
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+                Firma automática con imagen
               </h1>
-              <p className="text-xs sm:text-sm text-muted-foreground max-w-xl mx-auto">
-                Carga un documento PDF y una imagen de firma para agregarla automáticamente en la
-                posición especificada. Ideal para firmas institucionales.
+              <p className="text-sm text-muted-foreground max-w-xl mx-auto">
+                Carga un PDF institucional y una imagen de firma para insertarla automáticamente en la página y posición configuradas.
               </p>
             </div>
 
-            {/* Upload Section */}
-            <div className="w-full max-w-4xl">
+            <div className="w-full">
               <AutoSignatureUploader
                 onPDFSelect={handlePDFSelect}
                 onSignatureImageSelect={handleSignatureImageSelect}
@@ -132,37 +138,21 @@ const AutoSign = () => {
               />
             </div>
 
-            {/* Info Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 max-w-4xl w-full mt-6 mb-6">
-              <div className="flex flex-col items-center p-4 rounded-lg bg-card/50 border border-border/50">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                  <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-                </div>
-                <h3 className="font-semibold text-sm mb-1 text-center">Carga PDF</h3>
-                <p className="text-xs text-muted-foreground text-center">
-                  Selecciona el documento
-                </p>
-              </div>
-
-              <div className="flex flex-col items-center p-4 rounded-lg bg-card/50 border border-border/50">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                  <Download className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-                </div>
-                <h3 className="font-semibold text-sm mb-1 text-center">Configura</h3>
-                <p className="text-xs text-muted-foreground text-center">
-                  Define posición y tamaño
-                </p>
-              </div>
-
-              <div className="flex flex-col items-center p-4 rounded-lg bg-card/50 border border-border/50">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                  <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-                </div>
-                <h3 className="font-semibold text-sm mb-1 text-center">Procesa</h3>
-                <p className="text-xs text-muted-foreground text-center">
-                  Descarga el PDF firmado
-                </p>
-              </div>
+            <div className="flex items-center justify-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground/70">
+              <span className="flex items-center gap-1.5">
+                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-semibold">1</span>
+                Carga el PDF
+              </span>
+              <div className="w-4 sm:w-6 h-px bg-border" />
+              <span className="flex items-center gap-1.5">
+                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-semibold">2</span>
+                Imagen de firma
+              </span>
+              <div className="w-4 sm:w-6 h-px bg-border" />
+              <span className="flex items-center gap-1.5">
+                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-semibold">3</span>
+                Configura y procesa
+              </span>
             </div>
           </div>
         ) : (
@@ -194,8 +184,8 @@ const AutoSign = () => {
                 </div>
               )}
 
-              {/* Action Button */}
-              <div className="sticky bottom-0 bg-background border-t pt-4 pb-4 mt-6">
+              {/* Action Button / Progress */}
+              <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm border-t border-border/60 pt-4 pb-4 mt-6">
                 {isProcessed ? (
                   <div className="flex flex-col items-center gap-3">
                     <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm">
@@ -223,27 +213,52 @@ const AutoSign = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center gap-2">
-                    {!canProcess && (
-                      <p className="text-xs text-muted-foreground text-center">
-                        {!pdfFile
-                          ? "Carga un documento PDF"
-                          : !signatureImage
-                            ? "Carga una imagen de firma"
-                            : !signatureConfig
-                              ? "Configura la posición de la firma"
-                              : "Completa todos los campos para continuar"}
-                      </p>
-                    )}
-                    <Button
-                      onClick={handleProcessPDF}
-                      disabled={!canProcess || isProcessing}
-                      className="w-full max-w-md"
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      {isProcessing ? "Procesando..." : "Procesar y Descargar PDF"}
-                    </Button>
-                  </div>
+                  <>
+                    <div className="flex items-center gap-2 w-full max-w-lg mx-auto mb-2">
+                      <div className="flex items-center gap-1 flex-1">
+                        {[
+                          !!pdfFile,
+                          !!signatureImage,
+                          !!signatureConfig,
+                        ].map((done, idx) => (
+                          <div
+                            key={idx}
+                            className={`h-1 rounded-full flex-1 transition-all duration-300 ${
+                              done ? "bg-primary" : "bg-border"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-[11px] text-muted-foreground/70 whitespace-nowrap">
+                        {[
+                          !!pdfFile,
+                          !!signatureImage,
+                          !!signatureConfig,
+                        ].filter(Boolean).length} de 3
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-center gap-2">
+                      {!canProcess && (
+                        <p className="text-xs text-muted-foreground text-center">
+                          {!pdfFile
+                            ? "Carga un documento PDF para continuar"
+                            : !signatureImage
+                              ? "Carga una imagen de firma para continuar"
+                              : !signatureConfig
+                                ? "Configura la posición de la firma"
+                                : "Completa todos los campos para continuar"}
+                        </p>
+                      )}
+                      <Button
+                        onClick={handleProcessPDF}
+                        disabled={!canProcess || isProcessing}
+                        className="w-full max-w-md"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        {isProcessing ? "Procesando..." : "Procesar y descargar PDF"}
+                      </Button>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -255,29 +270,33 @@ const AutoSign = () => {
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-destructive" />
+            <AlertDialogTitle>
               Confirmar procesamiento del PDF
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-left">
-              Se agregará la firma al documento en la posición especificada. Una vez procesado, podrás previsualizar o descargar el PDF firmado.
-            </AlertDialogDescription>
-            {signatureConfig && (
-              <div className="text-sm text-muted-foreground space-y-1 px-1">
+            <AlertDialogDescription asChild>
+              <div className="text-left space-y-3 text-sm text-muted-foreground">
                 <p>
-                  <strong>Página:</strong> {signatureConfig.page}
-                  {totalPages > 0 && ` (de ${totalPages})`}
+                  Se agregará la firma al documento en la posición configurada. Después podrás previsualizar y
+                  descargar el PDF firmado.
                 </p>
-                <p>
-                  <strong>Posición:</strong> X: {signatureConfig.x.toFixed(1)}, Y:{" "}
-                  {signatureConfig.y.toFixed(1)} puntos
-                </p>
-                <p>
-                  <strong>Tamaño:</strong> {signatureConfig.width.toFixed(1)} x{" "}
-                  {signatureConfig.height.toFixed(1)} puntos
-                </p>
+                {signatureConfig && (
+                  <div className="text-sm text-muted-foreground space-y-1 px-1">
+                    <p>
+                      <strong>Página:</strong> {signatureConfig.page}
+                      {totalPages > 0 && ` (de ${totalPages})`}
+                    </p>
+                    <p>
+                      <strong>Posición:</strong> X: {signatureConfig.x.toFixed(1)}, Y: {signatureConfig.y.toFixed(1)}{" "}
+                      puntos
+                    </p>
+                    <p>
+                      <strong>Tamaño:</strong> {signatureConfig.width.toFixed(1)} x {signatureConfig.height.toFixed(1)}{" "}
+                      puntos
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>

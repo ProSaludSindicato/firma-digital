@@ -1,23 +1,21 @@
-import { useEffect, useState, useCallback, useImperativeHandle, forwardRef } from "react";
+import { useEffect, useState, useCallback, useImperativeHandle, forwardRef, useRef } from "react";
 import * as pdfjsLib from "pdfjs-dist";
-import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Loader2, PenLine, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PDFThumbnails } from "./PDFThumbnails";
 import { PDFPageView } from "./PDFPageView";
 import { SignatureModal } from "./SignatureModal";
-import { SignatureTutorial, useSignatureTutorial } from "./SignatureTutorial";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { AuditEventType } from "@/hooks/useAuditTrail";
 
-// Configure PDF.js worker using Vite's import.meta.url resolution
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.mjs",
   import.meta.url
 ).toString();
 
-// ⚙️ CONFIGURABLE: Page number where the signature should be placed
 const SIGNATURE_PAGE = 2;
 
 interface PDFViewerProps {
@@ -30,10 +28,21 @@ interface PDFViewerProps {
   totalPages: number;
   onTotalPagesChange: (total: number) => void;
   isLocked?: boolean;
+  onTrackEvent?: (type: AuditEventType, metadata?: Record<string, unknown>) => void;
+  /** Called when the user opens the signature modal from within the viewer (not programmatically). */
+  onSignatureModalOpen?: () => void;
+  /** Si es true, tras `signaturePageScrollDelayMs` salta a la página de firma al abrir el PDF. Por defecto false (permanece en página 1). */
+  scrollToSignaturePageOnLoad?: boolean;
+  /** Milisegundos antes del salto automático a la página de firma (solo si `scrollToSignaturePageOnLoad`). */
+  signaturePageScrollDelayMs?: number;
+  /** Muestra todas las páginas en una columna con scroll; la firma sigue ligada al número de página. */
+  continuousScroll?: boolean;
 }
 
 export interface PDFViewerRef {
   activatePlacementMode: () => void;
+  openSignatureModal: () => void;
+  closeSignatureModal: () => void;
 }
 
 export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
@@ -45,7 +54,15 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
   onClearSignature,
   onTotalPagesChange,
   isLocked = false,
+  onTrackEvent,
+  onSignatureModalOpen,
+  scrollToSignaturePageOnLoad = false,
+  signaturePageScrollDelayMs = 600,
+  continuousScroll = false,
 }, ref) => {
+  const mainScrollRef = useRef<HTMLDivElement>(null);
+  const pageAnchorRefs = useRef<(HTMLDivElement | null)[]>([]);
+
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -54,40 +71,115 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isPlacementMode, setIsPlacementMode] = useState(false);
+  const [showGuide, setShowGuide] = useState(true);
+  /** Página mostrada en paginación y aviso (debounce suave ante scroll continuo). */
+  const [displayedPage, setDisplayedPage] = useState(1);
   const isMobile = useIsMobile();
-  const { showTutorial, checkAndShowTutorial, closeTutorial } = useSignatureTutorial();
 
-  // Calculate responsive zoom - fit to screen width on mobile
   const getResponsiveZoom = useCallback(() => {
     const width = window.innerWidth;
-    if (width >= 1440) return 1.6; // Large screens: 160%
-    if (width >= 1200) return 1.2; // Medium-large screens: 120%
-    if (width >= 1024) return 1.2; // Desktop: 120%
-    if (width >= 768) return 1.0;  // Tablets: 100%
-    // Mobile: fit document to screen width, user can pinch-zoom to read
-    const mobileZoom = (width - 8) / 612; // 612pt = letter size width
+    if (width >= 1440) return 1.8;
+    if (width >= 1200) return 1.4;
+    if (width >= 1024) return 1.4;
+    if (width >= 768) return 1.2;
+    const mobileZoom = (width - 8) / 612;
     return Math.max(0.5, Math.min(1.0, mobileZoom));
   }, []);
 
   const [scale, setScale] = useState(getResponsiveZoom);
 
-  // Load PDF
+  const scrollPageIntoView = useCallback((page: number, behavior: ScrollBehavior = "smooth") => {
+    const el = pageAnchorRefs.current[page - 1];
+    el?.scrollIntoView({ behavior, block: "start" });
+  }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setDisplayedPage(1);
+  }, [file]);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setDisplayedPage(currentPage), 120);
+    return () => window.clearTimeout(t);
+  }, [currentPage]);
+
+  useEffect(() => {
+    if (!continuousScroll || isLoading || !pdfDoc) return;
+    const id = requestAnimationFrame(() => {
+      const el = mainScrollRef.current;
+      if (el) el.scrollTop = 0;
+    });
+    return () => cancelAnimationFrame(id);
+  }, [file, continuousScroll, isLoading, pdfDoc]);
+
+  useEffect(() => {
+    if (!continuousScroll || !pdfDoc || isLoading || totalPages === 0) return;
+    const root = mainScrollRef.current;
+    if (!root) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((e) => e.isIntersecting && e.intersectionRatio > 0.05);
+        if (visible.length === 0) return;
+        const best = visible.reduce((a, b) =>
+          a.intersectionRatio >= b.intersectionRatio ? a : b,
+        );
+        const raw = (best.target as HTMLElement).dataset.pdfPage;
+        const page = raw ? parseInt(raw, 10) : NaN;
+        if (!Number.isNaN(page) && page >= 1) {
+          setCurrentPage(page);
+        }
+      },
+      { root, threshold: [0.05, 0.15, 0.35, 0.55, 0.85, 1], rootMargin: "-6% 0px -6% 0px" },
+    );
+
+    root.querySelectorAll("[data-pdf-page]").forEach((n) => observer.observe(n));
+
+    return () => observer.disconnect();
+  }, [continuousScroll, pdfDoc, isLoading, totalPages, scale]);
+
   useEffect(() => {
     let isCancelled = false;
+    let scrollTimer: ReturnType<typeof setTimeout> | undefined;
     setIsLoading(true);
-    
+
     const loadPdf = async () => {
       try {
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        
+
         if (isCancelled) return;
-        
+
         setPdfDoc(pdf);
         setTotalPages(pdf.numPages);
         onTotalPagesChange(pdf.numPages);
-        setCurrentPage(1);
         setPlaceholderPosition(null);
+
+        onTrackEvent?.("document_opened", {
+          fileName: file.name,
+          totalPages: pdf.numPages,
+          fileSize: file.size,
+        });
+
+        setCurrentPage(1);
+
+        if (isCancelled) return;
+
+        if (
+          scrollToSignaturePageOnLoad &&
+          pdf.numPages >= SIGNATURE_PAGE &&
+          signaturePageScrollDelayMs >= 0
+        ) {
+          scrollTimer = setTimeout(() => {
+            if (!isCancelled) {
+              setCurrentPage(SIGNATURE_PAGE);
+              if (continuousScroll) {
+                requestAnimationFrame(() => scrollPageIntoView(SIGNATURE_PAGE));
+              }
+              onTrackEvent?.("page_navigated", { page: SIGNATURE_PAGE, auto: true });
+            }
+          }, signaturePageScrollDelayMs);
+        }
       } finally {
         if (!isCancelled) {
           setIsLoading(false);
@@ -95,65 +187,107 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
       }
     };
     loadPdf();
-    
+
     return () => {
       isCancelled = true;
+      if (scrollTimer !== undefined) clearTimeout(scrollTimer);
     };
-  }, [file, onTotalPagesChange]);
+  }, [
+    file,
+    onTotalPagesChange,
+    onTrackEvent,
+    scrollToSignaturePageOnLoad,
+    signaturePageScrollDelayMs,
+    continuousScroll,
+    scrollPageIntoView,
+  ]);
 
   useEffect(() => {
-    if (pdfDoc) {
-      checkAndShowTutorial();
-      if (!signature) {
-        setIsPlacementMode(true);
-      }
+    if (pdfDoc && !signature) {
+      setIsPlacementMode(true);
+      setShowGuide(true);
     }
-  }, [pdfDoc, checkAndShowTutorial]);
+  }, [pdfDoc, signature]);
 
-  const handlePageSelect = useCallback((page: number) => {
-    setCurrentPage(page);
-  }, []);
+  const handlePageSelect = useCallback(
+    (page: number) => {
+      if (continuousScroll) {
+        scrollPageIntoView(page);
+      }
+      setCurrentPage(page);
+      onTrackEvent?.("page_navigated", { page });
+    },
+    [continuousScroll, scrollPageIntoView, onTrackEvent],
+  );
 
   const handlePrevPage = useCallback(() => {
-    setCurrentPage((p) => Math.max(1, p - 1));
-  }, []);
+    const next = Math.max(1, currentPage - 1);
+    if (continuousScroll) {
+      scrollPageIntoView(next);
+    }
+    setCurrentPage(next);
+    onTrackEvent?.("page_navigated", { page: next });
+  }, [currentPage, continuousScroll, scrollPageIntoView, onTrackEvent]);
 
   const handleNextPage = useCallback(() => {
-    setCurrentPage((p) => Math.min(totalPages, p + 1));
-  }, [totalPages]);
-
+    const next = Math.min(totalPages, currentPage + 1);
+    if (continuousScroll) {
+      scrollPageIntoView(next);
+    }
+    setCurrentPage(next);
+    onTrackEvent?.("page_navigated", { page: next });
+  }, [currentPage, totalPages, continuousScroll, scrollPageIntoView, onTrackEvent]);
 
   const handlePlaceholderClick = useCallback(() => {
     setIsModalOpen(true);
-    setIsPlacementMode(false); // Desactivar modo de colocación al abrir modal
-  }, []);
+    setIsPlacementMode(false);
+    setShowGuide(false);
+    onTrackEvent?.("signature_area_clicked", { page: placeholderPosition?.page ?? currentPage });
+    onSignatureModalOpen?.();
+  }, [currentPage, placeholderPosition?.page, onTrackEvent, onSignatureModalOpen]);
 
   const handleActivatePlacementMode = useCallback(() => {
     if (!signature) {
       setIsPlacementMode(true);
+      setShowGuide(true);
       if (currentPage !== SIGNATURE_PAGE && totalPages >= SIGNATURE_PAGE) {
         setCurrentPage(SIGNATURE_PAGE);
+        if (continuousScroll) {
+          requestAnimationFrame(() => scrollPageIntoView(SIGNATURE_PAGE));
+        }
         toast({
-          title: "Ir a la página de firma",
-          description: `La firma debe colocarse en la página ${SIGNATURE_PAGE}. Se ha cambiado a esa página.`,
+          title: "Página de firma",
+          description: `Navega a la página ${SIGNATURE_PAGE} para colocar tu firma.`,
           className: "bg-green-600 text-white border-green-700 [&_button]:text-white [&_button]:opacity-90 [&_button:hover]:opacity-100",
         });
       }
     }
-  }, [signature, currentPage, totalPages]);
+  }, [signature, currentPage, totalPages, continuousScroll, scrollPageIntoView]);
 
-  const handleWrongPageClick = useCallback((_currentPage: number, expectedPage: number) => {
-    setCurrentPage(expectedPage);
-    toast({
-      title: "Ir a la página de firma",
-      description: `La firma debe colocarse en la página ${expectedPage}. Se ha cambiado a esa página.`,
-      className: "bg-green-600 text-white border-green-700 [&_button]:text-white [&_button]:opacity-90 [&_button:hover]:opacity-100",
-    });
-  }, []);
+  const handleWrongPageClick = useCallback(
+    (_clickedPage: number, expectedPage: number) => {
+      setCurrentPage(expectedPage);
+      if (continuousScroll) {
+        requestAnimationFrame(() => scrollPageIntoView(expectedPage));
+      }
+      toast({
+        title: "Página de firma",
+        description: `La firma se coloca en la página ${expectedPage}.`,
+        className: "bg-green-600 text-white border-green-700 [&_button]:text-white [&_button]:opacity-90 [&_button:hover]:opacity-100",
+      });
+    },
+    [continuousScroll, scrollPageIntoView],
+  );
 
-  // Exponer función para activar modo de colocación desde el componente padre
   useImperativeHandle(ref, () => ({
     activatePlacementMode: handleActivatePlacementMode,
+    openSignatureModal: () => {
+      setIsModalOpen(true);
+      setIsPlacementMode(false);
+    },
+    closeSignatureModal: () => {
+      setIsModalOpen(false);
+    },
   }), [handleActivatePlacementMode]);
 
   const handleZoomIn = useCallback(() => {
@@ -165,70 +299,40 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
   }, []);
 
   const handleFirstPage = useCallback(() => {
+    if (continuousScroll) {
+      scrollPageIntoView(1);
+    }
     setCurrentPage(1);
-  }, []);
+  }, [continuousScroll, scrollPageIntoView]);
 
   const handleLastPage = useCallback(() => {
+    if (continuousScroll && totalPages > 0) {
+      scrollPageIntoView(totalPages);
+    }
     setCurrentPage(totalPages);
-  }, [totalPages]);
+  }, [totalPages, continuousScroll, scrollPageIntoView]);
 
   const handleCloseModal = useCallback(() => {
     setIsModalOpen(false);
   }, []);
 
-  // Keyboard shortcuts
   useKeyboardShortcuts(
     [
-      {
-        key: 'ArrowLeft',
-        handler: () => handlePrevPage(),
-        description: 'Página anterior',
-      },
-      {
-        key: 'ArrowRight',
-        handler: () => handleNextPage(),
-        description: 'Página siguiente',
-      },
-      {
-        key: 'Home',
-        handler: () => handleFirstPage(),
-        description: 'Primera página',
-      },
-      {
-        key: 'End',
-        handler: () => handleLastPage(),
-        description: 'Última página',
-      },
-      {
-        key: '+',
-        handler: () => handleZoomIn(),
-        description: 'Acercar',
-      },
-      {
-        key: '=',
-        handler: () => handleZoomIn(),
-        description: 'Acercar',
-      },
-      {
-        key: '-',
-        handler: () => handleZoomOut(),
-        description: 'Alejar',
-      },
-      {
-        key: '_',
-        handler: () => handleZoomOut(),
-        description: 'Alejar',
-      },
+      { key: 'ArrowLeft', handler: () => handlePrevPage(), description: 'Página anterior' },
+      { key: 'ArrowRight', handler: () => handleNextPage(), description: 'Página siguiente' },
+      { key: 'Home', handler: () => handleFirstPage(), description: 'Primera página' },
+      { key: 'End', handler: () => handleLastPage(), description: 'Última página' },
+      { key: '+', handler: () => handleZoomIn(), description: 'Acercar' },
+      { key: '=', handler: () => handleZoomIn(), description: 'Acercar' },
+      { key: '-', handler: () => handleZoomOut(), description: 'Alejar' },
+      { key: '_', handler: () => handleZoomOut(), description: 'Alejar' },
       {
         key: 'Escape',
         handler: () => {
-          if (isModalOpen) {
-            handleCloseModal();
-          } else if (isPlacementMode) {
-            setIsPlacementMode(false);
-          }
+          if (isModalOpen) handleCloseModal();
+          else if (isPlacementMode) setIsPlacementMode(false);
         },
-        description: 'Cerrar modal o cancelar modo de colocación',
+        description: 'Cerrar modal o cancelar',
       },
     ],
     !isLoading && pdfDoc !== null && !isLocked
@@ -237,10 +341,9 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
   const handleSignatureCreate = useCallback(
     (sig: string) => {
       onSignatureCreate(sig);
+      setShowGuide(false);
 
       if (placeholderPosition) {
-        // Smaller default size on mobile to avoid needing to resize
-        // Increased height on desktop for better visibility
         const defaultWidth = isMobile ? 100 : 150;
         const defaultHeight = isMobile ? 40 : 80;
 
@@ -253,17 +356,21 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
           scale: scale,
         });
 
+        onTrackEvent?.("signature_positioned", {
+          page: placeholderPosition.page,
+          x: placeholderPosition.x,
+          y: placeholderPosition.y,
+        });
+
         setPlaceholderPosition(null);
-        setIsPlacementMode(false); // Desactivar modo de colocación después de crear firma
+        setIsPlacementMode(false);
       }
     },
-    [placeholderPosition, onSignatureCreate, onSignaturePositionChange, scale, isMobile]
+    [placeholderPosition, onSignatureCreate, onSignaturePositionChange, scale, isMobile, onTrackEvent]
   );
 
-  // Handle clearing signature from modal - restore placeholder at the same position
   const handleClearSignatureFromModal = useCallback(() => {
     if (signaturePosition) {
-      // Restore placeholder at the signature's current position
       setPlaceholderPosition({
         x: signaturePosition.x,
         y: signaturePosition.y,
@@ -271,46 +378,75 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
       });
     }
     onClearSignature();
-  }, [signaturePosition, onClearSignature]);
+    onTrackEvent?.("signature_cleared");
+  }, [signaturePosition, onClearSignature, onTrackEvent]);
 
-  const isOnSignaturePage = currentPage === SIGNATURE_PAGE;
+  const isOnSignaturePage = displayedPage === SIGNATURE_PAGE;
+
+  const goToSignaturePage = useCallback(() => {
+    setCurrentPage(SIGNATURE_PAGE);
+    if (continuousScroll) {
+      requestAnimationFrame(() => scrollPageIntoView(SIGNATURE_PAGE));
+    }
+    onTrackEvent?.("page_navigated", { page: SIGNATURE_PAGE, auto: false });
+  }, [continuousScroll, scrollPageIntoView, onTrackEvent]);
+
+  const guideMessage = (() => {
+    if (isLocked || signature) return null;
+    if (!isOnSignaturePage && totalPages >= SIGNATURE_PAGE) {
+      return { text: `Ve a la página ${SIGNATURE_PAGE} para firmar`, action: "navigate" as const };
+    }
+    if (isOnSignaturePage && !placeholderPosition) {
+      return { text: "Toca donde deseas colocar tu firma", action: "click" as const };
+    }
+    if (placeholderPosition) {
+      return { text: "Toca el marcador para dibujar tu firma", action: "sign" as const };
+    }
+    return null;
+  })();
+
+  const guideBannerKey =
+    guideMessage == null
+      ? "none"
+      : `${displayedPage}-${guideMessage.action}-${guideMessage.text}`;
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden">
-      <div className="flex items-center justify-between gap-3 bg-card px-3 py-2 md:px-4 md:py-2.5 border-b border-border flex-shrink-0 shadow-sm">
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-background px-1.5 py-1">
+      {/* Slim toolbar */}
+      <div className="flex items-center justify-between gap-2 bg-card/80 backdrop-blur-sm px-2 py-1.5 md:px-3 md:py-1.5 border-b border-border/50 flex-shrink-0">
+        <div id="tour-pdf-toolbar-zoom" className="flex items-center gap-0.5 rounded-md border border-border/60 bg-background/80 px-1 py-0.5">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setScale((s) => Math.max(0.5, s - 0.2))}
-            className="h-8 w-8 md:h-9 md:w-9 text-foreground hover:bg-muted hover:text-foreground"
+            className="h-7 w-7 text-foreground hover:bg-muted"
           >
-            <ZoomOut className="w-4 h-4" />
+            <ZoomOut className="w-3.5 h-3.5" />
           </Button>
-          <span className="text-xs font-semibold text-foreground min-w-[42px] text-center tabular-nums">
+          <span className="text-[11px] font-semibold text-foreground min-w-[36px] text-center tabular-nums">
             {Math.round(scale * 100)}%
           </span>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setScale((s) => Math.min(2, s + 0.2))}
-            className="h-8 w-8 md:h-9 md:w-9 text-foreground hover:bg-muted hover:text-foreground"
+            className="h-7 w-7 text-foreground hover:bg-muted"
           >
-            <ZoomIn className="w-4 h-4" />
+            <ZoomIn className="w-3.5 h-3.5" />
           </Button>
         </div>
 
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-background px-1.5 py-1">
+        <div id="tour-pdf-toolbar-pages" className="flex items-center gap-0.5 rounded-md border border-border/60 bg-background/80 px-1 py-0.5">
           <Button
             variant="ghost"
             size="icon"
             onClick={handlePrevPage}
             disabled={currentPage <= 1}
-            className="h-8 w-8 md:h-9 md:w-9 text-foreground hover:bg-muted hover:text-foreground disabled:opacity-40"
+            className="h-7 w-7 text-foreground hover:bg-muted disabled:opacity-30 transition-opacity duration-200 ease-out"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-3.5 h-3.5" />
           </Button>
-          
+
           {totalPages <= 5 ? (
             <div className="flex items-center gap-0.5">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
@@ -318,9 +454,9 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
                   key={page}
                   type="button"
                   onClick={() => handlePageSelect(page)}
-                  className={`min-w-[28px] h-7 px-1.5 rounded-md text-xs font-semibold transition-all ${
-                    currentPage === page
-                      ? "bg-primary text-primary-foreground shadow-sm"
+                  className={`min-w-[24px] h-6 px-1 rounded text-[11px] font-semibold transition-[background-color,color,box-shadow,transform] duration-300 ease-out motion-reduce:transition-none ${
+                    displayedPage === page
+                      ? "bg-primary text-primary-foreground shadow-sm scale-[1.02]"
                       : page === SIGNATURE_PAGE
                       ? "text-primary bg-primary/15 hover:bg-primary/25"
                       : "text-foreground bg-transparent hover:bg-muted"
@@ -331,31 +467,30 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
               ))}
             </div>
           ) : (
-            <span className="text-xs font-semibold text-foreground min-w-[56px] text-center tabular-nums px-1">
-              {currentPage} / {totalPages}
+            <span className="text-[11px] font-semibold text-foreground min-w-[48px] text-center tabular-nums px-1 transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none">
+              {displayedPage} / {totalPages}
             </span>
           )}
-          
+
           <Button
             variant="ghost"
             size="icon"
             onClick={handleNextPage}
             disabled={currentPage >= totalPages}
-            className="h-8 w-8 md:h-9 md:w-9 text-foreground hover:bg-muted hover:text-foreground disabled:opacity-40"
+            className="h-7 w-7 text-foreground hover:bg-muted disabled:opacity-30 transition-opacity duration-200 ease-out"
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-3.5 h-3.5" />
           </Button>
         </div>
 
-        <span className="text-xs text-muted-foreground hidden md:block truncate max-w-[200px] font-medium">
+        <span className="text-[10px] text-muted-foreground hidden md:block truncate max-w-[180px] font-medium">
           {file.name}
         </span>
       </div>
 
-      {/* Main content - full width on mobile */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Thumbnails sidebar - hidden on mobile */}
-        <div className="hidden md:block">
+      {/* Main content */}
+      <div className="flex flex-1 min-h-0 overflow-hidden relative">
+        <div id="tour-pdf-thumbnails" className="hidden md:block">
           <PDFThumbnails
             pdfDoc={pdfDoc}
             currentPage={currentPage}
@@ -367,45 +502,121 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
           />
         </div>
 
-        {/* Page view - full width, pinch-to-zoom enabled on mobile */}
-        <div className="flex-1 overflow-auto flex items-start justify-center p-0 md:p-4 bg-muted/30 touch-pan-x touch-pan-y touch-pinch-zoom">
+        <div
+          id="tour-pdf-area"
+          ref={mainScrollRef}
+          className="flex-1 overflow-auto flex flex-col items-stretch p-0 md:p-3 bg-muted/20 touch-pan-x touch-pan-y touch-pinch-zoom"
+        >
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center gap-4 py-12 animate-fade-in">
+            <div className="flex flex-col items-center justify-center gap-4 py-12 animate-fade-in flex-1">
               <div className="relative">
                 <Skeleton className="w-[300px] h-[400px] md:w-[400px] md:h-[520px] rounded-lg" />
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
                   <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                  <span className="text-sm text-muted-foreground font-medium">
-                    Cargando documento...
-                  </span>
+                  <span className="text-sm text-muted-foreground font-medium">Cargando documento...</span>
                 </div>
               </div>
             </div>
+          ) : continuousScroll && totalPages > 0 ? (
+            <div className="flex flex-col items-center gap-4 md:gap-6 w-full min-h-0 py-2 pb-10">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <div
+                  key={page}
+                  ref={(el) => {
+                    pageAnchorRefs.current[page - 1] = el;
+                  }}
+                  data-pdf-page={page}
+                  className="flex justify-center w-full scroll-mt-2"
+                >
+                  <PDFPageView
+                    pdfDoc={pdfDoc}
+                    pageNumber={page}
+                    scale={scale}
+                    signature={signature}
+                    signaturePosition={signaturePosition}
+                    onSignaturePositionChange={onSignaturePositionChange}
+                    placeholderPosition={placeholderPosition}
+                    onPlaceholderPositionChange={(position) => {
+                      setPlaceholderPosition(position);
+                      if (position) {
+                        setIsPlacementMode(false);
+                        setShowGuide(true);
+                      }
+                    }}
+                    onPlaceholderClick={handlePlaceholderClick}
+                    signaturePageNumber={SIGNATURE_PAGE}
+                    onWrongPageClick={handleWrongPageClick}
+                    isPlacementMode={isPlacementMode}
+                    onClearSignature={onClearSignature}
+                    isLocked={isLocked}
+                    fileName={file.name}
+                    placementHighlight={
+                      isPlacementMode &&
+                      !signature &&
+                      !placeholderPosition &&
+                      page === SIGNATURE_PAGE
+                    }
+                    showFileNameFooter={page === 1}
+                  />
+                </div>
+              ))}
+            </div>
           ) : (
-            <PDFPageView
-              pdfDoc={pdfDoc}
-              pageNumber={currentPage}
-              scale={scale}
-              signature={signature}
-              signaturePosition={signaturePosition}
-              onSignaturePositionChange={onSignaturePositionChange}
-              placeholderPosition={placeholderPosition}
-              onPlaceholderPositionChange={(position) => {
-                setPlaceholderPosition(position);
-                if (position) {
-                  setIsPlacementMode(false);
-                }
-              }}
-              onPlaceholderClick={handlePlaceholderClick}
-              signaturePageNumber={SIGNATURE_PAGE}
-              onWrongPageClick={handleWrongPageClick}
-              isPlacementMode={isPlacementMode}
-              onClearSignature={onClearSignature}
-              isLocked={isLocked}
-              fileName={file.name}
-            />
+            <div className="flex flex-1 items-start justify-center w-full min-h-0">
+              <PDFPageView
+                pdfDoc={pdfDoc}
+                pageNumber={currentPage}
+                scale={scale}
+                signature={signature}
+                signaturePosition={signaturePosition}
+                onSignaturePositionChange={onSignaturePositionChange}
+                placeholderPosition={placeholderPosition}
+                onPlaceholderPositionChange={(position) => {
+                  setPlaceholderPosition(position);
+                  if (position) {
+                    setIsPlacementMode(false);
+                    setShowGuide(true);
+                  }
+                }}
+                onPlaceholderClick={handlePlaceholderClick}
+                signaturePageNumber={SIGNATURE_PAGE}
+                onWrongPageClick={handleWrongPageClick}
+                isPlacementMode={isPlacementMode}
+                onClearSignature={onClearSignature}
+                isLocked={isLocked}
+                fileName={file.name}
+                placementHighlight={isPlacementMode && !signature && !placeholderPosition}
+              />
+            </div>
           )}
         </div>
+
+        {/* Inline guide banner */}
+        {showGuide && guideMessage && !isLoading && (
+          <div id="tour-guide-banner" className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 max-w-[calc(100%-1.5rem)] pointer-events-none [&_button]:pointer-events-auto">
+            <div
+              key={guideBannerKey}
+              className="animate-guide-banner-in motion-reduce:animate-none"
+            >
+              {guideMessage.action === "navigate" ? (
+                <button
+                  type="button"
+                  onClick={goToSignaturePage}
+                  className="flex items-center gap-2 bg-primary text-primary-foreground pl-4 pr-3 py-2 rounded-full shadow-lg text-sm font-medium hover:bg-primary/90 transition-[background-color,box-shadow,transform] duration-300 ease-out active:scale-[0.98]"
+                >
+                  <PenLine className="w-4 h-4 shrink-0" />
+                  <span className="text-left">{guideMessage.text}</span>
+                  <ChevronDown className="w-4 h-4 shrink-0 animate-bounce motion-reduce:animate-none" />
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 bg-foreground/85 text-background px-4 py-2 rounded-full shadow-lg text-sm font-medium backdrop-blur-sm transition-shadow duration-300 ease-out">
+                  <PenLine className="w-4 h-4 shrink-0" />
+                  <span>{guideMessage.text}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <SignatureModal
@@ -414,9 +625,8 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
         onSignatureCreate={handleSignatureCreate}
         onClearSignature={handleClearSignatureFromModal}
         currentSignature={signature}
+        onTrackEvent={onTrackEvent}
       />
-
-      <SignatureTutorial isOpen={showTutorial} onClose={closeTutorial} />
     </div>
   );
 });

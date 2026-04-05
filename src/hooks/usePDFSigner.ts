@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { PDFDocument } from "pdf-lib";
+import { pdfSignatureConfig } from "@/lib/pdfSignatureConfig";
 
 interface SignaturePosition {
   x: number;
@@ -60,33 +61,60 @@ export const usePDFSigner = () => {
         signatureImage = await pdfDoc.embedJpg(signatureImageBytes);
       }
 
-      // Use the stored scale factor from when the signature was positioned
-      const scaleFactor = signaturePosition.scale;
-      
-      // Convert from canvas coordinates to PDF coordinates
-      const signatureWidth = signaturePosition.width / scaleFactor;
-      const signatureHeight = signaturePosition.height / scaleFactor;
-      
-      // x, y in signaturePosition are the CENTER of the signature box in canvas coords
-      // The visual signature inside the box has padding (p-1 = 4px) and border (2px)
-      // We use an offset to align the signature in the PDF with the visual position
-      // Adjusted to compensate for the padding/border offset in the viewer
-      const visualPaddingOffset = 4; // pixels in canvas coordinates
-      const horizontalOffset = 2; // pixels in canvas coordinates (moves signature right ~2mm)
-      
-      // Convert to PDF coords (bottom-left origin, Y pointing up)
-      // pdf-lib drawImage uses bottom-left corner as reference point
-      const x = (signaturePosition.x - signaturePosition.width / 2) / scaleFactor + (horizontalOffset / scaleFactor);
-      // Center Y in PDF = pageHeight - (canvas center Y / scaleFactor)
-      // Bottom-left Y for drawImage = PDF center Y - (signatureHeight / 2)
-      // Add padding offset to move signature UP (higher Y in PDF = higher on page)
-      const y = pageHeight - (signaturePosition.y / scaleFactor) - (signatureHeight / 2) + (visualPaddingOffset / scaleFactor);
+      // ── Coordinate mapping: viewer → PDF ─────────────────────────────────
+      //
+      // The signature box in PDFPageView is an absolutely-positioned div with:
+      //   className="border-2 p-1 ..."   ← border: 2px, padding: 4px each side
+      //   style={{ left: cx - w/2, top: cy - h/2, width: w }}
+      //
+      // With Tailwind's border-box sizing:
+      //   Content area left  = box.left  + border(2) + padding(4) = box.left  + 6
+      //   Content area top   = box.top   + border(2) + padding(4) = box.top   + 6
+      //   Content area width = w - 2×(border+padding) = w - 12
+      //
+      // The <img> inside: width:100% (= content area), height:auto, maxHeight: h-8
+      //   drawWidth  = w - 12                                (always fills content)
+      //   drawHeight = min(drawWidth / imageAR, h - 8)       (capped, not shrinking width)
+      //
+      // All stored coords are CSS px at signaturePosition.scale (= storedScale).
+      // PDF points = CSS px / storedScale.
+      // ─────────────────────────────────────────────────────────────────────
+
+      const storedScale = signaturePosition.scale;
+      const BOX_INSET = 6; // px – border(2) + padding(4), each side
+
+      // Image dimensions in CSS px at storedScale → PDF points
+      const imgWidthPx  = signaturePosition.width  - 2 * BOX_INSET;
+      const maxImgHPx   = signaturePosition.height - 8;            // matches viewer's `adjustedHeight - 8`
+
+      const imgWidthPt  = Math.max(1, imgWidthPx  / storedScale);
+      const maxImgHPt   = Math.max(1, maxImgHPx   / storedScale);
+
+      const nat = signatureImage.scale(1);
+      const AR  = nat.height > 0 ? nat.width / nat.height : 1;
+
+      // Width always equals content area (like width:100% in viewer).
+      // Height is capped at maxHeight without reducing the width (like height:auto + maxHeight in viewer).
+      const drawWidth  = imgWidthPt;
+      const drawHeight = Math.min(imgWidthPt / AR, maxImgHPt);
+
+      // Image top-left in CSS px at storedScale → PDF points
+      const imgLeftPx = signaturePosition.x - signaturePosition.width  / 2 + BOX_INSET;
+      const imgTopPx  = signaturePosition.y - signaturePosition.height / 2 + BOX_INSET;
+
+      const imgLeftPt = imgLeftPx / storedScale;
+      const imgTopPt  = imgTopPx  / storedScale;
+
+      // PDF coordinate system: origin at bottom-left, Y pointing up.
+      // pdf-lib drawImage anchors at the bottom-left corner of the image.
+      const x = imgLeftPt + pdfSignatureConfig.exportOffsetX;
+      const y = pageHeight - imgTopPt - drawHeight + pdfSignatureConfig.exportOffsetY;
 
       page.drawImage(signatureImage, {
         x,
         y,
-        width: signatureWidth,
-        height: signatureHeight,
+        width: drawWidth,
+        height: drawHeight,
       });
 
       const pdfBytes = await pdfDoc.save();

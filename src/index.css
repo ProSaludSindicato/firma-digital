@@ -20,7 +20,7 @@ All colors MUST be HSL.
     --popover: 214 31% 91%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 200 98% 39%;
+    --primary: 208 100% 30%;
     --primary-foreground: 204 100% 97%;
 
     --secondary: 215 24% 26%;
@@ -37,7 +37,7 @@ All colors MUST be HSL.
 
     --border: 212 26% 83%;
     --input: 212 26% 83%;
-    --ring: 200 98% 39%;
+    --ring: 208 100% 30%;
 
     --radius: 0.5rem;
 
@@ -45,7 +45,7 @@ All colors MUST be HSL.
 
     --sidebar-foreground: 222 47% 11%;
 
-    --sidebar-primary: 200 98% 39%;
+    --sidebar-primary: 208 100% 30%;
 
     --sidebar-primary-foreground: 204 100% 97%;
 
@@ -109,7 +109,7 @@ All colors MUST be HSL.
     --popover: 215 24% 26%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 198 93% 59%;
+    --primary: 208 100% 60%;
     --primary-foreground: 204 80% 15%;
 
     --secondary: 212 26% 83%;
@@ -126,10 +126,10 @@ All colors MUST be HSL.
 
     --border: 215 19% 34%;
     --input: 215 19% 34%;
-    --ring: 198 93% 59%;
+    --ring: 208 100% 60%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 198 93% 59%;
+    --sidebar-primary: 208 100% 60%;
     --sidebar-primary-foreground: 204 80% 15%;
     --sidebar-accent: 215 20% 65%;
     --sidebar-accent-foreground: 228 84% 4%;
@@ -186,10 +186,19 @@ All colors MUST be HSL.
   }
 
   .animate-fade-in {
-    animation: fade-in 0.6s ease-out;
+    animation: fade-in 0.5s ease-out;
   }
 
   .animate-fade-in-up {
-    animation: fade-in-up 0.8s ease-out;
+    animation: fade-in-up 0.6s ease-out;
+  }
+
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  .animate-pulse-soft {
+    animation: pulse-soft 2s ease-in-out infinite;
   }
 }

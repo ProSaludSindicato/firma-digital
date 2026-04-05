@@ -3,12 +3,24 @@ import * as pdfjsLib from "pdfjs-dist";
 import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PDFThumbnails } from "@/components/PDFThumbnails";
+import { useIsMobile } from "@/hooks/use-mobile";
 
-// Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.mjs",
   import.meta.url
 ).toString();
+
+function getResponsiveZoom(): number {
+  if (typeof window === "undefined") return 1.2;
+  const width = window.innerWidth;
+  if (width >= 1440) return 1.8;
+  if (width >= 1200) return 1.4;
+  if (width >= 1024) return 1.4;
+  if (width >= 768) return 1.2;
+  const mobileZoom = (width - 24) / 612;
+  return Math.max(0.5, Math.min(1.0, mobileZoom));
+}
 
 interface PDFPreviewProps {
   pdfUrl: string;
@@ -21,8 +33,9 @@ export const PDFPreview = ({ pdfUrl, onClose }: PDFPreviewProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [scale, setScale] = useState(1.2);
+  const [thumbnailsCollapsed, setThumbnailsCollapsed] = useState(false);
+  const isMobile = useIsMobile();
 
-  // Load PDF from blob URL
   useEffect(() => {
     let isCancelled = false;
 
@@ -36,6 +49,7 @@ export const PDFPreview = ({ pdfUrl, onClose }: PDFPreviewProps) => {
           setPdfDoc(pdf);
           setTotalPages(pdf.numPages);
           setCurrentPage(1);
+          setScale(getResponsiveZoom());
         }
       } catch (error) {
         console.error("Error al cargar el PDF:", error);
@@ -61,6 +75,10 @@ export const PDFPreview = ({ pdfUrl, onClose }: PDFPreviewProps) => {
     setCurrentPage((prev) => Math.min(totalPages, prev + 1));
   }, [totalPages]);
 
+  const handlePageSelect = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
+
   const zoomIn = useCallback(() => {
     setScale((prev) => Math.min(prev + 0.2, 3));
   }, []);
@@ -70,82 +88,126 @@ export const PDFPreview = ({ pdfUrl, onClose }: PDFPreviewProps) => {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-background">
-        <div className="flex items-center gap-4">
-          <h2 className="text-lg font-semibold">Vista Previa del PDF Firmado</h2>
-          {totalPages > 0 && (
-            <span className="text-sm text-muted-foreground">
-              Página {currentPage} de {totalPages}
-            </span>
-          )}
+    <div className="fixed inset-0 z-50 bg-background flex flex-col overflow-hidden">
+      {/* Combined header + toolbar */}
+      <div className="flex items-center justify-between gap-2 bg-card/80 backdrop-blur-sm px-2 py-1.5 md:px-3 border-b border-border/50 flex-shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <h2 className="text-xs md:text-sm font-semibold truncate">Vista previa</h2>
         </div>
+
         <div className="flex items-center gap-2">
-          {onClose && (
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="w-4 h-4" />
+          <div className="flex items-center gap-0.5 rounded-md border border-border/60 bg-background/80 px-1 py-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={zoomOut}
+              disabled={isLoading}
+              className="h-7 w-7 text-foreground hover:bg-muted disabled:opacity-30"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
             </Button>
-          )}
+            <span className="text-[11px] font-semibold text-foreground min-w-[36px] text-center tabular-nums">
+              {Math.round(scale * 100)}%
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={zoomIn}
+              disabled={isLoading}
+              className="h-7 w-7 text-foreground hover:bg-muted disabled:opacity-30"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-0.5 rounded-md border border-border/60 bg-background/80 px-1 py-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={goToPreviousPage}
+              disabled={currentPage <= 1 || isLoading}
+              className="h-7 w-7 text-foreground hover:bg-muted disabled:opacity-30"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </Button>
+
+            {totalPages <= 5 ? (
+              <div className="flex items-center gap-0.5">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => handlePageSelect(page)}
+                    disabled={isLoading}
+                    className={`min-w-[24px] h-6 px-1 rounded text-[11px] font-semibold transition-all disabled:opacity-30 ${
+                      currentPage === page
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-foreground bg-transparent hover:bg-muted"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <span className="text-[11px] font-semibold text-foreground min-w-[48px] text-center tabular-nums px-1">
+                {currentPage} / {totalPages}
+              </span>
+            )}
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={goToNextPage}
+              disabled={currentPage >= totalPages || isLoading}
+              className="h-7 w-7 text-foreground hover:bg-muted disabled:opacity-30"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         </div>
+
+        {onClose && (
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
+            <X className="w-3.5 h-3.5" />
+          </Button>
+        )}
       </div>
 
-      {/* Controls */}
-      <div className="flex items-center justify-between p-4 border-b bg-muted/30">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={goToPreviousPage}
-            disabled={currentPage <= 1 || isLoading}
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={goToNextPage}
-            disabled={currentPage >= totalPages || isLoading}
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={zoomOut} disabled={isLoading}>
-            <ZoomOut className="w-4 h-4" />
-          </Button>
-          <span className="text-sm font-medium min-w-[60px] text-center">
-            {Math.round(scale * 100)}%
-          </span>
-          <Button variant="outline" size="icon" onClick={zoomIn} disabled={isLoading}>
-            <ZoomIn className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {!isMobile && (
+          <PDFThumbnails
+            pdfDoc={pdfDoc}
+            currentPage={currentPage}
+            onPageSelect={handlePageSelect}
+            signaturePage={null}
+            isCollapsed={thumbnailsCollapsed}
+            onToggle={() => setThumbnailsCollapsed(!thumbnailsCollapsed)}
+            documentScale={scale}
+          />
+        )}
 
-      {/* PDF Content */}
-      <div className="flex-1 overflow-auto flex items-start justify-center p-4 bg-muted/30">
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center gap-4 py-12">
-            <div className="relative">
-              <Skeleton className="w-[300px] h-[400px] md:w-[400px] md:h-[520px] rounded-lg" />
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                <span className="text-sm text-muted-foreground font-medium">
-                  Cargando documento...
-                </span>
+        <div className="flex-1 overflow-auto flex items-start justify-center p-3 bg-muted/20 min-w-0">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center gap-4 py-12">
+              <div className="relative">
+                <Skeleton className="w-[300px] h-[400px] md:w-[400px] md:h-[520px] rounded-lg" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                  <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                  <span className="text-sm text-muted-foreground font-medium">Cargando documento...</span>
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
-          pdfDoc && (
-            <PDFPageCanvas
-              pdfDoc={pdfDoc}
-              pageNumber={currentPage}
-              scale={scale}
-            />
-          )
-        )}
+          ) : (
+            pdfDoc && (
+              <PDFPageCanvas
+                pdfDoc={pdfDoc}
+                pageNumber={currentPage}
+                scale={scale}
+              />
+            )
+          )}
+        </div>
       </div>
     </div>
   );
@@ -194,4 +256,3 @@ const PDFPageCanvas = ({ pdfDoc, pageNumber, scale }: PDFPageCanvasProps) => {
     />
   );
 };
-

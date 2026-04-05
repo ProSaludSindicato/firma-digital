@@ -267,7 +267,7 @@ export const AutoSignatureUploader = ({
   return (
     <div className="space-y-6">
       {/* PDF Upload */}
-      <Card>
+      <Card className="shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="w-5 h-5" />
@@ -302,10 +302,10 @@ export const AutoSignatureUploader = ({
             <div
               onDrop={handlePDFDrop}
               onDragOver={(e) => e.preventDefault()}
-              className={`relative flex flex-col items-center justify-center w-full p-8 border-2 border-dashed rounded-lg bg-card transition-all ${
+              className={`relative flex flex-col items-center justify-center w-full p-8 border-2 border-dashed rounded-xl bg-card/80 transition-all ${
                 isValidatingPDF
                   ? "opacity-50 cursor-wait border-muted"
-                  : "hover:border-primary cursor-pointer border-primary/30"
+                  : "hover:border-primary/50 cursor-pointer border-border"
               }`}
             >
               <input
@@ -316,12 +316,12 @@ export const AutoSignatureUploader = ({
                 id="auto-pdf-upload"
               />
               <label htmlFor="auto-pdf-upload" className="flex flex-col items-center cursor-pointer w-full">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                  <Upload className="w-8 h-8 text-primary" />
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                  <Upload className="w-7 h-7 sm:w-8 sm:h-8 text-primary" />
                 </div>
-                <p className="text-lg font-semibold mb-1">Arrastra tu PDF aquí</p>
+                <p className="text-base sm:text-lg font-semibold mb-1">Arrastra tu PDF aquí</p>
                 <p className="text-sm text-muted-foreground">o haz clic para seleccionar</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">PDF (máx. 10MB)</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">PDF (máx. 10&nbsp;MB)</p>
               </label>
             </div>
           )}
@@ -329,7 +329,7 @@ export const AutoSignatureUploader = ({
       </Card>
 
       {/* Signature Image Upload */}
-      <Card>
+      <Card className="shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ImageIcon className="w-5 h-5" />
@@ -368,7 +368,7 @@ export const AutoSignatureUploader = ({
               </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center w-full p-8 border-2 border-dashed rounded-lg bg-card">
+            <div className="flex flex-col items-center justify-center w-full p-8 border-2 border-dashed rounded-xl bg-card/80">
               <input
                 type="file"
                 accept="image/png,image/jpeg"
@@ -382,11 +382,11 @@ export const AutoSignatureUploader = ({
                   isValidatingImage ? "opacity-50 cursor-wait" : ""
                 }`}
               >
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                  <ImageIcon className="w-8 h-8 text-primary" />
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                  <ImageIcon className="w-7 h-7 sm:w-8 sm:h-8 text-primary" />
                 </div>
-                <p className="text-lg font-semibold mb-1">Sube la imagen de la firma</p>
-                <p className="text-sm text-muted-foreground">PNG o JPG (máx. 5MB)</p>
+                <p className="text-base sm:text-lg font-semibold mb-1">Sube la imagen de la firma</p>
+                <p className="text-sm text-muted-foreground">PNG o JPG (máx. 5&nbsp;MB)</p>
               </label>
             </div>
           )}

@@ -13,6 +13,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { validateImageFile, validateImageDimensions } from "@/lib/validation";
 import { compressImage, validateAndCompressImage } from "@/lib/imageCompression";
 import { toast } from "@/hooks/use-toast";
+import type { AuditEventType } from "@/hooks/useAuditTrail";
 
 interface SignatureModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ interface SignatureModalProps {
   onSignatureCreate: (signature: string) => void;
   onClearSignature?: () => void;
   currentSignature?: string | null;
+  onTrackEvent?: (type: AuditEventType, metadata?: Record<string, unknown>) => void;
 }
 
 export const SignatureModal = ({
@@ -28,6 +30,7 @@ export const SignatureModal = ({
   onSignatureCreate,
   onClearSignature,
   currentSignature,
+  onTrackEvent,
 }: SignatureModalProps) => {
   const signatureRef = useRef<SignatureCanvas>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -186,7 +189,7 @@ export const SignatureModal = ({
         return;
       }
       
-      // We have content, proceed to save
+      onTrackEvent?.("signature_drawn");
       // Create a new canvas for the trimmed, high-quality output
       const trimmedCanvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -354,6 +357,7 @@ export const SignatureModal = ({
           return;
         }
 
+        onTrackEvent?.("signature_uploaded", { width: img.width, height: img.height });
         onSignatureCreate(compressedImage);
         onClose();
       };
@@ -536,7 +540,11 @@ export const SignatureModal = ({
     // Portrait layout (original)
     return (
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-        <DialogContent className="w-screen h-[100dvh] max-w-none max-h-none m-0 p-0 rounded-none border-none flex flex-col [&>button]:hidden">
+        <DialogContent
+          className="w-screen h-[100dvh] max-w-none max-h-none m-0 p-0 rounded-none border-none flex flex-col [&>button]:hidden"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           {/* Header with safe area padding */}
           <div 
             className="flex items-center justify-between px-4 py-2 border-b bg-background shrink-0"
@@ -555,7 +563,7 @@ export const SignatureModal = ({
 
           {/* Tabs for mobile */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0 h-full">
-            <TabsList className={`grid w-full mx-3 mt-2 shrink-0 h-9 ${currentSignature ? 'grid-cols-2' : 'grid-cols-2'}`} style={{ width: 'calc(100% - 1.5rem)' }}>
+            <TabsList id="tour-signature-tabs" className={`grid w-full mx-3 mt-2 shrink-0 h-9 ${currentSignature ? 'grid-cols-2' : 'grid-cols-2'}`} style={{ width: 'calc(100% - 1.5rem)' }}>
               {currentSignature && (
                 <TabsTrigger value="preview" className="flex items-center gap-1.5 text-sm py-1">
                   <Eye className="w-3.5 h-3.5" />
@@ -613,6 +621,7 @@ export const SignatureModal = ({
             <TabsContent value="draw" className="flex-1 flex flex-col m-0 p-3 overflow-hidden min-h-0 mt-0">
               {/* Canvas container - takes all available space */}
               <div 
+                id="tour-signature-canvas"
                 ref={containerRef}
                 className="flex-1 min-h-0 border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent relative"
               >
@@ -647,6 +656,7 @@ export const SignatureModal = ({
                 style={{ paddingBottom: 'max(0rem, env(safe-area-inset-bottom))' }}
               >
                 <Button 
+                  id="tour-signature-save"
                   onClick={handleSaveSignature} 
                   size="lg" 
                   className="w-full h-12 text-base"
@@ -698,14 +708,18 @@ export const SignatureModal = ({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg md:max-w-xl lg:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent
+        className="sm:max-w-lg md:max-w-xl lg:max-w-2xl max-h-[90vh] overflow-y-auto"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="text-lg">{currentSignature ? "Tu firma" : "Agregar firma"}</DialogTitle>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full mb-4 grid-cols-2">
+          <TabsList id="tour-signature-tabs" className="grid w-full mb-4 grid-cols-2">
             {currentSignature && (
               <TabsTrigger value="preview" className="flex items-center gap-2">
                 <Eye className="w-4 h-4" />
@@ -751,7 +765,7 @@ export const SignatureModal = ({
           )}
 
           <TabsContent value="draw" className="mt-0">
-            <div className="border border-border rounded-lg overflow-hidden bg-white dark:bg-accent h-[280px] md:h-[360px] relative">
+            <div id="tour-signature-canvas" className="border border-border rounded-lg overflow-hidden bg-white dark:bg-accent h-[280px] md:h-[360px] relative">
               <div className="absolute bottom-16 left-8 right-8 border-b border-muted-foreground/15 pointer-events-none" />
               <div className="absolute bottom-[52px] left-8 text-[10px] text-muted-foreground/30 pointer-events-none select-none">
                 Firma
@@ -775,7 +789,7 @@ export const SignatureModal = ({
                 <Trash2 className="w-4 h-4 mr-2" />
                 Limpiar
               </Button>
-              <Button onClick={handleSaveSignature} className="flex-1">
+              <Button id="tour-signature-save" onClick={handleSaveSignature} className="flex-1">
                 <Check className="w-4 h-4 mr-2" />
                 Usar firma
               </Button>

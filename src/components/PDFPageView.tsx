@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback, memo } from "react";
 import * as pdfjsLib from "pdfjs-dist";
-import { Maximize2, Pencil, PenLine } from "lucide-react";
+import { Maximize2, Pencil } from "lucide-react";
 import { SignaturePlaceholder } from "./SignaturePlaceholder";
 
 interface PDFPageViewProps {
@@ -22,6 +22,10 @@ interface PDFPageViewProps {
   isLocked?: boolean;
   fileName?: string;
   isPlacementMode?: boolean;
+  /** Resaltado tipo “modo colocación” solo donde corresponda (p. ej. página de firma en vista continua). */
+  placementHighlight?: boolean;
+  /** En vista continua móvil, evita repetir el nombre del archivo bajo cada página. */
+  showFileNameFooter?: boolean;
 }
 
 const PDFPageViewComponent = ({
@@ -40,6 +44,8 @@ const PDFPageViewComponent = ({
   isLocked = false,
   fileName,
   isPlacementMode = false,
+  placementHighlight = false,
+  showFileNameFooter = true,
 }: PDFPageViewProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -367,15 +373,17 @@ const PDFPageViewComponent = ({
   const showSignature = signature && signaturePosition && signaturePosition.page === pageNumber;
 
   return (
-    <div 
-      ref={containerRef} 
-      className={`relative inline-block ${isPlacementMode ? 'cursor-crosshair' : 'cursor-default'}`} 
+    <div
+      ref={containerRef}
+      className={`relative inline-block ${
+        isPlacementMode && pageNumber === signaturePageNumber && !signature ? "cursor-crosshair" : "cursor-default"
+      }`}
       onClick={handleCanvasClick}
     >
       <canvas ref={canvasRef} className="block shadow-lg rounded" />
       
       {/* File name footer - visible only on mobile */}
-      {fileName && (
+      {fileName && showFileNameFooter && (
         <div className="md:hidden absolute -bottom-6 left-0 right-0 text-center">
           <span className="text-[10px] text-muted-foreground truncate block px-2">
             {fileName}
@@ -424,7 +432,7 @@ const PDFPageViewComponent = ({
               <img
                 src={signature}
                 alt="Firma"
-                className="w-full h-auto pointer-events-none"
+                className="block w-full h-auto pointer-events-none"
                 style={{ maxHeight: adjustedHeight - 8 }}
                 draggable={false}
               />
@@ -459,13 +467,8 @@ const PDFPageViewComponent = ({
           );
         })()}
 
-      {isPlacementMode && !signature && !placeholderPosition && (
-        <div className="absolute inset-0 bg-primary/[0.03] dark:bg-primary/[0.06] pointer-events-none rounded flex items-end justify-center pb-6">
-          <div className="bg-foreground/85 dark:bg-foreground/90 text-background px-5 py-2.5 rounded-full shadow-lg text-sm font-medium flex items-center gap-2 backdrop-blur-sm">
-            <PenLine className="w-4 h-4" />
-            Haz clic donde deseas colocar tu firma
-          </div>
-        </div>
+      {placementHighlight && (
+        <div className="absolute inset-0 bg-primary/[0.02] dark:bg-primary/[0.04] pointer-events-none rounded border-2 border-primary/20 border-dashed" />
       )}
     </div>
   );
@@ -483,6 +486,8 @@ export const PDFPageView = memo(PDFPageViewComponent, (prevProps, nextProps) => 
     prevProps.signaturePageNumber === nextProps.signaturePageNumber &&
     prevProps.isLocked === nextProps.isLocked &&
     prevProps.fileName === nextProps.fileName &&
-    prevProps.isPlacementMode === nextProps.isPlacementMode
+    prevProps.isPlacementMode === nextProps.isPlacementMode &&
+    prevProps.placementHighlight === nextProps.placementHighlight &&
+    prevProps.showFileNameFooter === nextProps.showFileNameFooter
   );
 });
