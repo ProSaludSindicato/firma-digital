@@ -378,159 +378,163 @@ export const SignatureModal = ({
   // isLandscapeMobile covers ALL phone sizes in landscape (including modern wide phones
   // where useIsMobile() returns false because innerWidth ≥ 768 px in landscape).
   if (isLandscapeMobile) {
-    // Landscape layout: horizontal with tabs on the left side
+    // Landscape layout: full-width canvas + compact bottom action bar
     return (
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent
-          className="w-screen h-[100dvh] max-w-none max-h-none m-0 p-0 rounded-none border-none flex flex-row [&>button]:hidden"
+          className="w-screen h-[100dvh] max-w-none max-h-none m-0 p-0 rounded-none border-none flex flex-col [&>button]:hidden"
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >
-            {/* Left sidebar — mode tabs + actions with labels */}
-            <div
-              className="flex flex-col bg-muted/50 border-r border-border shrink-0 w-[76px]"
-              style={{
-                paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
-                paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
-                paddingLeft: 'max(0.5rem, env(safe-area-inset-left))',
-              }}
-            >
-              {/* Close */}
-              <div className="px-1 pb-1.5 border-b border-border/50">
-                <Button variant="ghost" className="flex flex-col items-center gap-0.5 h-auto w-full py-1.5 px-0 touch-manipulation" onClick={onClose}>
-                  <X className="w-4 h-4" />
-                  <span className="text-[9px] leading-none font-medium">Cerrar</span>
+          {/* Canvas / content — takes all available height above the bar */}
+          <div
+            className="flex-1 min-h-0 p-2 pb-1"
+            style={{
+              paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
+              paddingLeft: 'max(0.5rem, env(safe-area-inset-left))',
+              paddingRight: 'max(0.5rem, env(safe-area-inset-right))',
+            }}
+          >
+            {activeTab === "preview" && currentSignature ? (
+              <div className="h-full border-2 border-dashed border-border rounded-lg bg-accent flex flex-col items-center justify-center p-4">
+                <img
+                  src={currentSignature}
+                  alt="Tu firma actual"
+                  className="max-w-full max-h-full object-contain"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearAndCreateNew}
+                  className="mt-3 shrink-0"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Limpiar y crear nueva
                 </Button>
               </div>
+            ) : activeTab === "draw" ? (
+              <div
+                ref={containerRef}
+                className="h-full border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent relative"
+              >
+                {!hasStroke && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
+                    <p className="text-muted-foreground text-sm">Firma aquí</p>
+                  </div>
+                )}
+                <SignatureCanvas
+                  ref={signatureRef}
+                  onBegin={() => setHasStroke(true)}
+                  canvasProps={{
+                    className: "w-full h-full",
+                    style: { width: "100%", height: "100%", touchAction: "none" },
+                  }}
+                  backgroundColor="transparent"
+                  penColor="#1e293b"
+                  minWidth={1.5}
+                  maxWidth={3}
+                />
+              </div>
+            ) : (
+              <div className="h-full border-2 border-dashed border-border rounded-lg bg-accent flex items-center justify-center">
+                <input
+                  type="file"
+                  accept="image/png, image/jpeg"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="signature-modal-upload-landscape"
+                />
+                <label
+                  htmlFor="signature-modal-upload-landscape"
+                  className="cursor-pointer flex flex-col items-center gap-2"
+                >
+                  <Upload className="w-8 h-8 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Toca para subir imagen</span>
+                  <span className="text-xs text-muted-foreground/60">PNG o JPG</span>
+                </label>
+              </div>
+            )}
+          </div>
 
-              {/* Mode tabs */}
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col justify-center">
-                <TabsList className="flex flex-col h-auto bg-transparent gap-1.5 p-1">
-                  {currentSignature ? (
-                    <TabsTrigger
-                      value="preview"
-                      className="flex flex-col items-center gap-0.5 p-2 h-auto w-full rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm touch-manipulation"
-                    >
-                      <Eye className="w-4 h-4" />
-                      <span className="text-[9px] font-medium leading-none">Actual</span>
-                    </TabsTrigger>
-                  ) : (
-                    <TabsTrigger
-                      value="draw"
-                      className="flex flex-col items-center gap-0.5 p-2 h-auto w-full rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm touch-manipulation"
-                    >
-                      <Pencil className="w-4 h-4" />
-                      <span className="text-[9px] font-medium leading-none">Dibujar</span>
-                    </TabsTrigger>
-                  )}
+          {/* Bottom action bar */}
+          <div
+            className="flex items-center gap-1 bg-muted/50 border-t border-border shrink-0 px-2"
+            style={{
+              paddingBottom: 'max(0.25rem, env(safe-area-inset-bottom))',
+              paddingLeft: 'max(0.5rem, env(safe-area-inset-left))',
+              paddingRight: 'max(0.5rem, env(safe-area-inset-right))',
+            }}
+          >
+            {/* Close */}
+            <Button
+              variant="ghost"
+              className="flex items-center gap-1.5 h-10 px-2.5 touch-manipulation shrink-0"
+              onClick={onClose}
+            >
+              <X className="w-4 h-4" />
+              <span className="text-xs font-medium">Cerrar</span>
+            </Button>
+
+            <div className="w-px h-5 bg-border mx-0.5 shrink-0" />
+
+            {/* Mode tabs */}
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="flex flex-row h-9 bg-transparent gap-0.5 p-0.5">
+                {currentSignature ? (
                   <TabsTrigger
-                    value="upload"
-                    className="flex flex-col items-center gap-0.5 p-2 h-auto w-full rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm touch-manipulation"
+                    value="preview"
+                    className="flex items-center gap-1.5 h-8 px-2.5 text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md touch-manipulation"
                   >
-                    <Upload className="w-4 h-4" />
-                    <span className="text-[9px] font-medium leading-none">Subir</span>
+                    <Eye className="w-3.5 h-3.5 shrink-0" />
+                    Actual
                   </TabsTrigger>
-                </TabsList>
-              </Tabs>
-
-              {/* Clear + Save */}
-              <div className="flex flex-col gap-1 px-1 pt-1.5 border-t border-border/50">
-                <Button
-                  variant="ghost"
-                  className="flex flex-col items-center gap-0.5 h-auto w-full py-1.5 px-0 touch-manipulation"
-                  onClick={handleClearCanvas}
+                ) : (
+                  <TabsTrigger
+                    value="draw"
+                    className="flex items-center gap-1.5 h-8 px-2.5 text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md touch-manipulation"
+                  >
+                    <Pencil className="w-3.5 h-3.5 shrink-0" />
+                    Dibujar
+                  </TabsTrigger>
+                )}
+                <TabsTrigger
+                  value="upload"
+                  className="flex items-center gap-1.5 h-8 px-2.5 text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md touch-manipulation"
                 >
-                  <Trash2 className="w-4 h-4" />
-                  <span className="text-[9px] leading-none font-medium">Limpiar</span>
-                </Button>
-                <Button
-                  onClick={handleSaveSignature}
-                  className="flex flex-col items-center gap-0.5 h-auto w-full py-2 px-0 touch-manipulation"
-                >
-                  <Check className="w-4 h-4" />
-                  <span className="text-[9px] leading-none font-medium">Usar</span>
-                </Button>
-              </div>
-            </div>
+                  <Upload className="w-3.5 h-3.5 shrink-0" />
+                  Subir
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
 
-            {/* Main content area */}
-            <div 
-              className="flex-1 flex flex-col min-w-0 p-2"
-              style={{ 
-                paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
-                paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
-                paddingRight: 'max(0.5rem, env(safe-area-inset-right))'
-              }}
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* Clear */}
+            <Button
+              variant="ghost"
+              className="flex items-center gap-1.5 h-10 px-2.5 touch-manipulation shrink-0"
+              onClick={handleClearCanvas}
             >
-              {activeTab === "preview" && currentSignature ? (
-                <div className="flex-1 border-2 border-dashed border-border rounded-lg bg-accent flex flex-col items-center justify-center p-4">
-                  <img
-                    src={currentSignature}
-                    alt="Tu firma actual"
-                    className="max-w-full max-h-full object-contain"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleClearAndCreateNew}
-                    className="mt-4"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Limpiar y crear nueva
-                  </Button>
-                </div>
-              ) : activeTab === "draw" ? (
-                <div 
-                  ref={containerRef}
-                  className="flex-1 min-h-0 border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent relative"
-                >
-                  {!hasStroke && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
-                      <p className="text-muted-foreground text-sm">Firma aquí</p>
-                    </div>
-                  )}
-                  <SignatureCanvas
-                    ref={signatureRef}
-                    onBegin={() => setHasStroke(true)}
-                    canvasProps={{
-                      className: "w-full h-full",
-                      style: {
-                        width: "100%",
-                        height: "100%",
-                        touchAction: "none",
-                      },
-                    }}
-                    backgroundColor="transparent"
-                    penColor="#1e293b"
-                    minWidth={1.5}
-                    maxWidth={3}
-                  />
-                </div>
-              ) : (
-                <div className="flex-1 border-2 border-dashed border-border rounded-lg text-center bg-accent flex items-center justify-center">
-                  <input
-                    type="file"
-                    accept="image/png, image/jpeg"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                    id="signature-modal-upload-landscape"
-                  />
-                  <label
-                    htmlFor="signature-modal-upload-landscape"
-                    className="cursor-pointer flex flex-col items-center"
-                  >
-                    <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                    <span className="text-sm text-muted-foreground">
-                      Toca para subir
-                    </span>
-                  </label>
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-      );
-    }
+              <Trash2 className="w-4 h-4" />
+              <span className="text-xs font-medium">Limpiar</span>
+            </Button>
+
+            <div className="w-px h-5 bg-border mx-0.5 shrink-0" />
+
+            {/* Save */}
+            <Button
+              onClick={handleSaveSignature}
+              className="flex items-center gap-1.5 h-10 px-3 touch-manipulation shrink-0"
+            >
+              <Check className="w-4 h-4" />
+              <span className="text-sm font-medium">Usar firma</span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
     // Portrait layout (original)
     return (
@@ -705,7 +709,7 @@ export const SignatureModal = ({
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[90vh] overflow-y-auto"
+        className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[90vh] overflow-y-auto"
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >

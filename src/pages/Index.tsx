@@ -204,37 +204,77 @@ const Index = () => {
 
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {!pdfFile ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 min-h-0">
-            <div className="text-center max-w-2xl space-y-2 mb-6 sm:mb-8 flex-shrink-0">
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-                Firma tu documento
-              </h1>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                Sube tu PDF, coloca tu firma y descárgalo listo para enviar.
-              </p>
-            </div>
+          isLandscapeMobile ? (
+            /* ── Landscape mobile: two-column layout ─────────────────── */
+            <div
+              className="flex-1 flex items-center gap-4 px-4 overflow-y-auto"
+              style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+            >
+              {/* Left: title + steps */}
+              <div className="flex flex-col justify-center gap-3 w-[38%] shrink-0 py-3">
+                <div className="space-y-1">
+                  <h1 className="text-lg font-bold text-foreground tracking-tight leading-tight">
+                    Firma tu documento
+                  </h1>
+                  <p className="text-xs text-muted-foreground">
+                    Sube tu PDF, coloca tu firma y descárgalo.
+                  </p>
+                </div>
+                <div id="tour-steps-indicator" className="flex flex-col gap-1.5 text-xs text-muted-foreground/70">
+                  {[
+                    { n: 1, label: "Sube tu PDF" },
+                    { n: 2, label: "Agrega tu firma" },
+                    { n: 3, label: "Descarga" },
+                  ].map(({ n, label }) => (
+                    <span key={n} className="flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-semibold shrink-0">{n}</span>
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              </div>
 
-            <div id="tour-upload-area" className="w-full max-w-2xl flex-shrink-0 mb-6 sm:mb-8">
-              <PDFUploader onFileSelect={handleFileSelect} />
+              {/* Right: uploader */}
+              <div id="tour-upload-area" className="flex-1 min-w-0 py-3">
+                <PDFUploader onFileSelect={handleFileSelect} />
+              </div>
             </div>
+          ) : (
+            /* ── Portrait / desktop: original vertical layout ────────── */
+            <div className="flex-1 overflow-y-auto">
+              <div className="flex flex-col items-center justify-center min-h-full p-4 sm:p-6 gap-6 sm:gap-8">
+                <div className="text-center max-w-2xl space-y-2">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+                    Firma tu documento
+                  </h1>
+                  <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                    Sube tu PDF, coloca tu firma y descárgalo listo para enviar.
+                  </p>
+                </div>
 
-            <div id="tour-steps-indicator" className="flex items-center justify-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground/70 flex-shrink-0">
-              <span className="flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-semibold">1</span>
-                Sube tu PDF
-              </span>
-              <div className="w-4 sm:w-6 h-px bg-border" />
-              <span className="flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-semibold">2</span>
-                Agrega tu firma
-              </span>
-              <div className="w-4 sm:w-6 h-px bg-border" />
-              <span className="flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-semibold">3</span>
-                Descarga
-              </span>
+                <div id="tour-upload-area" className="w-full max-w-2xl">
+                  <PDFUploader onFileSelect={handleFileSelect} />
+                </div>
+
+                <div id="tour-steps-indicator" className="flex items-center justify-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground/70">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-semibold">1</span>
+                    Sube tu PDF
+                  </span>
+                  <div className="w-4 sm:w-6 h-px bg-border" />
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-semibold">2</span>
+                    Agrega tu firma
+                  </span>
+                  <div className="w-4 sm:w-6 h-px bg-border" />
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-semibold">3</span>
+                    Descarga
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
+          )
         ) : (
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             <div className="flex-1 min-h-0 overflow-hidden">
