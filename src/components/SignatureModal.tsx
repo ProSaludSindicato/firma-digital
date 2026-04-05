@@ -386,61 +386,69 @@ export const SignatureModal = ({
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >
-            {/* Left sidebar with tabs and actions */}
-            <div 
-              className="flex flex-col justify-between bg-muted/50 border-r border-border shrink-0"
-              style={{ 
+            {/* Left sidebar — mode tabs + actions with labels */}
+            <div
+              className="flex flex-col bg-muted/50 border-r border-border shrink-0 w-[76px]"
+              style={{
                 paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
                 paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
-                paddingLeft: 'max(0.5rem, env(safe-area-inset-left))'
+                paddingLeft: 'max(0.5rem, env(safe-area-inset-left))',
               }}
             >
-              {/* Top actions */}
-              <div className="flex flex-col gap-1 p-1">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+              {/* Close */}
+              <div className="px-1 pb-1.5 border-b border-border/50">
+                <Button variant="ghost" className="flex flex-col items-center gap-0.5 h-auto w-full py-1.5 px-0 touch-manipulation" onClick={onClose}>
                   <X className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleClearCanvas}>
-                  <Trash2 className="w-4 h-4" />
+                  <span className="text-[9px] leading-none font-medium">Cerrar</span>
                 </Button>
               </div>
 
-              {/* Vertical tabs */}
+              {/* Mode tabs */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col justify-center">
-                <TabsList className="flex flex-col h-auto bg-transparent gap-1 p-1">
-                  {currentSignature && (
-                    <TabsTrigger 
-                      value="preview" 
-                      className="flex items-center justify-center p-2 h-12 w-12 data-[state=active]:bg-background touch-manipulation"
+                <TabsList className="flex flex-col h-auto bg-transparent gap-1.5 p-1">
+                  {currentSignature ? (
+                    <TabsTrigger
+                      value="preview"
+                      className="flex flex-col items-center gap-0.5 p-2 h-auto w-full rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm touch-manipulation"
                     >
-                      <Eye className="w-5 h-5" />
+                      <Eye className="w-4 h-4" />
+                      <span className="text-[9px] font-medium leading-none">Actual</span>
+                    </TabsTrigger>
+                  ) : (
+                    <TabsTrigger
+                      value="draw"
+                      className="flex flex-col items-center gap-0.5 p-2 h-auto w-full rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm touch-manipulation"
+                    >
+                      <Pencil className="w-4 h-4" />
+                      <span className="text-[9px] font-medium leading-none">Dibujar</span>
                     </TabsTrigger>
                   )}
-                  {!currentSignature && (
-                    <TabsTrigger 
-                      value="draw" 
-                      className="flex items-center justify-center p-2 h-12 w-12 data-[state=active]:bg-background touch-manipulation"
-                    >
-                      <Pencil className="w-5 h-5" />
-                    </TabsTrigger>
-                  )}
-                  <TabsTrigger 
-                    value="upload" 
-                    className="flex items-center justify-center p-2 h-12 w-12 data-[state=active]:bg-background touch-manipulation"
+                  <TabsTrigger
+                    value="upload"
+                    className="flex flex-col items-center gap-0.5 p-2 h-auto w-full rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm touch-manipulation"
                   >
-                    <Upload className="w-5 h-5" />
+                    <Upload className="w-4 h-4" />
+                    <span className="text-[9px] font-medium leading-none">Subir</span>
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
 
-              {/* Bottom confirm button */}
-              <div className="p-1">
-                <Button 
-                  onClick={handleSaveSignature} 
-                  size="icon"
-                  className="h-10 w-10"
+              {/* Clear + Save */}
+              <div className="flex flex-col gap-1 px-1 pt-1.5 border-t border-border/50">
+                <Button
+                  variant="ghost"
+                  className="flex flex-col items-center gap-0.5 h-auto w-full py-1.5 px-0 touch-manipulation"
+                  onClick={handleClearCanvas}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span className="text-[9px] leading-none font-medium">Limpiar</span>
+                </Button>
+                <Button
+                  onClick={handleSaveSignature}
+                  className="flex flex-col items-center gap-0.5 h-auto w-full py-2 px-0 touch-manipulation"
                 >
                   <Check className="w-4 h-4" />
+                  <span className="text-[9px] leading-none font-medium">Usar</span>
                 </Button>
               </div>
             </div>
@@ -697,7 +705,7 @@ export const SignatureModal = ({
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="sm:max-w-lg md:max-w-xl lg:max-w-2xl max-h-[90vh] overflow-y-auto"
+        className="sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[90vh] overflow-y-auto"
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
@@ -727,7 +735,7 @@ export const SignatureModal = ({
 
           {currentSignature && (
             <TabsContent value="preview" className="mt-0">
-              <div className="border border-border rounded-lg overflow-hidden bg-white dark:bg-accent p-6 flex items-center justify-center min-h-[280px] md:min-h-[360px]">
+              <div className="border border-border rounded-lg overflow-hidden bg-white dark:bg-accent p-6 flex items-center justify-center min-h-[320px] md:min-h-[400px] lg:min-h-[460px]">
                 <img
                   src={currentSignature}
                   alt="Tu firma actual"
@@ -752,7 +760,7 @@ export const SignatureModal = ({
           )}
 
           <TabsContent value="draw" className="mt-0">
-            <div id="tour-signature-canvas" className="border border-border rounded-lg overflow-hidden bg-white dark:bg-accent h-[280px] md:h-[360px] relative">
+            <div id="tour-signature-canvas" className="border border-border rounded-lg overflow-hidden bg-white dark:bg-accent h-[320px] md:h-[400px] lg:h-[460px] relative">
               <div className="absolute bottom-16 left-8 right-8 border-b border-muted-foreground/15 pointer-events-none" />
               <div className="absolute bottom-[52px] left-8 text-[10px] text-muted-foreground/30 pointer-events-none select-none">
                 Firma
@@ -784,31 +792,29 @@ export const SignatureModal = ({
           </TabsContent>
 
           <TabsContent value="upload" className="mt-0">
-            <div className="border border-border rounded-lg p-10 text-center bg-white dark:bg-accent hover:bg-muted/30 transition-colors">
-              <input
-                type="file"
-                accept="image/png, image/jpeg"
-                onChange={handleImageUpload}
-                className="hidden"
-                id="signature-modal-upload"
-              />
-              <label
-                htmlFor="signature-modal-upload"
-                className="cursor-pointer flex flex-col items-center gap-3"
-              >
-                <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center">
-                  <Upload className="w-5 h-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-foreground block">
-                    Sube una imagen de tu firma
-                  </span>
-                  <span className="text-xs text-muted-foreground mt-0.5 block">
-                    PNG o JPG, máximo 5MB
-                  </span>
-                </div>
-              </label>
-            </div>
+            <input
+              type="file"
+              accept="image/png, image/jpeg"
+              onChange={handleImageUpload}
+              className="hidden"
+              id="signature-modal-upload"
+            />
+            <label
+              htmlFor="signature-modal-upload"
+              className="cursor-pointer flex flex-col items-center justify-center gap-4 border border-dashed border-border rounded-lg bg-white dark:bg-accent hover:bg-muted/20 transition-colors h-[320px] md:h-[400px] lg:h-[460px]"
+            >
+              <div className="w-14 h-14 rounded-full bg-muted/50 flex items-center justify-center">
+                <Upload className="w-6 h-6 text-muted-foreground" />
+              </div>
+              <div className="text-center">
+                <span className="text-sm font-medium text-foreground block">
+                  Sube una imagen de tu firma
+                </span>
+                <span className="text-xs text-muted-foreground mt-1 block">
+                  PNG o JPG, máximo 5 MB
+                </span>
+              </div>
+            </label>
           </TabsContent>
         </Tabs>
       </DialogContent>
