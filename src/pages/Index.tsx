@@ -9,6 +9,7 @@ import { usePDFSigner } from "@/hooks/usePDFSigner";
 import { useAuditTrail } from "@/hooks/useAuditTrail";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useTour } from "@/hooks/useTour";
+import { useIsLandscapeMobile } from "@/hooks/use-mobile";
 import { toast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -44,12 +45,13 @@ const Index = () => {
   } = usePDFSigner();
 
   const { trackEvent, getAuditLog } = useAuditTrail();
+  const isLandscapeMobile = useIsLandscapeMobile();
 
   /* ─── Tour ───────────────────────────────────────────────────────────── */
   const tour = useTour();
   // Destructure stable callbacks so useEffect / useCallback deps don't change
   // on every render (the tour object reference is recreated each render).
-  const { currentPhase: tourCurrentPhase, isPhaseShown, startPhase, endPhase } = tour;
+  const { currentPhase: tourCurrentPhase, isPhaseShown, startPhase, endPhase, setRun: setTourRun } = tour;
 
   // When a PDF is loaded, continue the tour with viewer steps. Two cases:
   // 1) User uploads mid–welcome tour — welcome targets (e.g. #tour-upload-area) unmount;
@@ -66,9 +68,13 @@ const Index = () => {
 
     if (!shouldStartViewer) return;
 
+    // Immediately stop any running tour so Joyride doesn't keep the dark overlay
+    // while welcome targets (now unmounted) are still its active steps.
+    setTourRun(false);
+
     const timer = setTimeout(() => startPhase('viewer'), 700);
     return () => clearTimeout(timer);
-  }, [pdfFile, tourCurrentPhase, isPhaseShown, startPhase]);
+  }, [pdfFile, tourCurrentPhase, isPhaseShown, startPhase, setTourRun]);
 
   // Contextual trigger: start modal tips the first time the user opens the
   // signature modal (fired via onSignatureModalOpen from PDFViewer).
@@ -258,44 +264,48 @@ const Index = () => {
                   className="flex-shrink-0 w-full bg-background/95 backdrop-blur-sm border-t border-border/50 z-50"
                   style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
                 >
-                  <div className="flex flex-col items-center gap-1.5 px-3 py-2 md:py-2.5 max-w-lg mx-auto">
+                  <div className={`flex flex-col items-center max-w-lg mx-auto px-3 ${isLandscapeMobile ? "gap-1 py-1" : "gap-1.5 py-2 md:py-2.5"}`}>
                     {isSent ? (
                       <>
-                        <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 text-xs font-medium">
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          Documento enviado correctamente
-                        </div>
+                        {!isLandscapeMobile && (
+                          <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 text-xs font-medium">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Documento enviado correctamente
+                          </div>
+                        )}
                         <Button onClick={() => {
                           trackEvent("document_downloaded", { auto: false });
                           downloadSignedPDF();
-                        }} disabled={isDownloading} className="w-full h-9" size="sm">
+                        }} disabled={isDownloading} className={`w-full ${isLandscapeMobile ? "h-8" : "h-9"}`} size="sm">
                           <Download className="w-3.5 h-3.5 mr-1.5" />
                           {isDownloading ? "Procesando..." : "Descargar copia firmada"}
                         </Button>
                       </>
                     ) : (
                       <>
-                        <div className="flex items-center gap-1.5 w-full">
-                          <div className="flex items-center gap-0.5 flex-1">
-                            {[1, 2, 3].map((s) => (
-                              <div
-                                key={s}
-                                className={`h-0.5 rounded-full flex-1 transition-all duration-300 ${
-                                  s <= completedSteps ? "bg-primary" : "bg-border"
-                                }`}
-                              />
-                            ))}
+                        {!isLandscapeMobile && (
+                          <div className="flex items-center gap-1.5 w-full">
+                            <div className="flex items-center gap-0.5 flex-1">
+                              {[1, 2, 3].map((s) => (
+                                <div
+                                  key={s}
+                                  className={`h-0.5 rounded-full flex-1 transition-all duration-300 ${
+                                    s <= completedSteps ? "bg-primary" : "bg-border"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-[10px] text-muted-foreground/60 whitespace-nowrap">
+                              {completedSteps} de 3
+                            </span>
                           </div>
-                          <span className="text-[10px] text-muted-foreground/60 whitespace-nowrap">
-                            {completedSteps} de 3
-                          </span>
-                        </div>
+                        )}
 
                         <Button
                           id="tour-footer-action"
                           onClick={handleFinishAndSend}
                           disabled={isDownloading}
-                          className="w-full h-9"
+                          className={`w-full ${isLandscapeMobile ? "h-8" : "h-9"}`}
                           size="sm"
                         >
                           {signature ? (
@@ -311,9 +321,11 @@ const Index = () => {
                           )}
                         </Button>
 
-                        <p className="text-[10px] text-muted-foreground/50 text-center leading-tight">
-                          {!signature ? "Navega al área de firma y haz clic para firmar" : "Revisa tu firma y envía el documento"}
-                        </p>
+                        {!isLandscapeMobile && (
+                          <p className="text-[10px] text-muted-foreground/50 text-center leading-tight">
+                            {!signature ? "Navega al área de firma y haz clic para firmar" : "Revisa tu firma y envía el documento"}
+                          </p>
+                        )}
                       </>
                     )}
                   </div>

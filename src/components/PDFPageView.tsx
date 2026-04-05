@@ -20,12 +20,9 @@ interface PDFPageViewProps {
   signaturePageNumber: number;
   onWrongPageClick?: (currentPage: number, expectedPage: number) => void;
   isLocked?: boolean;
-  fileName?: string;
   isPlacementMode?: boolean;
   /** Resaltado tipo “modo colocación” solo donde corresponda (p. ej. página de firma en vista continua). */
   placementHighlight?: boolean;
-  /** En vista continua móvil, evita repetir el nombre del archivo bajo cada página. */
-  showFileNameFooter?: boolean;
 }
 
 const PDFPageViewComponent = ({
@@ -42,10 +39,8 @@ const PDFPageViewComponent = ({
   signaturePageNumber,
   onWrongPageClick,
   isLocked = false,
-  fileName,
   isPlacementMode = false,
   placementHighlight = false,
-  showFileNameFooter = true,
 }: PDFPageViewProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -382,15 +377,6 @@ const PDFPageViewComponent = ({
     >
       <canvas ref={canvasRef} className="block shadow-lg rounded" />
       
-      {/* File name footer - visible only on mobile */}
-      {fileName && showFileNameFooter && (
-        <div className="md:hidden absolute -bottom-6 left-0 right-0 text-center">
-          <span className="text-[10px] text-muted-foreground truncate block px-2">
-            {fileName}
-          </span>
-        </div>
-      )}
-
       {/* Placeholder button */}
       {showPlaceholder && (
         <SignaturePlaceholder
@@ -485,9 +471,7 @@ export const PDFPageView = memo(PDFPageViewComponent, (prevProps, nextProps) => 
     JSON.stringify(prevProps.placeholderPosition) === JSON.stringify(nextProps.placeholderPosition) &&
     prevProps.signaturePageNumber === nextProps.signaturePageNumber &&
     prevProps.isLocked === nextProps.isLocked &&
-    prevProps.fileName === nextProps.fileName &&
     prevProps.isPlacementMode === nextProps.isPlacementMode &&
-    prevProps.placementHighlight === nextProps.placementHighlight &&
-    prevProps.showFileNameFooter === nextProps.showFileNameFooter
+    prevProps.placementHighlight === nextProps.placementHighlight
   );
 });

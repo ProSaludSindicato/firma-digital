@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useIsLandscapeMobile } from "@/hooks/use-mobile";
 import { validateImageFile, validateImageDimensions } from "@/lib/validation";
 import { compressImage, validateAndCompressImage } from "@/lib/imageCompression";
 import { toast } from "@/hooks/use-toast";
@@ -37,26 +37,8 @@ export const SignatureModal = ({
   const [activeTab, setActiveTab] = useState(currentSignature ? "preview" : "draw");
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [hasStroke, setHasStroke] = useState(false);
-  const [isLandscape, setIsLandscape] = useState(false);
   const isMobile = useIsMobile();
-
-  // Detect landscape orientation for mobile
-  useEffect(() => {
-    if (!isMobile) return;
-    
-    const checkOrientation = () => {
-      setIsLandscape(window.innerWidth > window.innerHeight);
-    };
-    
-    checkOrientation();
-    window.addEventListener("resize", checkOrientation);
-    window.addEventListener("orientationchange", checkOrientation);
-    
-    return () => {
-      window.removeEventListener("resize", checkOrientation);
-      window.removeEventListener("orientationchange", checkOrientation);
-    };
-  }, [isMobile]);
+  const isLandscapeMobile = useIsLandscapeMobile();
 
   // Get device pixel ratio for high-DPI displays
   const getPixelRatio = () => {
@@ -129,11 +111,11 @@ export const SignatureModal = ({
   // Reset canvas when orientation changes to fix touch offset issues
   useEffect(() => {
     if (isOpen && activeTab === "draw" && signatureRef.current) {
-      // Clear and reset the canvas when orientation changes
       signatureRef.current.clear();
       setHasStroke(false);
     }
-  }, [isLandscape]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLandscapeMobile]);
 
   // Handle clearing signature and switching to new signature flow
   const handleClearAndCreateNew = () => {
@@ -393,12 +375,17 @@ export const SignatureModal = ({
 
   // Full-screen mobile modal with safe area support
 
-  if (isMobile) {
+  // isLandscapeMobile covers ALL phone sizes in landscape (including modern wide phones
+  // where useIsMobile() returns false because innerWidth ≥ 768 px in landscape).
+  if (isLandscapeMobile) {
     // Landscape layout: horizontal with tabs on the left side
-    if (isLandscape) {
-      return (
-        <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-          <DialogContent className="w-screen h-[100dvh] max-w-none max-h-none m-0 p-0 rounded-none border-none flex flex-row [&>button]:hidden">
+    return (
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+        <DialogContent
+          className="w-screen h-[100dvh] max-w-none max-h-none m-0 p-0 rounded-none border-none flex flex-row [&>button]:hidden"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
             {/* Left sidebar with tabs and actions */}
             <div 
               className="flex flex-col justify-between bg-muted/50 border-r border-border shrink-0"
@@ -705,10 +692,10 @@ export const SignatureModal = ({
         </DialogContent>
       </Dialog>
     );
-  }
 
+  // Desktop / tablet layout
   return (
-      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent
         className="sm:max-w-lg md:max-w-xl lg:max-w-2xl max-h-[90vh] overflow-y-auto"
         onPointerDownOutside={(e) => e.preventDefault()}

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { PDFThumbnails } from "./PDFThumbnails";
 import { PDFPageView } from "./PDFPageView";
 import { SignatureModal } from "./SignatureModal";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useIsLandscapeMobile } from "@/hooks/use-mobile";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -75,9 +75,15 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
   /** Página mostrada en paginación y aviso (debounce suave ante scroll continuo). */
   const [displayedPage, setDisplayedPage] = useState(1);
   const isMobile = useIsMobile();
+  const isLandscapeMobile = useIsLandscapeMobile();
 
   const getResponsiveZoom = useCallback(() => {
     const width = window.innerWidth;
+    const height = window.innerHeight;
+    // Phone landscape: no sidebar, fit page width to the full screen width
+    if (height < 500 && width > height) {
+      return Math.max(0.5, Math.min(1.4, (width - 24) / 612));
+    }
     if (width >= 1440) return 1.8;
     if (width >= 1200) return 1.4;
     if (width >= 1024) return 1.4;
@@ -87,6 +93,17 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
   }, []);
 
   const [scale, setScale] = useState(getResponsiveZoom);
+
+  // Recalculate zoom when orientation changes (e.g. portrait ↔ landscape on mobile)
+  useEffect(() => {
+    const handleOrientationChange = () => {
+      // Brief delay to let the browser finalise the new viewport dimensions
+      const t = window.setTimeout(() => setScale(getResponsiveZoom()), 120);
+      return t;
+    };
+    window.addEventListener("orientationchange", handleOrientationChange);
+    return () => window.removeEventListener("orientationchange", handleOrientationChange);
+  }, [getResponsiveZoom]);
 
   const scrollPageIntoView = useCallback((page: number, behavior: ScrollBehavior = "smooth") => {
     const el = pageAnchorRefs.current[page - 1];
@@ -490,7 +507,7 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
 
       {/* Main content */}
       <div className="flex flex-1 min-h-0 overflow-hidden relative">
-        <div id="tour-pdf-thumbnails" className="hidden md:block">
+        <div id="tour-pdf-thumbnails" className={`hidden ${!isLandscapeMobile ? "md:block" : ""}`}>
           <PDFThumbnails
             pdfDoc={pdfDoc}
             currentPage={currentPage}
@@ -549,14 +566,12 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
                     isPlacementMode={isPlacementMode}
                     onClearSignature={onClearSignature}
                     isLocked={isLocked}
-                    fileName={file.name}
                     placementHighlight={
                       isPlacementMode &&
                       !signature &&
                       !placeholderPosition &&
                       page === SIGNATURE_PAGE
                     }
-                    showFileNameFooter={page === 1}
                   />
                 </div>
               ))}
@@ -584,7 +599,6 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
                 isPlacementMode={isPlacementMode}
                 onClearSignature={onClearSignature}
                 isLocked={isLocked}
-                fileName={file.name}
                 placementHighlight={isPlacementMode && !signature && !placeholderPosition}
               />
             </div>
