@@ -418,10 +418,14 @@ export const SignatureModal = ({
                 className="h-full border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent relative"
               >
                 {!hasStroke && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-30">
                     <p className="text-muted-foreground text-sm">Firma aquí</p>
                   </div>
                 )}
+                <div className="absolute bottom-[min(28%,7.5rem)] left-3 right-3 border-b border-muted-foreground/20 pointer-events-none" />
+                <div className="absolute bottom-[calc(min(28%,7.5rem)_+_10px)] left-3 text-[10px] text-muted-foreground/35 pointer-events-none select-none">
+                  Firma
+                </div>
                 <SignatureCanvas
                   ref={signatureRef}
                   onBegin={() => setHasStroke(true)}
@@ -536,7 +540,8 @@ export const SignatureModal = ({
     );
   }
 
-    // Portrait layout (original)
+  // Portrait phones: full-screen dialog (touch-friendly)
+  if (isMobile) {
     return (
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent
@@ -625,10 +630,14 @@ export const SignatureModal = ({
                 className="flex-1 min-h-0 border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent relative"
               >
                 {!hasStroke && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-30">
                     <p className="text-muted-foreground text-sm">Firma aquí</p>
                   </div>
                 )}
+                <div className="absolute bottom-[min(28%,7.5rem)] left-3 right-3 border-b border-muted-foreground/20 pointer-events-none" />
+                <div className="absolute bottom-[calc(min(28%,7.5rem)_+_10px)] left-3 text-[10px] text-muted-foreground/35 pointer-events-none select-none">
+                  Firma
+                </div>
 
                 {/* Use display dimensions for canvas, not scaled - let library handle touch properly */}
                 <SignatureCanvas
@@ -704,21 +713,22 @@ export const SignatureModal = ({
         </DialogContent>
       </Dialog>
     );
+  }
 
   // Desktop / tablet layout
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[90vh] overflow-y-auto"
+        className="flex w-[calc(100%-2rem)] max-h-[92dvh] flex-col gap-3 overflow-y-auto p-6 sm:max-w-2xl md:max-w-3xl md:gap-4 lg:max-w-4xl"
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader>
+        <DialogHeader className="shrink-0 space-y-1.5 text-left">
           <DialogTitle className="text-lg">{currentSignature ? "Tu firma" : "Agregar firma"}</DialogTitle>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList id="tour-signature-tabs" className="grid w-full mb-4 grid-cols-2">
+          <TabsList id="tour-signature-tabs" className="mb-0 grid w-full grid-cols-2">
             {currentSignature && (
               <TabsTrigger value="preview" className="flex items-center gap-2">
                 <Eye className="w-4 h-4" />
@@ -738,15 +748,15 @@ export const SignatureModal = ({
           </TabsList>
 
           {currentSignature && (
-            <TabsContent value="preview" className="mt-0">
-              <div className="border border-border rounded-lg overflow-hidden bg-white dark:bg-accent p-6 flex items-center justify-center min-h-[320px] md:min-h-[400px] lg:min-h-[460px]">
+            <TabsContent value="preview" className="mt-3">
+              <div className="flex h-[clamp(176px,calc(100dvh-20rem),300px)] items-center justify-center overflow-hidden rounded-lg border border-border bg-white p-6 dark:bg-accent md:h-[clamp(200px,calc(100dvh-20rem),376px)] lg:h-[clamp(220px,calc(100dvh-20rem),432px)]">
                 <img
                   src={currentSignature}
                   alt="Tu firma actual"
                   className="max-w-full max-h-48 object-contain"
                 />
               </div>
-              <div className="flex gap-2 mt-4">
+              <div className="mt-3 flex shrink-0 gap-2 md:mt-4">
                 <Button
                   variant="outline"
                   onClick={handleClearAndCreateNew}
@@ -763,8 +773,11 @@ export const SignatureModal = ({
             </TabsContent>
           )}
 
-          <TabsContent value="draw" className="mt-0">
-            <div id="tour-signature-canvas" className="border border-border rounded-lg overflow-hidden bg-white dark:bg-accent h-[320px] md:h-[400px] lg:h-[460px] relative">
+          <TabsContent value="draw" className="mt-3">
+            <div
+              id="tour-signature-canvas"
+              className="relative h-[clamp(176px,calc(100dvh-20rem),300px)] w-full overflow-hidden rounded-lg border border-border bg-white dark:bg-accent md:h-[clamp(200px,calc(100dvh-20rem),376px)] lg:h-[clamp(220px,calc(100dvh-20rem),432px)]"
+            >
               <div className="absolute bottom-16 left-8 right-8 border-b border-muted-foreground/15 pointer-events-none" />
               <div className="absolute bottom-[52px] left-8 text-[10px] text-muted-foreground/30 pointer-events-none select-none">
                 Firma
@@ -779,7 +792,7 @@ export const SignatureModal = ({
                 penColor="#1e293b"
               />
             </div>
-            <div className="flex gap-2 mt-4">
+            <div className="mt-3 flex shrink-0 gap-2 md:mt-4">
               <Button
                 variant="outline"
                 onClick={handleClearCanvas}
@@ -795,7 +808,7 @@ export const SignatureModal = ({
             </div>
           </TabsContent>
 
-          <TabsContent value="upload" className="mt-0">
+          <TabsContent value="upload" className="mt-3">
             <input
               type="file"
               accept="image/png, image/jpeg"
@@ -805,7 +818,7 @@ export const SignatureModal = ({
             />
             <label
               htmlFor="signature-modal-upload"
-              className="cursor-pointer flex flex-col items-center justify-center gap-4 border border-dashed border-border rounded-lg bg-white dark:bg-accent hover:bg-muted/20 transition-colors h-[320px] md:h-[400px] lg:h-[460px]"
+              className="flex h-[clamp(176px,calc(100dvh-20rem),300px)] w-full cursor-pointer flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-border bg-white transition-colors hover:bg-muted/20 dark:bg-accent md:h-[clamp(200px,calc(100dvh-20rem),376px)] lg:h-[clamp(220px,calc(100dvh-20rem),432px)]"
             >
               <div className="w-14 h-14 rounded-full bg-muted/50 flex items-center justify-center">
                 <Upload className="w-6 h-6 text-muted-foreground" />

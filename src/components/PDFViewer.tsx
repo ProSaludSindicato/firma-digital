@@ -72,8 +72,6 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isPlacementMode, setIsPlacementMode] = useState(false);
   const [showGuide, setShowGuide] = useState(true);
-  /** Página mostrada en paginación y aviso (debounce suave ante scroll continuo). */
-  const [displayedPage, setDisplayedPage] = useState(1);
   const isMobile = useIsMobile();
   const isLandscapeMobile = useIsLandscapeMobile();
 
@@ -112,13 +110,7 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
 
   useEffect(() => {
     setCurrentPage(1);
-    setDisplayedPage(1);
   }, [file]);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => setDisplayedPage(currentPage), 120);
-    return () => window.clearTimeout(t);
-  }, [currentPage]);
 
   useEffect(() => {
     if (!continuousScroll || isLoading || !pdfDoc) return;
@@ -129,30 +121,64 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
     return () => cancelAnimationFrame(id);
   }, [file, continuousScroll, isLoading, pdfDoc]);
 
+  // Scroll-based page detection (more reliable than IntersectionObserver on iOS / mobile WebKit).
   useEffect(() => {
     if (!continuousScroll || !pdfDoc || isLoading || totalPages === 0) return;
     const root = mainScrollRef.current;
     if (!root) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((e) => e.isIntersecting && e.intersectionRatio > 0.05);
-        if (visible.length === 0) return;
-        const best = visible.reduce((a, b) =>
-          a.intersectionRatio >= b.intersectionRatio ? a : b,
-        );
-        const raw = (best.target as HTMLElement).dataset.pdfPage;
-        const page = raw ? parseInt(raw, 10) : NaN;
-        if (!Number.isNaN(page) && page >= 1) {
-          setCurrentPage(page);
+    let raf = 0;
+    const computeVisiblePage = () => {
+      raf = 0;
+      const rootRect = root.getBoundingClientRect();
+      if (rootRect.height < 8) return;
+
+      let bestPage = 1;
+      let bestVisible = -1;
+
+      for (let i = 0; i < totalPages; i++) {
+        const el = pageAnchorRefs.current[i];
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        const overlapTop = Math.max(r.top, rootRect.top);
+        const overlapBottom = Math.min(r.bottom, rootRect.bottom);
+        const visible = Math.max(0, overlapBottom - overlapTop);
+        if (visible > bestVisible) {
+          bestVisible = visible;
+          bestPage = i + 1;
         }
-      },
-      { root, threshold: [0.05, 0.15, 0.35, 0.55, 0.85, 1], rootMargin: "-6% 0px -6% 0px" },
-    );
+      }
 
-    root.querySelectorAll("[data-pdf-page]").forEach((n) => observer.observe(n));
+      if (bestVisible > 0) {
+        setCurrentPage((prev) => (prev !== bestPage ? bestPage : prev));
+      }
+    };
 
-    return () => observer.disconnect();
+    const schedule = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(computeVisiblePage);
+    };
+
+    root.addEventListener("scroll", schedule, { passive: true });
+    root.addEventListener("touchmove", schedule, { passive: true });
+    root.addEventListener("scrollend", schedule);
+    window.addEventListener("resize", schedule);
+
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(schedule) : null;
+    ro?.observe(root);
+
+    schedule();
+    const t = window.setTimeout(schedule, 150);
+
+    return () => {
+      root.removeEventListener("scroll", schedule);
+      root.removeEventListener("touchmove", schedule);
+      root.removeEventListener("scrollend", schedule);
+      window.removeEventListener("resize", schedule);
+      ro?.disconnect();
+      window.clearTimeout(t);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, [continuousScroll, pdfDoc, isLoading, totalPages, scale]);
 
   useEffect(() => {
@@ -398,7 +424,7 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
     onTrackEvent?.("signature_cleared");
   }, [signaturePosition, onClearSignature, onTrackEvent]);
 
-  const isOnSignaturePage = displayedPage === SIGNATURE_PAGE;
+  const isOnSignaturePage = currentPage === SIGNATURE_PAGE;
 
   const goToSignaturePage = useCallback(() => {
     setCurrentPage(SIGNATURE_PAGE);
@@ -425,7 +451,7 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
   const guideBannerKey =
     guideMessage == null
       ? "none"
-      : `${displayedPage}-${guideMessage.action}-${guideMessage.text}`;
+      : `${currentPage}-${guideMessage.action}-${guideMessage.text}`;
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden">
@@ -472,7 +498,7 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
                   type="button"
                   onClick={() => handlePageSelect(page)}
                   className={`min-w-[24px] h-6 px-1 rounded text-[11px] font-semibold transition-[background-color,color,box-shadow,transform] duration-300 ease-out motion-reduce:transition-none ${
-                    displayedPage === page
+                    currentPage === page
                       ? "bg-primary text-primary-foreground shadow-sm scale-[1.02]"
                       : page === SIGNATURE_PAGE
                       ? "text-primary bg-primary/15 hover:bg-primary/25"
@@ -485,7 +511,7 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
             </div>
           ) : (
             <span className="text-[11px] font-semibold text-foreground min-w-[48px] text-center tabular-nums px-1 transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none">
-              {displayedPage} / {totalPages}
+              {currentPage} / {totalPages}
             </span>
           )}
 
