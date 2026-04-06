@@ -106,7 +106,7 @@ const welcomeSteps: Step[] = [
   {
     target: 'body',
     placement: 'center',
-    disableBeacon: true,
+    skipBeacon: true,
     title: (
       <span className="flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-primary flex-shrink-0" />
@@ -128,7 +128,7 @@ const welcomeSteps: Step[] = [
   {
     target: '#tour-upload-area',
     placement: 'top',
-    disableBeacon: true,
+    skipBeacon: true,
     title: (
       <span className="flex items-center gap-2">
         <FileText className="w-4 h-4 text-primary flex-shrink-0" />
@@ -141,7 +141,7 @@ const welcomeSteps: Step[] = [
   {
     target: '#tour-steps-indicator',
     placement: 'top',
-    disableBeacon: true,
+    skipBeacon: true,
     title: (
       <span className="flex items-center gap-2">
         <Check className="w-4 h-4 text-primary flex-shrink-0" />
@@ -195,7 +195,7 @@ function createViewerSteps(layout: 'compact' | 'wide'): Step[] {
       ? {
           target: '#tour-pdf-area',
           placement: 'right-start',
-          disableBeacon: true,
+          skipBeacon: true,
           skipScroll: true,
           // No flip to `left`: junto al panel de miniaturas suele quedar espacio insuficiente y el
           // globo termina cortado fuera del viewport. Sin flip, el globo permanece a la derecha del
@@ -216,7 +216,7 @@ function createViewerSteps(layout: 'compact' | 'wide'): Step[] {
       : {
           target: '#tour-pdf-area',
           placement: 'bottom',
-          disableBeacon: true,
+          skipBeacon: true,
           skipScroll: true,
           title: pdfAreaTourTitle,
           content: pdfAreaTourContent,
@@ -226,7 +226,7 @@ function createViewerSteps(layout: 'compact' | 'wide'): Step[] {
     {
       target: 'body',
       placement: 'center',
-      disableBeacon: true,
+      skipBeacon: true,
       title: (
         <span className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-primary flex-shrink-0" />
@@ -239,7 +239,7 @@ function createViewerSteps(layout: 'compact' | 'wide'): Step[] {
     {
       target: '#tour-pdf-toolbar-zoom',
       placement: 'bottom',
-      disableBeacon: true,
+      skipBeacon: true,
       skipScroll: true,
       title: (
         <span className="flex items-center gap-2">
@@ -260,7 +260,7 @@ function createViewerSteps(layout: 'compact' | 'wide'): Step[] {
     {
       target: '#tour-pdf-toolbar-pages',
       placement: 'bottom',
-      disableBeacon: true,
+      skipBeacon: true,
       skipScroll: true,
       title: (
         <span className="flex items-center gap-2">
@@ -291,7 +291,7 @@ function createViewerSteps(layout: 'compact' | 'wide'): Step[] {
     steps.push({
       target: '#tour-pdf-thumbnails',
       placement: 'right',
-      disableBeacon: true,
+      skipBeacon: true,
       title: (
         <span className="flex items-center gap-2">
           <Layers className="w-4 h-4 text-primary flex-shrink-0" />
@@ -307,7 +307,7 @@ function createViewerSteps(layout: 'compact' | 'wide'): Step[] {
   steps.push({
     target: '#tour-footer-action',
     placement: 'top',
-    disableBeacon: true,
+    skipBeacon: true,
     title: (
       <span className="flex items-center gap-2">
         <PenLine className="w-4 h-4 text-primary flex-shrink-0" />
@@ -341,7 +341,7 @@ const modalSteps: Step[] = [
   {
     target: 'body',
     placement: 'center',
-    disableBeacon: true,
+    skipBeacon: true,
     title: (
       <span className="flex items-center gap-2">
         <PenLine className="w-4 h-4 text-primary flex-shrink-0" />
@@ -370,7 +370,7 @@ const placedSteps: Step[] = [
   {
     target: 'body',
     placement: 'center',
-    disableBeacon: true,
+    skipBeacon: true,
     title: (
       <span className="flex items-center gap-2">
         <Check className="w-4 h-4 text-primary flex-shrink-0" />
@@ -405,7 +405,7 @@ const placedSteps: Step[] = [
   {
     target: '#tour-footer-action',
     placement: 'top',
-    disableBeacon: true,
+    skipBeacon: true,
     skipScroll: true,
     title: (
       <span className="flex items-center gap-2">
