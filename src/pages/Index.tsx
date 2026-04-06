@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Download, Send, CheckCircle, PenLine, Check } from "lucide-react";
+import { Download, Send, CheckCircle, MapPin, Check } from "lucide-react";
 import { Header } from "@/components/Header";
 import { PDFUploader } from "@/components/PDFUploader";
 import { PDFViewer, PDFViewerRef } from "@/components/PDFViewer";
@@ -124,7 +124,7 @@ const Index = () => {
             }
           }
         },
-        description: 'Ingresar firma / Finalizar y enviar / Descargar',
+        description: 'Ir al área de firma / Finalizar y enviar / Descargar',
       },
     ],
     !!pdfFile
@@ -294,6 +294,7 @@ const Index = () => {
                 scrollToSignaturePageOnLoad={pdfViewerConfig.scrollToSignaturePageOnLoad}
                 signaturePageScrollDelayMs={pdfViewerConfig.signaturePageScrollDelayMs}
                 continuousScroll={pdfViewerConfig.continuousScroll}
+                signaturePageScrollBlock={pdfViewerConfig.signaturePageScrollBlock}
               />
             </div>
 
@@ -355,15 +356,17 @@ const Index = () => {
                             </>
                           ) : (
                             <>
-                              <PenLine className="w-3.5 h-3.5 mr-1.5" />
-                              Agregar firma
+                              <MapPin className="w-3.5 h-3.5 mr-1.5" />
+                              Ir al área de firma
                             </>
                           )}
                         </Button>
 
                         {!isLandscapeMobile && (
                           <p className="text-[10px] text-muted-foreground/50 text-center leading-tight">
-                            {!signature ? "Navega al área de firma y haz clic para firmar" : "Revisa tu firma y envía el documento"}
+                            {!signature
+                              ? "Te llevamos a la zona del PDF; luego toca el recuadro para crear tu firma"
+                              : "Revisa tu firma y envía el documento"}
                           </p>
                         )}
                       </>

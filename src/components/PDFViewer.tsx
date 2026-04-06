@@ -10,6 +10,7 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AuditEventType } from "@/hooks/useAuditTrail";
+import type { SignaturePageScrollBlock } from "@/lib/pdfViewerConfig";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.mjs",
@@ -37,6 +38,11 @@ interface PDFViewerProps {
   signaturePageScrollDelayMs?: number;
   /** Muestra todas las páginas en una columna con scroll; la firma sigue ligada al número de página. */
   continuousScroll?: boolean;
+  /**
+   * Alineación vertical al hacer scroll a la página de firma (solo scroll continuo).
+   * El resto de saltos de página usan el inicio de la página.
+   */
+  signaturePageScrollBlock?: SignaturePageScrollBlock;
 }
 
 export interface PDFViewerRef {
@@ -59,6 +65,7 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
   scrollToSignaturePageOnLoad = false,
   signaturePageScrollDelayMs = 600,
   continuousScroll = false,
+  signaturePageScrollBlock = "end",
 }, ref) => {
   const mainScrollRef = useRef<HTMLDivElement>(null);
   const pageAnchorRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -103,10 +110,20 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
     return () => window.removeEventListener("orientationchange", handleOrientationChange);
   }, [getResponsiveZoom]);
 
-  const scrollPageIntoView = useCallback((page: number, behavior: ScrollBehavior = "smooth") => {
-    const el = pageAnchorRefs.current[page - 1];
-    el?.scrollIntoView({ behavior, block: "start" });
-  }, []);
+  const scrollPageIntoView = useCallback(
+    (
+      page: number,
+      options?: { behavior?: ScrollBehavior; block?: ScrollLogicalPosition },
+    ) => {
+      const el = pageAnchorRefs.current[page - 1];
+      if (!el) return;
+      const behavior = options?.behavior ?? "smooth";
+      const block =
+        options?.block ?? (page === SIGNATURE_PAGE ? signaturePageScrollBlock : "start");
+      el.scrollIntoView({ behavior, block });
+    },
+    [signaturePageScrollBlock],
+  );
 
   useEffect(() => {
     setCurrentPage(1);
