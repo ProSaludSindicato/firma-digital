@@ -15,6 +15,7 @@ import {
   ZoomIn,
   Layers,
   PenLine,
+  MapPin,
   Send,
   Pencil,
   MousePointerClick,
@@ -310,15 +311,16 @@ function createViewerSteps(layout: 'compact' | 'wide'): Step[] {
     skipBeacon: true,
     title: (
       <span className="flex items-center gap-2">
-        <PenLine className="w-4 h-4 text-primary flex-shrink-0" />
+        <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
         Botón de acción principal
       </span>
     ),
     content: (
       <div className="space-y-1.5">
         <p>
-          Toca <strong>"Agregar firma"</strong> para abrir el panel de firma digital y
-          continuar con el proceso.
+          Toca <strong>"Ir al área de firma"</strong> para ir a la zona del documento donde
+          debes colocarla. Después, toca el recuadro resaltado para abrir el asistente y
+          crear tu firma.
         </p>
         <p className="text-xs text-muted-foreground/70">
           En la siguiente fase aprenderás a crear y posicionar tu firma.
