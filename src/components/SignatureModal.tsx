@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import SignatureCanvas from "react-signature-canvas";
 import { Pencil, Upload, X, Trash2, Check, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,87 +35,59 @@ export const SignatureModal = ({
   const signatureRef = useRef<SignatureCanvas>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState(currentSignature ? "preview" : "draw");
-  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+  /** Remounts SignaturePad so internal buffer + DPR match the laid-out box (rotation / delayed mobile layout). */
+  const [signaturePadKey, setSignaturePadKey] = useState(0);
   const [hasStroke, setHasStroke] = useState(false);
   const isMobile = useIsMobile();
   const isLandscapeMobile = useIsLandscapeMobile();
 
-  // Get device pixel ratio for high-DPI displays
-  const getPixelRatio = () => {
-    return typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 3) : 1;
-  };
-
-  const setFallbackCanvasSize = () => {
-    if (typeof window === "undefined") return;
-    const pixelRatio = getPixelRatio();
-
-    // Conservative fallback that works even before the dialog finishes layout.
-    // (We refine this immediately via ResizeObserver.)
-    const displayWidth = Math.max(280, window.innerWidth - 32);
-    const displayHeight = Math.max(240, window.innerHeight - 260);
-
-    setCanvasSize({
-      width: Math.floor(displayWidth * pixelRatio),
-      height: Math.floor(displayHeight * pixelRatio),
-    });
-  };
-
-  // Update canvas size when container resizes (critical on mobile where layout settles after open)
-  useEffect(() => {
-    if (!isOpen) return;
-    if (activeTab !== "draw") return;
-    const el = containerRef.current;
-    if (!el) {
-      // Ensure we render a drawable canvas even if the ref isn't ready yet.
-      setFallbackCanvasSize();
-      return;
-    }
-
-    const updateSize = () => {
-      const displayWidth = el.clientWidth;
-      const displayHeight = el.clientHeight;
-
-      // Avoid locking canvas into a 0x0 state during initial layout
-      if (displayWidth < 8 || displayHeight < 8) {
-        setFallbackCanvasSize();
-        return;
-      }
-
-      const pixelRatio = getPixelRatio();
-      setCanvasSize({
-        width: Math.floor(displayWidth * pixelRatio),
-        height: Math.floor(displayHeight * pixelRatio),
-      });
-    };
-
-    // Run once ASAP after mount/layout
-    const raf = requestAnimationFrame(updateSize);
-    const timeout = window.setTimeout(updateSize, 50);
-
-    // Keep in sync with actual container size
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateSize) : null;
-    ro?.observe(el);
-
-    window.addEventListener("resize", updateSize);
-    window.addEventListener("orientationchange", updateSize);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      window.clearTimeout(timeout);
-      ro?.disconnect();
-      window.removeEventListener("resize", updateSize);
-      window.removeEventListener("orientationchange", updateSize);
-    };
-  }, [isOpen, activeTab]);
-
-  // Reset canvas when orientation changes to fix touch offset issues
-  useEffect(() => {
-    if (isOpen && activeTab === "draw" && signatureRef.current) {
-      signatureRef.current.clear();
+  const scheduleSignaturePadRemount = useCallback(() => {
+    window.setTimeout(() => {
+      setSignaturePadKey((k) => k + 1);
       setHasStroke(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLandscapeMobile]);
+    }, 150);
+  }, []);
+
+  // iOS often fires orientationchange before the flex layout / DPR settle; remount after a short delay.
+  useEffect(() => {
+    if (!isOpen || activeTab !== "draw") return;
+    const onOrientationChange = () => scheduleSignaturePadRemount();
+    window.addEventListener("orientationchange", onOrientationChange);
+    return () => window.removeEventListener("orientationchange", onOrientationChange);
+  }, [isOpen, activeTab, scheduleSignaturePadRemount]);
+
+  // react-signature-canvas only listens to window resize; container size can change without a reliable resize
+  // (or with one that runs too early). Remount when the drawable box actually changes size on phone layouts.
+  useEffect(() => {
+    if (!isOpen || activeTab !== "draw") return;
+    if (!isMobile && !isLandscapeMobile) return;
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+
+    let debounceTimer: number | undefined;
+    let lastW = 0;
+    let lastH = 0;
+
+    const ro = new ResizeObserver(() => {
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (w < 8 || h < 8) return;
+      if (w === lastW && h === lastH) return;
+      lastW = w;
+      lastH = h;
+      if (debounceTimer !== undefined) window.clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(() => {
+        setSignaturePadKey((k) => k + 1);
+        setHasStroke(false);
+      }, 80) as unknown as number;
+    });
+
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      if (debounceTimer !== undefined) window.clearTimeout(debounceTimer);
+    };
+  }, [isOpen, activeTab, isMobile, isLandscapeMobile]);
 
   // Handle clearing signature and switching to new signature flow
   const handleClearAndCreateNew = () => {
@@ -427,6 +399,7 @@ export const SignatureModal = ({
                   Firma
                 </div>
                 <SignatureCanvas
+                  key={signaturePadKey}
                   ref={signatureRef}
                   onBegin={() => setHasStroke(true)}
                   canvasProps={{
@@ -641,6 +614,7 @@ export const SignatureModal = ({
 
                 {/* Use display dimensions for canvas, not scaled - let library handle touch properly */}
                 <SignatureCanvas
+                  key={signaturePadKey}
                   ref={signatureRef}
                   onBegin={() => setHasStroke(true)}
                   canvasProps={{
@@ -783,6 +757,7 @@ export const SignatureModal = ({
                 Firma
               </div>
               <SignatureCanvas
+                key={signaturePadKey}
                 ref={signatureRef}
                 canvasProps={{
                   className: "w-full h-full",
