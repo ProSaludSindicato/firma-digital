@@ -6,8 +6,8 @@ export interface ValidationResult {
 }
 
 // PDF validation constants
-export const PDF_MAX_SIZE = 10 * 1024 * 1024; // 10MB
-export const PDF_MAX_SIZE_MB = 10;
+export const PDF_MAX_SIZE = 20 * 1024 * 1024; // 20MB
+export const PDF_MAX_SIZE_MB = 20;
 
 // Image validation constants
 export const IMAGE_MAX_SIZE = 5 * 1024 * 1024; // 5MB

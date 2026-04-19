@@ -114,32 +114,28 @@ export const useAutoPDFBatchSigner = () => {
       const tasks = results.map((item, index) => async () => {
         // ── 1. Detectar posición ──────────────────────────────
         setItemStatus(index, { status: "detecting" });
-        let config: AutoSignatureConfig;
-        try {
-          const textLocation = await provider.findTextInPDF({
-            pdfFile: item.file,
-            searchText: AI_SEARCH_CONFIG.searchText,
-            pageNumber: AI_SEARCH_CONFIG.defaultSearchPage,
-          });
-          if (textLocation) {
-            const pos = calculateSignaturePosition(
-              textLocation,
-              AI_SEARCH_CONFIG.offsetX,
-              AI_SEARCH_CONFIG.offsetY,
-            );
-            config = {
-              page: pos.page,
-              x: pos.x,
-              y: pos.y,
-              width: DEFAULT_AUTO_SIGN_CONFIG.width,
-              height: DEFAULT_AUTO_SIGN_CONFIG.height,
-            };
-          } else {
-            config = DEFAULT_AUTO_SIGN_CONFIG;
-          }
-        } catch {
-          config = DEFAULT_AUTO_SIGN_CONFIG;
+        const textLocation = await provider.findTextInPDF({
+          pdfFile: item.file,
+          searchText: AI_SEARCH_CONFIG.searchText,
+          pageNumber: AI_SEARCH_CONFIG.defaultSearchPage,
+        });
+        if (!textLocation) {
+          throw new Error(
+            "No se pudo detectar la posición de firma en este documento.",
+          );
         }
+        const pos = calculateSignaturePosition(
+          textLocation,
+          AI_SEARCH_CONFIG.offsetX,
+          AI_SEARCH_CONFIG.offsetY,
+        );
+        const config: AutoSignatureConfig = {
+          page: pos.page,
+          x: pos.x,
+          y: pos.y,
+          width: DEFAULT_AUTO_SIGN_CONFIG.width,
+          height: DEFAULT_AUTO_SIGN_CONFIG.height,
+        };
 
         // ── 2. Firmar ─────────────────────────────────────────
         setItemStatus(index, { status: "signing", config });

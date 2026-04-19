@@ -8,7 +8,7 @@ Una aplicación web moderna y profesional para firmar documentos PDF de manera d
 ## ✨ Características Principales
 
 ### 🎯 Funcionalidades Core
-- **Carga de PDFs**: Arrastra y suelta o selecciona archivos PDF (máx. 10MB)
+- **Carga de PDFs**: Arrastra y suelta o selecciona archivos PDF (máx. 20MB)
 - **Firma Digital**: 
   - Dibuja tu firma directamente en el canvas
   - Sube una imagen de tu firma (PNG/JPEG)
@@ -191,7 +191,12 @@ npm run preview          # Preview del build de producción
 
 - **PDFs**: 
   - Tipo: `application/pdf`
-  - Tamaño máximo: 10MB
+  - Tamaño máximo: 20MB
+
+## Firma automática (documentación)
+
+- Funcional y técnica: `docs/auto-signature.md`
+- Incluye arquitectura, flujo individual/masivo, manejo de errores y dependencias usadas.
   - Validación de integridad (header PDF)
   
 - **Imágenes de Firma**:

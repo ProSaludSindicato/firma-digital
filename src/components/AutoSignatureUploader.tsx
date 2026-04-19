@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PDFDocument } from "pdf-lib";
 import { validatePDFFile, validatePDFIntegrity, validateImageFile } from "@/lib/validation";
 import { validateAndCompressImage } from "@/lib/imageCompression";
 import { toast } from "@/hooks/use-toast";
@@ -136,13 +137,21 @@ export const AutoSignatureUploader = ({
           onConfigChange({ page: pos.page, x: pos.x, y: pos.y, width: DEFAULT_AUTO_SIGN_CONFIG.width, height: DEFAULT_AUTO_SIGN_CONFIG.height });
           setSingleDetectionStatus("found");
         } else {
-          onConfigChange(DEFAULT_AUTO_SIGN_CONFIG);
-          setSingleDetectionStatus("fallback");
+          setSingleDetectionStatus("error");
+          toast({
+            title: "No se pudo detectar la posición de firma",
+            description: "Este documento no cumple el formato esperado para firma automática.",
+            variant: "destructive",
+          });
         }
       } catch {
         if (cancel.cancelled) return;
-        onConfigChange(DEFAULT_AUTO_SIGN_CONFIG);
         setSingleDetectionStatus("error");
+        toast({
+          title: "Error en detección automática",
+          description: "No se pudo ubicar la línea de firma en este documento.",
+          variant: "destructive",
+        });
       }
     };
 
@@ -156,7 +165,6 @@ export const AutoSignatureUploader = ({
     if (!pdfFile) { onTotalPagesChange(0); return; }
     (async () => {
       try {
-        const { PDFDocument } = await import("pdf-lib");
         const ab = await pdfFile.arrayBuffer();
         const doc = await PDFDocument.load(ab);
         onTotalPagesChange(doc.getPages().length);
@@ -180,27 +188,27 @@ export const AutoSignatureUploader = ({
         pageNumber: AI_SEARCH_CONFIG.defaultSearchPage,
       });
 
-      let config: AutoSignatureConfig;
-      let status: DetectionStatus;
-
-      if (textLocation) {
-        const pos = calculateSignaturePosition(textLocation, AI_SEARCH_CONFIG.offsetX, AI_SEARCH_CONFIG.offsetY);
-        config = { page: pos.page, x: pos.x, y: pos.y, width: DEFAULT_AUTO_SIGN_CONFIG.width, height: DEFAULT_AUTO_SIGN_CONFIG.height };
-        status = "found";
-      } else {
-        config = DEFAULT_AUTO_SIGN_CONFIG;
-        status = "fallback";
+      if (!textLocation) {
+        throw new Error("No detection result");
       }
+      const pos = calculateSignaturePosition(textLocation, AI_SEARCH_CONFIG.offsetX, AI_SEARCH_CONFIG.offsetY);
+      const config: AutoSignatureConfig = {
+        page: pos.page,
+        x: pos.x,
+        y: pos.y,
+        width: DEFAULT_AUTO_SIGN_CONFIG.width,
+        height: DEFAULT_AUTO_SIGN_CONFIG.height,
+      };
 
       setBatchEntries((prev) => {
         const next = [...prev];
-        if (next[index]) next[index] = { ...next[index], detectionStatus: status, config };
+        if (next[index]) next[index] = { ...next[index], detectionStatus: "found", config };
         return next;
       });
     } catch {
       setBatchEntries((prev) => {
         const next = [...prev];
-        if (next[index]) next[index] = { ...next[index], detectionStatus: "error", config: DEFAULT_AUTO_SIGN_CONFIG };
+        if (next[index]) next[index] = { ...next[index], detectionStatus: "error" };
         return next;
       });
     }
@@ -343,7 +351,7 @@ export const AutoSignatureUploader = ({
                 {isLoading ? <Loader2 className="w-6 h-6 text-primary animate-spin" /> : <Upload className="w-6 h-6 text-primary" />}
               </div>
               <p className="text-sm font-semibold mb-0.5">Arrastra PDFs aquí o haz clic</p>
-              <p className="text-xs text-muted-foreground">Puedes cargar varios a la vez (máx. 10&nbsp;MB c/u)</p>
+              <p className="text-xs text-muted-foreground">Puedes cargar varios a la vez (máx. 20&nbsp;MB c/u)</p>
             </label>
           </div>
 
@@ -427,7 +435,7 @@ export const AutoSignatureUploader = ({
           </div>
           <p className="text-base sm:text-lg font-semibold mb-1">Arrastra tu PDF aquí</p>
           <p className="text-sm text-muted-foreground">o haz clic para seleccionar</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">PDF (máx. 10&nbsp;MB)</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">PDF (máx. 20&nbsp;MB)</p>
         </label>
       </div>
     );

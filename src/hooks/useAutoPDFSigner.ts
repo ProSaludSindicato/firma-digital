@@ -45,7 +45,9 @@ export const useAutoPDFSigner = () => {
         setProcessedPDFUrl(null);
       }
       setPdfFile(file);
-      if (!file) setSignatureConfig(null);
+      // Reinicia configuración siempre al cambiar de documento.
+      // Se volverá a establecer cuando la detección automática sea exitosa.
+      setSignatureConfig(null);
     },
     [processedPDFUrl],
   );

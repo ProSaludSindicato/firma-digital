@@ -1,18 +1,19 @@
 /**
  * Servicio abstracto para localización de firma en PDFs.
  *
- * Estrategia activa (HybridProvider):
+ * Estrategia activa:
  *  1. PDFJSTextExtractionProvider — extracción determinística con pdfjs-dist.
  *     Funciona para PDFs con texto seleccionable (convenios ProSalud).
  *     a) Busca la LÍNEA GRÁFICA HORIZONTAL (vectorial) que está justo encima
  *        del bloque de firma del presidente, usando getOperatorList().
- *     b) Fallback: baseline del nombre + offset calibrado.
- *  2. LovableAIProvider (fallback) — solo para PDFs escaneados sin texto.
+ *     b) Fallback interno local: baseline del nombre + offset calibrado.
+ *
+ * No usa proveedores de IA remotos. Si no se logra detectar la posición
+ * con este proveedor, la operación debe fallar para ese documento.
  */
 
 import * as pdfjsLib from "pdfjs-dist";
 import { OPS } from "pdfjs-dist";
-import { supabase } from "@/integrations/supabase/client";
 
 if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -136,7 +137,9 @@ class PDFJSTextExtractionProvider implements SignatureLocationProvider {
         };
       }
 
-      return null;
+      throw new Error(
+        "No se pudo detectar automáticamente la posición de firma en este documento.",
+      );
     } finally {
       await pdfDoc.destroy();
     }
@@ -366,86 +369,10 @@ class PDFJSTextExtractionProvider implements SignatureLocationProvider {
   }
 }
 
-// ─── Implementación 2: Lovable AI vía edge function (fallback) ─
-
-class LovableAIProvider implements SignatureLocationProvider {
-  readonly providerName = "Lovable AI (fallback)";
-
-  async findTextInPDF(options: FindTextOptions): Promise<TextLocation | null> {
-    const { pdfFile, searchText, pageNumber } = options;
-
-    const pdfBase64 = await this.fileToBase64(pdfFile);
-
-    const { data, error } = await supabase.functions.invoke("find-text-in-pdf", {
-      body: { pdfBase64, searchText, pageNumber },
-    });
-
-    if (error) {
-      console.error(`[${this.providerName}] Error:`, error);
-      throw new Error(error.message || "Error al buscar texto con IA");
-    }
-
-    if (data?.error) {
-      throw new Error(data.error);
-    }
-
-    return data?.location ?? null;
-  }
-
-  private fileToBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        resolve(base64String.split(",")[1]);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-}
-
-// ─── HybridProvider ───────────────────────────────────────────
-
-class HybridProvider implements SignatureLocationProvider {
-  readonly providerName = "Hybrid (pdfjs + AI fallback)";
-
-  constructor(
-    private readonly primary: SignatureLocationProvider,
-    private readonly fallback: SignatureLocationProvider,
-  ) {}
-
-  async findTextInPDF(options: FindTextOptions): Promise<TextLocation | null> {
-    try {
-      const result = await this.primary.findTextInPDF(options);
-      if (result) {
-        console.log(
-          `[Hybrid] Resultado del proveedor primario: ${this.primary.providerName}`,
-        );
-        return result;
-      }
-      console.warn(
-        `[Hybrid] Proveedor primario (${this.primary.providerName}) no encontró texto. ` +
-          `Usando fallback: ${this.fallback.providerName}`,
-      );
-    } catch (err) {
-      console.warn(
-        `[Hybrid] Error en proveedor primario (${this.primary.providerName}), usando fallback.`,
-        err,
-      );
-    }
-
-    return this.fallback.findTextInPDF(options);
-  }
-}
-
 // ─── Factory ──────────────────────────────────────────────────
 
 export function createSignatureLocationProvider(): SignatureLocationProvider {
-  return new HybridProvider(
-    new PDFJSTextExtractionProvider(),
-    new LovableAIProvider(),
-  );
+  return new PDFJSTextExtractionProvider();
 }
 
 // ─── Utilidad de posición ─────────────────────────────────────
