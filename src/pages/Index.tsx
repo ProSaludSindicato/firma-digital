@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Download, Send, CheckCircle, MapPin, Check } from "lucide-react";
+import { Download, Send, CheckCircle, Check } from "lucide-react";
 import { Header } from "@/components/Header";
 import { PDFUploader } from "@/components/PDFUploader";
 import { PDFViewer, PDFViewerRef } from "@/components/PDFViewer";
@@ -124,7 +124,7 @@ const Index = () => {
             }
           }
         },
-        description: 'Ir al área de firma / Finalizar y enviar / Descargar',
+        description: 'Colocar firma / Finalizar y enviar / Descargar',
       },
     ],
     !!pdfFile
@@ -342,30 +342,23 @@ const Index = () => {
                           </div>
                         )}
 
-                        <Button
-                          id="tour-footer-action"
-                          onClick={handleFinishAndSend}
-                          disabled={isDownloading}
-                          className={`w-full ${isLandscapeMobile ? "h-8" : "h-9"}`}
-                          size="sm"
-                        >
-                          {signature ? (
-                            <>
-                              <Send className="w-3.5 h-3.5 mr-1.5" />
-                              {isDownloading ? "Procesando..." : "Enviar documento firmado"}
-                            </>
-                          ) : (
-                            <>
-                              <MapPin className="w-3.5 h-3.5 mr-1.5" />
-                              Ir al área de firma
-                            </>
-                          )}
-                        </Button>
+                        {signature ? (
+                          <Button
+                            id="tour-footer-action"
+                            onClick={handleFinishAndSend}
+                            disabled={isDownloading}
+                            className={`w-full ${isLandscapeMobile ? "h-8" : "h-9"}`}
+                            size="sm"
+                          >
+                            <Send className="w-3.5 h-3.5 mr-1.5" />
+                            {isDownloading ? "Procesando..." : "Enviar documento firmado"}
+                          </Button>
+                        ) : null}
 
                         {!isLandscapeMobile && (
                           <p className="text-[10px] text-muted-foreground/50 text-center leading-tight">
                             {!signature
-                              ? "Te llevamos a la zona del PDF; luego toca el recuadro para crear tu firma"
+                              ? "En la página de firma, toca el documento donde quieras colocarla y sigue el asistente para crear tu firma."
                               : "Revisa tu firma y envía el documento"}
                           </p>
                         )}

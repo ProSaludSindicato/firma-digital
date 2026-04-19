@@ -3,7 +3,7 @@
  * Cambia aquí el comportamiento sin tocar la lógica del componente.
  */
 
-/** Alineación vertical al enfocar la página de firma (p. ej. "Ir al área de firma", banner "Ve a la página…"). */
+/** Alineación vertical al enfocar la página de firma (banner "Ve a la página…", etc.). */
 export type SignaturePageScrollBlock = "start" | "end";
 
 export const pdfViewerConfig = {

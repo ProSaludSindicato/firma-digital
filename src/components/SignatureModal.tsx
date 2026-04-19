@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import SignatureCanvas from "react-signature-canvas";
-import { Pencil, Upload, X, Trash2, Check, Eye } from "lucide-react";
+import { Pencil, Upload, X, Trash2, Check, Eye, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -12,8 +13,31 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsMobile, useIsLandscapeMobile } from "@/hooks/use-mobile";
 import { validateImageFile, validateImageDimensions } from "@/lib/validation";
 import { compressImage, validateAndCompressImage } from "@/lib/imageCompression";
+import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import type { AuditEventType } from "@/hooks/useAuditTrail";
+
+/** Grosor del trazo (signature_pad: min/max ancho de línea según presión/velocidad). */
+const SIGNATURE_PAD_MIN_WIDTH = 2.5;
+const SIGNATURE_PAD_MAX_WIDTH = 5;
+
+function SignatureImageUploadNotice({ className }: { className?: string }) {
+  return (
+    <Alert
+      role="note"
+      className={cn(
+        "border-amber-200/90 bg-amber-50/80 py-3 text-left dark:border-amber-800/60 dark:bg-amber-950/30 [&>svg]:text-amber-800 dark:[&>svg]:text-amber-400",
+        className,
+      )}
+    >
+      <Info className="h-4 w-4" aria-hidden />
+      <AlertDescription className="text-xs leading-snug text-amber-950 sm:text-sm dark:text-amber-50/95">
+        <span className="font-semibold">Importante: </span>
+        sube una imagen válida de tu firma manuscrita (solo la firma, legible y con buen contraste). PNG o JPG.
+      </AlertDescription>
+    </Alert>
+  );
+}
 
 interface SignatureModalProps {
   isOpen: boolean;
@@ -408,27 +432,30 @@ export const SignatureModal = ({
                   }}
                   backgroundColor="transparent"
                   penColor="#1e293b"
-                  minWidth={1.5}
-                  maxWidth={3}
+                  minWidth={SIGNATURE_PAD_MIN_WIDTH}
+                  maxWidth={SIGNATURE_PAD_MAX_WIDTH}
                 />
               </div>
             ) : (
-              <div className="h-full border-2 border-dashed border-border rounded-lg bg-accent flex items-center justify-center">
-                <input
-                  type="file"
-                  accept="image/png, image/jpeg"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                  id="signature-modal-upload-landscape"
-                />
-                <label
-                  htmlFor="signature-modal-upload-landscape"
-                  className="cursor-pointer flex flex-col items-center gap-2"
-                >
-                  <Upload className="w-8 h-8 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Toca para subir imagen</span>
-                  <span className="text-xs text-muted-foreground/60">PNG o JPG</span>
-                </label>
+              <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden rounded-lg border-2 border-dashed border-border bg-accent">
+                <SignatureImageUploadNotice className="shrink-0" />
+                <div className="flex min-h-0 flex-1 items-center justify-center px-2 pb-2">
+                  <input
+                    type="file"
+                    accept="image/png, image/jpeg"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    id="signature-modal-upload-landscape"
+                  />
+                  <label
+                    htmlFor="signature-modal-upload-landscape"
+                    className="flex cursor-pointer flex-col items-center gap-2"
+                  >
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Toca para subir imagen</span>
+                    <span className="text-xs text-muted-foreground/60">PNG o JPG</span>
+                  </label>
+                </div>
               </div>
             )}
           </div>
@@ -627,8 +654,8 @@ export const SignatureModal = ({
                   }}
                   backgroundColor="transparent"
                   penColor="#1e293b"
-                  minWidth={1.5}
-                  maxWidth={3}
+                  minWidth={SIGNATURE_PAD_MIN_WIDTH}
+                  maxWidth={SIGNATURE_PAD_MAX_WIDTH}
                 />
               </div>
 
@@ -649,11 +676,10 @@ export const SignatureModal = ({
               </div>
             </TabsContent>
 
-            <TabsContent value="upload" className="flex-1 flex flex-col m-0 p-3 overflow-hidden min-h-0 mt-0">
+            <TabsContent value="upload" className="mt-0 flex min-h-0 flex-1 flex-col gap-2 overflow-hidden m-0 p-3">
+              <SignatureImageUploadNotice className="shrink-0" />
               {/* Upload area - same layout and position as draw tab */}
-              <div 
-                className="flex-1 min-h-0 border-2 border-dashed border-border rounded-lg overflow-hidden bg-accent relative"
-              >
+              <div className="relative min-h-0 flex-1 overflow-hidden rounded-lg border-2 border-dashed border-border bg-accent">
                 <input
                   type="file"
                   accept="image/png, image/jpeg"
@@ -663,15 +689,13 @@ export const SignatureModal = ({
                 />
                 <label
                   htmlFor="signature-modal-upload-mobile"
-                  className="cursor-pointer absolute inset-0 flex flex-col items-center justify-center"
+                  className="absolute inset-0 flex cursor-pointer flex-col items-center justify-center"
                 >
-                  <Upload className="w-12 h-12 text-muted-foreground mb-3" />
-                  <span className="text-base text-muted-foreground text-center px-4">
+                  <Upload className="mb-3 h-12 w-12 text-muted-foreground" />
+                  <span className="px-4 text-center text-base text-muted-foreground">
                     Toca para subir una imagen de tu firma
                   </span>
-                  <span className="text-sm text-muted-foreground mt-1">
-                    PNG o JPG
-                  </span>
+                  <span className="mt-1 text-sm text-muted-foreground">PNG o JPG</span>
                 </label>
               </div>
 
@@ -765,6 +789,8 @@ export const SignatureModal = ({
                 }}
                 backgroundColor="transparent"
                 penColor="#1e293b"
+                minWidth={SIGNATURE_PAD_MIN_WIDTH}
+                maxWidth={SIGNATURE_PAD_MAX_WIDTH}
               />
             </div>
             <div className="mt-3 flex shrink-0 gap-2 md:mt-4">
@@ -783,7 +809,8 @@ export const SignatureModal = ({
             </div>
           </TabsContent>
 
-          <TabsContent value="upload" className="mt-3">
+          <TabsContent value="upload" className="mt-3 space-y-3">
+            <SignatureImageUploadNotice />
             <input
               type="file"
               accept="image/png, image/jpeg"
@@ -795,16 +822,12 @@ export const SignatureModal = ({
               htmlFor="signature-modal-upload"
               className="flex h-[clamp(176px,calc(100dvh-20rem),300px)] w-full cursor-pointer flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-border bg-white transition-colors hover:bg-muted/20 dark:bg-accent md:h-[clamp(200px,calc(100dvh-20rem),376px)] lg:h-[clamp(220px,calc(100dvh-20rem),432px)]"
             >
-              <div className="w-14 h-14 rounded-full bg-muted/50 flex items-center justify-center">
-                <Upload className="w-6 h-6 text-muted-foreground" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted/50">
+                <Upload className="h-6 w-6 text-muted-foreground" />
               </div>
               <div className="text-center">
-                <span className="text-sm font-medium text-foreground block">
-                  Sube una imagen de tu firma
-                </span>
-                <span className="text-xs text-muted-foreground mt-1 block">
-                  PNG o JPG, máximo 5 MB
-                </span>
+                <span className="block text-sm font-medium text-foreground">Sube una imagen de tu firma</span>
+                <span className="mt-1 block text-xs text-muted-foreground">PNG o JPG, máximo 5 MB</span>
               </div>
             </label>
           </TabsContent>

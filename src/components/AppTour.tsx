@@ -15,7 +15,6 @@ import {
   ZoomIn,
   Layers,
   PenLine,
-  MapPin,
   Send,
   Pencil,
   MousePointerClick,
@@ -185,7 +184,7 @@ const pdfAreaTourContent = (
       <strong>página de firma</strong>, haz clic donde quieras colocar tu firma.
     </p>
     <p className="text-xs text-muted-foreground/70">
-      Un marcador aparecerá en el punto seleccionado.
+      Un marcador aparecerá en el lugar seleccionado.
     </p>
   </div>
 );
@@ -251,10 +250,10 @@ function createViewerSteps(layout: 'compact' | 'wide'): Step[] {
       content: (
         <div className="space-y-1.5">
           <p>Acerca o aleja el documento para leerlo con comodidad.</p>
-          <p className="text-xs text-muted-foreground/70">
+            {/*<p className="text-xs text-muted-foreground/70">
             Atajos de teclado: <kbd className="px-1 bg-muted rounded text-[10px]">+</kbd> para acercar,{' '}
             <kbd className="px-1 bg-muted rounded text-[10px]">-</kbd> para alejar.
-          </p>
+            </p>*/}
         </div>
       ),
     },
@@ -275,11 +274,11 @@ function createViewerSteps(layout: 'compact' | 'wide'): Step[] {
             Navega entre las páginas del documento. La <strong>página de firma</strong> aparece
             resaltada en azul.
           </p>
-          <p className="text-xs text-muted-foreground/70">
+            {/*<p className="text-xs text-muted-foreground/70">
             También puedes usar{' '}
             <kbd className="px-1 bg-muted rounded text-[10px]">←</kbd>{' '}
             <kbd className="px-1 bg-muted rounded text-[10px]">→</kbd> en el teclado.
-          </p>
+            </p> */}
         </div>
       ),
     },
@@ -300,34 +299,13 @@ function createViewerSteps(layout: 'compact' | 'wide'): Step[] {
         </span>
       ),
       content:
-        'Vista rápida de todas las páginas. Haz clic en cualquier miniatura para saltar directamente a esa página. Puedes colapsar este panel para ganar espacio.',
+        'Vista rápida de todas las páginas. Haz clic en cualquier miniatura para saltar directamente a esa página.',
     });
   }
 
   steps.push(pdfAreaStep);
-  steps.push({
-    target: '#tour-footer-action',
-    placement: 'top',
-    skipBeacon: true,
-    title: (
-      <span className="flex items-center gap-2">
-        <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
-        Botón de acción principal
-      </span>
-    ),
-    content: (
-      <div className="space-y-1.5">
-        <p>
-          Toca <strong>"Ir al área de firma"</strong> para ir a la zona del documento donde
-          debes colocarla. Después, toca el recuadro resaltado para abrir el asistente y
-          crear tu firma.
-        </p>
-        <p className="text-xs text-muted-foreground/70">
-          En la siguiente fase aprenderás a crear y posicionar tu firma.
-        </p>
-      </div>
-    ),
-  });
+  /* Paso del pie "Ir al área de firma" desactivado: el botón se ocultó para evitar confusión
+     cuando el usuario ya está en la página de firma. La colocación se hace tocando el PDF. */
 
   return steps;
 }

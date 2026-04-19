@@ -5,8 +5,13 @@
  * React state/context; pasa `title` a `<Header />` como hacen Index y AutoSign hoy.
  */
 export const appConfig = {
-  /** Título del header en el flujo de firma manual (página principal). */
+  /**
+   * Título por defecto del header cuando aún no hay metadata del API (carga inicial / Index).
+   * El flujo por token usa `header_title` devuelto por `/metadata`.
+   */
   headerTitle: "Convenio de afiliación ProSalud",
   /** Título del header en la ruta de firma automática. */
   autoSignHeaderTitle: "Firma automática de documentos",
+  /** Logo para cabeceras de confirmación (archivo en `public/`). */
+  proSaludBrandLogoSrc: "/prosalud-logo.webp",
 } as const;
