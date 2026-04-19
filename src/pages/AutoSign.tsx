@@ -174,13 +174,6 @@ const AutoSign = () => {
                     <strong>Documento:</strong> {pdfFile?.name} ({totalPages} página
                     {totalPages !== 1 ? "s" : ""})
                   </p>
-                  {signatureConfig && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      <strong>Firma configurada:</strong> Página {signatureConfig.page}, Posición
-                      ({signatureConfig.x.toFixed(1)}, {signatureConfig.y.toFixed(1)}), Tamaño{" "}
-                      {signatureConfig.width.toFixed(1)} x {signatureConfig.height.toFixed(1)} puntos
-                    </p>
-                  )}
                 </div>
               )}
 
