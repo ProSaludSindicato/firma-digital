@@ -29,29 +29,39 @@ serve(async (req) => {
       );
     }
 
+    // NOTE: Este fallback solo se usa para PDFs escaneados (sin texto seleccionable).
+    // Para PDFs con texto, el cliente usa pdfjs-dist directamente (más preciso).
+    // El prompt pide la coordenada Y de la LÍNEA DE FIRMA (la línea horizontal negra),
+    // no la del bloque de texto debajo.
     const prompt = `Analiza este documento PDF${pageNumber ? ` (página ${pageNumber})` : ""}.
 
-TAREA: Encuentra la palabra "PRESIDENTE" en el documento. Esta palabra aparece UNA SOLA VEZ en todo el documento, dentro de un bloque de firma que tiene esta estructura:
+CONTEXTO: Este es un convenio ProSalud. Contiene un bloque de firma con esta estructura (de abajo hacia arriba en la página):
+  C.C. 71.396.099 de Caldas
+  PRESIDENTE
+  ${searchText}
+  ___________________________  ← LÍNEA HORIZONTAL NEGRA (esta es la línea de firma)
+  [espacio en blanco para la firma manuscrita]
 
-${searchText}
-PRESIDENTE
-C.C. 71.396.099 de Caldas
+TAREA: Devuelve la coordenada Y de la LÍNEA HORIZONTAL NEGRA DE FIRMA que está DIRECTAMENTE ENCIMA del nombre "${searchText}".
 
-Necesito la coordenada Y del BORDE SUPERIOR de la primera línea de texto de este bloque (la línea que dice "${searchText}").
-
-Sistema de coordenadas PDF:
-- Origen (0,0) = esquina INFERIOR IZQUIERDA
+SISTEMA DE COORDENADAS PDF (muy importante):
+- Origen (0,0) = esquina INFERIOR IZQUIERDA de la página
 - Y aumenta hacia ARRIBA
-- 72 puntos = 1 pulgada
-- Página tamaño carta: 612 x 792 puntos
+- Página carta: 612 x 792 puntos (72 pt = 1 pulgada)
+- El bloque de firma está cerca del final de la segunda página (parte inferior)
+- El nombre "${searchText}" típicamente tiene su parte superior en Y ≈ 200-220 pt
+- La línea de firma está ENCIMA del nombre, típicamente en Y ≈ 250-280 pt
 
-IMPORTANTE: Este bloque está cerca del FINAL de la página (parte inferior), así que la coordenada Y será un valor BAJO (típicamente entre 150-250 puntos).
+VALIDACIÓN:
+- La línea de firma tiene Y MAYOR que el nombre debajo de ella
+- Rango esperado para la línea: Y entre 230 y 320 pt
+- Si obtienes Y < 200, estás midiendo el bloque de texto, no la línea horizontal
 
-Devuelve SOLO un JSON sin explicaciones:
-{"page": número_de_página, "y": coordenada_y_borde_superior_del_nombre}
+Devuelve SOLO un JSON sin explicaciones ni markdown:
+{"page": número_de_página, "y": coordenada_y_de_la_línea_de_firma}
 
 ${pageNumber ? `Busca PRIMERO en la página ${pageNumber}.` : ""}
-Si no encuentras "PRESIDENTE", devuelve: null`;
+Si no encuentras la línea de firma, devuelve: null`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -81,7 +91,7 @@ Si no encuentras "PRESIDENTE", devuelve: null`;
             },
           ],
           temperature: 0,
-          max_tokens: 16000,
+          max_tokens: 200,
         }),
       }
     );
@@ -119,11 +129,10 @@ Si no encuentras "PRESIDENTE", devuelve: null`;
       );
     }
 
-    // Extract JSON from response - handle markdown code fences
+    // Extraer JSON de la respuesta (puede venir con markdown code fences)
     let cleanedResponse = responseText;
-    // Remove markdown code fences if present (```json ... ``` or ``` ... ```)
     cleanedResponse = cleanedResponse.replace(/```(?:json)?\s*/gi, "").replace(/```/g, "").trim();
-    
+
     const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.error("No JSON found in response:", responseText);
@@ -136,34 +145,28 @@ Si no encuentras "PRESIDENTE", devuelve: null`;
     try {
       const location = JSON.parse(jsonMatch[0]);
 
-      // Validate the location data
-      if (!location.page || !location.y) {
+      if (!location.page || location.y === undefined || location.y === null) {
         return new Response(
           JSON.stringify({ location: null }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      // X siempre es 80 (fijado temporalmente)
-      const signatureX = 80;
-      
-      // La IA devuelve la Y del borde superior del nombre (primera línea del bloque)
-      // La línea de firma está ~52 puntos ARRIBA del nombre
-      // Offset calibrado: 255 (posición correcta) - 203 (posición del texto) = 52
-      const SIGNATURE_LINE_OFFSET = 52;
-      const rawY = location.y;
-      const signatureY = rawY + SIGNATURE_LINE_OFFSET;
-      
-      console.log(`[Edge Function] Texto encontrado en Y: ${rawY}, firma en Y: ${signatureY} (+${SIGNATURE_LINE_OFFSET} offset)`);
+      // La IA devuelve directamente la Y de la línea de firma (sin offset adicional)
+      const signatureLineY = location.y;
+
+      console.log(
+        `[Edge Function / AI fallback] Línea de firma en Y=${signatureLineY} (página ${location.page})`
+      );
 
       return new Response(
         JSON.stringify({
           location: {
             page: location.page,
-            x: signatureX, // X fijado en 80
-            y: signatureY, // Y de la línea de firma (ajustada si es necesario)
-            width: 150,
-            height: 0, // Alto debe ser 0 para línea de firma
+            x: 80,             // X fijado en 80 pt (margen izquierdo del bloque de firma)
+            y: signatureLineY, // Y de la línea de firma, directo de la IA
+            width: 130,
+            height: 45,
           },
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
