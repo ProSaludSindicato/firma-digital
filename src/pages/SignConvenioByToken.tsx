@@ -84,7 +84,7 @@ function resolveBlockedSigningKind(signingEstado: string | null | undefined): Bl
     case "firmado_afiliado":
       return "firmado_afiliado";
     case "completado":
-      return "completado";
+      return "firmado_afiliado";
     case "rechazado":
       return "rechazado";
     case "pendiente_firma":
@@ -160,13 +160,6 @@ function ConvenioCannotSignPanel({
       description =
         "ProSalud registró correctamente el convenio que enviaste. Puedes usar esta pantalla para confirmar que el envío se completó.";
       break;
-    case "completado":
-      icon = Sparkles;
-      badgeClass = "bg-primary/10 text-primary";
-      title = "Trámite completado";
-      description =
-        "Tu convenio fue firmado y el proceso con ProSalud está cerrado. No necesitas realizar ninguna acción adicional aquí.";
-      break;
     case "rechazado":
       icon = Ban;
       badgeClass = "bg-destructive/10 text-destructive";
@@ -219,26 +212,6 @@ function ConvenioCannotSignPanel({
                 Registro de envío
               </p>
               <p className="text-foreground mt-1">{firmadoAfiliadoLabel}</p>
-            </div>
-          ) : null}
-
-          {blockedKind === "completado" ? (
-            <div className="rounded-xl bg-muted/50 border border-border/60 px-4 py-3 space-y-2 text-left text-xs sm:text-sm">
-              {firmadoAfiliadoLabel ? (
-                <p>
-                  <span className="text-muted-foreground">Firma del afiliado: </span>
-                  <span className="text-foreground">{firmadoAfiliadoLabel}</span>
-                </p>
-              ) : null}
-              {firmadoPresidenteLabel ? (
-                <p>
-                  <span className="text-muted-foreground">Cierre del trámite: </span>
-                  <span className="text-foreground">{firmadoPresidenteLabel}</span>
-                </p>
-              ) : null}
-              {!firmadoAfiliadoLabel && !firmadoPresidenteLabel ? (
-                <p className="text-muted-foreground text-center">Las fechas detalladas no están disponibles en este momento.</p>
-              ) : null}
             </div>
           ) : null}
 
