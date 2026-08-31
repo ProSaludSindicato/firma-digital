@@ -201,4 +201,178 @@ All colors MUST be HSL.
   .animate-pulse-soft {
     animation: pulse-soft 2s ease-in-out infinite;
   }
+
+  @keyframes field-toolbar-border-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .field-toolbar-glass {
+    isolation: isolate;
+    overflow: hidden;
+    width: fit-content;
+    max-width: calc(100vw - 2rem);
+    border-radius: 9999px;
+    padding: 2px;
+    box-shadow:
+      0 10px 40px -8px rgba(15, 107, 92, 0.22),
+      0 4px 16px -4px rgba(0, 0, 0, 0.12),
+      0 0 0 1px rgba(15, 107, 92, 0.08);
+  }
+
+  .field-toolbar-glass__border {
+    pointer-events: none;
+    position: absolute;
+    inset: -60%;
+    background: conic-gradient(
+      from 0deg,
+      #0f6b5c 0%,
+      #3d9e8f 18%,
+      #b8791a 42%,
+      #0f6b5c 62%,
+      #135d54 82%,
+      #0f6b5c 100%
+    );
+    animation: field-toolbar-border-spin 7s linear infinite;
+  }
+
+  .field-toolbar-glass__inner {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    background: rgba(255, 255, 255, 0.78);
+    -webkit-backdrop-filter: blur(18px) saturate(1.45);
+    backdrop-filter: blur(18px) saturate(1.45);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .field-toolbar-glass__border {
+      animation: none;
+      inset: 0;
+      background: linear-gradient(
+        135deg,
+        rgba(15, 107, 92, 0.85),
+        rgba(184, 121, 26, 0.75)
+      );
+    }
+  }
+
+  .viewer-zoom-glass {
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 9999px;
+    padding: 2px;
+    background: linear-gradient(
+      165deg,
+      rgba(15, 107, 92, 0.55) 0%,
+      rgba(61, 158, 143, 0.35) 45%,
+      rgba(184, 121, 26, 0.28) 100%
+    );
+    box-shadow:
+      0 12px 32px -10px rgba(15, 107, 92, 0.28),
+      0 4px 14px -4px rgba(0, 0, 0, 0.1),
+      0 0 0 1px rgba(15, 107, 92, 0.1);
+  }
+
+  .viewer-zoom-glass__inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.125rem;
+    padding: 0.5rem 0.375rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    background: rgba(255, 255, 255, 0.84);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5);
+    backdrop-filter: blur(20px) saturate(1.5);
+  }
+
+  .viewer-zoom-glass__divider {
+    width: 1.5rem;
+    height: 1px;
+    flex-shrink: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(15, 107, 92, 0.18) 50%,
+      transparent
+    );
+  }
+
+  .viewer-zoom-glass__label {
+    min-width: 2.75rem;
+    padding: 0.125rem 0.25rem 0.25rem;
+    text-align: center;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    color: #0f6b5c;
+  }
+
+  .viewer-zoom-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.375rem;
+    height: 2.375rem;
+    border: none;
+    border-radius: 9999px;
+    background: transparent;
+    color: hsl(var(--foreground) / 0.82);
+    cursor: pointer;
+    transition:
+      background-color 160ms ease,
+      color 160ms ease,
+      transform 120ms ease,
+      box-shadow 160ms ease;
+  }
+
+  .viewer-zoom-btn:hover:not(:disabled) {
+    background-color: #e3efea;
+    color: #0f6b5c;
+    box-shadow: inset 0 0 0 1px rgba(15, 107, 92, 0.12);
+  }
+
+  .viewer-zoom-btn:active:not(:disabled) {
+    background-color: rgba(15, 107, 92, 0.16);
+    color: #0a5549;
+    transform: scale(0.94);
+  }
+
+  .viewer-zoom-btn:focus-visible {
+    outline: 2px solid rgba(15, 107, 92, 0.45);
+    outline-offset: 2px;
+  }
+
+  .viewer-zoom-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.32;
+  }
+
+  @media (max-width: 1023px) {
+    .viewer-zoom-glass__inner {
+      padding: 0.375rem 0.3125rem;
+      gap: 0.0625rem;
+    }
+
+    .viewer-zoom-btn {
+      width: 2.125rem;
+      height: 2.125rem;
+    }
+
+    .viewer-zoom-glass__label {
+      min-width: 2.25rem;
+      font-size: 0.625rem;
+    }
+
+    .viewer-zoom-glass__divider {
+      width: 1.25rem;
+    }
+  }
 }

@@ -7,6 +7,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import AutoSign from "./pages/AutoSign";
 import SignConvenioByToken from "./pages/SignConvenioByToken";
+import DocumentEditorPage from "./pages/DocumentEditor";
+import DocumentByToken from "./pages/DocumentByToken";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -28,6 +30,8 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/sign/:token" element={<SignConvenioByToken />} />
+            <Route path="/editor" element={<DocumentEditorPage />} />
+            <Route path="/document/:token" element={<DocumentByToken />} />
             <Route path="/auto-sign" element={<AutoSign />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

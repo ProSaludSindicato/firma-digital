@@ -12,6 +12,10 @@ export const appConfig = {
   headerTitle: "Convenio de afiliación ProSalud",
   /** Título del header en la ruta de firma automática. */
   autoSignHeaderTitle: "Firma automática de documentos",
+  /** Título del editor de documentos con campos dinámicos. */
+  editorHeaderTitle: "Editor de documentos",
+  /** Título por defecto del flujo genérico por token. */
+  documentHeaderTitle: "Completar documento",
   /** Logo para cabeceras de confirmación (archivo en `public/`). */
   proSaludBrandLogoSrc: "/prosalud-logo.webp",
 } as const;

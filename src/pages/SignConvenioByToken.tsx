@@ -10,21 +10,25 @@ import {
   Download,
   Loader2,
   Send,
-  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import { AppTour } from "@/components/AppTour";
 import { Header } from "@/components/Header";
-import { PDFViewer, PDFViewerRef } from "@/components/PDFViewer";
+import {
+  DocumentEditorViewer,
+  type DocumentEditorViewerRef,
+} from "@/components/editor/DocumentEditorViewer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAuditTrail } from "@/hooks/useAuditTrail";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
-import { usePDFSigner } from "@/hooks/usePDFSigner";
+import { useDocumentEditor } from "@/hooks/useDocumentEditor";
 import { useTour } from "@/hooks/useTour";
-import { useIsLandscapeMobile } from "@/hooks/use-mobile";
+import { useIsLandscapeMobile, useIsMobile } from "@/hooks/use-mobile";
 import { appConfig } from "@/lib/appConfig";
+import { CONVENIO_EDITOR_CONSTRAINTS } from "@/lib/convenioEditorConfig";
+import { exportDocumentToPdf } from "@/lib/pdfFieldExporter";
 import { pdfViewerConfig } from "@/lib/pdfViewerConfig";
 import {
   convenioFirmaDocumentUrl,
@@ -262,9 +266,10 @@ function ConvenioGenericErrorPanel({ message }: { message: string }) {
 
 const SignConvenioByToken = () => {
   const { token } = useParams<{ token: string }>();
-  const pdfViewerRef = useRef<PDFViewerRef>(null);
+  const pdfViewerRef = useRef<DocumentEditorViewerRef>(null);
   const signedPdfForDownloadRef = useRef<Blob | null>(null);
   const isLandscapeMobile = useIsLandscapeMobile();
+  const isMobile = useIsMobile();
 
   const [metaLoading, setMetaLoading] = useState(true);
   const [metaError, setMetaError] = useState<string | null>(null);
@@ -283,19 +288,25 @@ const SignConvenioByToken = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSent, setIsSent] = useState(false);
 
-  const {
-    pdfFile,
-    signature,
-    signaturePosition,
-    totalPages,
-    isDownloading,
-    handleFileSelect,
-    handleSignatureCreate,
-    handleClearSignature,
-    setSignaturePosition,
-    setTotalPages,
-    buildSignedPdfBlob,
-  } = usePDFSigner();
+  const editor = useDocumentEditor(isMobile);
+  const { setFile } = editor;
+  const signatureField = editor.fields.find((field) => field.type === "signature");
+  const signature =
+    signatureField?.value?.type === "signature"
+      ? signatureField.value.dataUrl
+      : null;
+  const signaturePosition = signatureField
+    ? {
+        x: signatureField.x,
+        y: signatureField.y,
+        page: signatureField.page,
+        width: signatureField.width,
+        height: signatureField.height,
+        scale: signatureField.scale,
+      }
+    : null;
+  const pdfFile = editor.file;
+  const isDownloading = false;
 
   const { trackEvent, getAuditLog } = useAuditTrail();
 
@@ -401,26 +412,39 @@ const SignConvenioByToken = () => {
 
       const blob = await pdfRes.blob();
       const file = new File([blob], "convenio.pdf", { type: "application/pdf" });
-      handleFileSelect(file);
+      setFile(file);
       setPdfLoading(false);
     } catch {
       setMetaError("Error de conexión. Intenta nuevamente más tarde.");
     } finally {
       setMetaLoading(false);
     }
-  }, [token, handleFileSelect]);
+  }, [token, setFile]);
 
   useEffect(() => {
     void loadMetadataAndPdf();
   }, [loadMetadataAndPdf]);
 
+  useEffect(() => {
+    if (!pdfFile) {
+      return;
+    }
+    trackEvent("document_opened", {
+      fileName: pdfFile.name,
+      fileSize: pdfFile.size,
+    });
+  }, [pdfFile, trackEvent]);
+
   const handleFinishAndSend = useCallback(() => {
     if (!signature) {
-      pdfViewerRef.current?.activatePlacementMode();
+      pdfViewerRef.current?.activatePlacementMode("signature");
+      if (signatureField) {
+        pdfViewerRef.current?.openSignatureModal(signatureField.id);
+      }
       return;
     }
     setShowConfirm(true);
-  }, [signature]);
+  }, [signature, signatureField]);
 
   useKeyboardShortcuts(
     [
@@ -447,6 +471,10 @@ const SignConvenioByToken = () => {
     let signedBlob: Blob | null = null;
     setIsSubmitting(true);
     try {
+      if (!pdfFile) {
+        throw new Error("No hay un documento cargado.");
+      }
+
       trackEvent("document_submitted", {
         fileName: pdfFile?.name,
         signaturePage: signaturePosition?.page,
@@ -455,7 +483,7 @@ const SignConvenioByToken = () => {
       const auditLog = getAuditLog();
       console.log("[AuditTrail] Document submitted:", JSON.stringify(auditLog, null, 2));
 
-      signedBlob = await buildSignedPdfBlob();
+      signedBlob = await exportDocumentToPdf(pdfFile, editor.fields);
       const fd = new FormData();
       fd.append("pdf", signedBlob, "convenio-firmado-afiliado.pdf");
 
@@ -600,23 +628,31 @@ const SignConvenioByToken = () => {
             {pdfFile ? (
               <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                 <div className="flex-1 min-h-0 overflow-hidden">
-                  <PDFViewer
+                  <DocumentEditorViewer
                     ref={pdfViewerRef}
                     file={pdfFile}
-                    signature={signature}
-                    signaturePosition={signaturePosition}
-                    onSignaturePositionChange={setSignaturePosition}
-                    onSignatureCreate={handleSignatureCreate}
-                    onClearSignature={handleClearSignature}
-                    totalPages={totalPages}
-                    onTotalPagesChange={setTotalPages}
+                    fields={editor.fields}
+                    activeFieldId={editor.activeFieldId}
+                    placingType={editor.placingType}
+                    constraints={CONVENIO_EDITOR_CONSTRAINTS}
                     isLocked={isSent}
-                    onTrackEvent={trackEvent}
+                    onSelectField={editor.selectField}
+                    onUpdateField={editor.updateField}
+                    onRemoveField={editor.removeField}
+                    onChangeValue={editor.setValue}
+                    onPlaceField={editor.addFieldAt}
+                    onSetPlacingType={editor.setPlacingType}
                     onSignatureModalOpen={handleSignatureModalOpen}
-                    scrollToSignaturePageOnLoad={pdfViewerConfig.scrollToSignaturePageOnLoad}
-                    signaturePageScrollDelayMs={pdfViewerConfig.signaturePageScrollDelayMs}
+                    scrollToSignaturePageOnLoad={
+                      pdfViewerConfig.scrollToSignaturePageOnLoad
+                    }
+                    signaturePageScrollDelayMs={
+                      pdfViewerConfig.signaturePageScrollDelayMs
+                    }
                     continuousScroll={pdfViewerConfig.continuousScroll}
-                    signaturePageScrollBlock={pdfViewerConfig.signaturePageScrollBlock}
+                    signaturePageScrollBlock={
+                      pdfViewerConfig.signaturePageScrollBlock
+                    }
                   />
                 </div>
 
