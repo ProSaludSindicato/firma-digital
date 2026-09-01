@@ -37,6 +37,7 @@ export function FieldToolbar({
 
   return (
     <div
+      id="tour-editor-toolbar"
       className="field-toolbar-glass fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-1/2 z-50 w-fit max-w-[calc(100vw-2rem)] -translate-x-1/2"
       role="toolbar"
       aria-label="Herramientas de campo"

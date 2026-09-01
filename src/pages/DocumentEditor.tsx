@@ -1,10 +1,12 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download } from "lucide-react";
 import { DocumentEditorViewer } from "@/components/editor/DocumentEditorViewer";
 import { EditorGuideBar } from "@/components/editor/EditorGuideBar";
+import { EditorTour } from "@/components/editor/EditorTour";
 import { Header } from "@/components/Header";
 import { PDFUploader } from "@/components/PDFUploader";
 import { useDocumentEditor } from "@/hooks/useDocumentEditor";
+import { useEditorTour } from "@/hooks/useEditorTour";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "@/hooks/use-toast";
 import { appConfig } from "@/lib/appConfig";
@@ -36,6 +38,22 @@ const DocumentEditorPage = () => {
     [editor.fields],
   );
   const finishDisabled = !canFinishDocument(editor.fields);
+
+  const editorTour = useEditorTour();
+  const { run: tourRun, stepIndex: tourStepIndex, setStepIndex: setTourStepIndex, hasBeenShown: tourHasBeenShown, start: startEditorTour, end: endEditorTour } = editorTour;
+
+  useEffect(() => {
+    if (!editor.file) return;
+    if (tourHasBeenShown) return;
+    if (tourRun) return;
+
+    const timer = setTimeout(() => startEditorTour(), 700);
+    return () => clearTimeout(timer);
+  }, [editor.file, tourHasBeenShown, tourRun, startEditorTour]);
+
+  const handleEditorTourEnd = useCallback(() => {
+    endEditorTour();
+  }, [endEditorTour]);
 
   const documentTitle = editor.file
     ? editor.file.name.replace(/\.pdf$/i, "")
@@ -164,6 +182,16 @@ const DocumentEditorPage = () => {
           </div>
         )}
       </main>
+
+      {editor.file ? (
+        <EditorTour
+          run={tourRun}
+          stepIndex={tourStepIndex}
+          lockedPlacement={false}
+          onStepChange={setTourStepIndex}
+          onEnd={handleEditorTourEnd}
+        />
+      ) : null}
     </div>
   );
 };

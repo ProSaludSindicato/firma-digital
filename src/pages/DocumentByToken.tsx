@@ -11,6 +11,7 @@ import {
   type DocumentEditorViewerRef,
 } from "@/components/editor/DocumentEditorViewer";
 import { EditorGuideBar } from "@/components/editor/EditorGuideBar";
+import { EditorTour } from "@/components/editor/EditorTour";
 import { Header } from "@/components/Header";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import {
@@ -24,6 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useDocumentEditor } from "@/hooks/useDocumentEditor";
+import { useEditorTour } from "@/hooks/useEditorTour";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { appConfig } from "@/lib/appConfig";
 import { apiFieldsToDocumentFields, FIELD_TYPE_LABELS } from "@/lib/fieldDefaults";
@@ -112,6 +114,34 @@ const DocumentByToken = () => {
     [editor.fields],
   );
   const finishDisabled = !canFinishDocument(editor.fields);
+
+  const editorTour = useEditorTour();
+  const { run: tourRun, stepIndex: tourStepIndex, setStepIndex: setTourStepIndex, hasBeenShown: tourHasBeenShown, start: startEditorTour, end: endEditorTour } = editorTour;
+
+  useEffect(() => {
+    if (!editor.file) return;
+    if (metaLoading || pdfLoading) return;
+    if (metaError) return;
+    if (isSent) return;
+    if (tourHasBeenShown) return;
+    if (tourRun) return;
+
+    const timer = setTimeout(() => startEditorTour(), 700);
+    return () => clearTimeout(timer);
+  }, [
+    editor.file,
+    metaLoading,
+    pdfLoading,
+    metaError,
+    isSent,
+    tourHasBeenShown,
+    tourRun,
+    startEditorTour,
+  ]);
+
+  const handleEditorTourEnd = useCallback(() => {
+    endEditorTour();
+  }, [endEditorTour]);
 
   const pendingField = useMemo(
     () =>
@@ -382,6 +412,16 @@ const DocumentByToken = () => {
           </main>
         </>
       )}
+
+      {editor.file && !metaError && !isSent ? (
+        <EditorTour
+          run={tourRun}
+          stepIndex={tourStepIndex}
+          lockedPlacement={lockedPlacement}
+          onStepChange={setTourStepIndex}
+          onEnd={handleEditorTourEnd}
+        />
+      ) : null}
 
       <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
         <AlertDialogContent>
