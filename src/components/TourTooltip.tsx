@@ -13,7 +13,7 @@ export const TourTooltip = ({
 }: TooltipRenderProps) => (
   <div
     {...tooltipProps}
-    className="bg-background border border-border rounded-xl shadow-2xl p-5 w-[300px] max-w-[90vw] z-[9999]"
+    className="bg-background border border-border rounded-xl shadow-2xl p-5 w-[300px] max-w-[min(90vw,20rem)] max-h-[min(70dvh,calc(100dvh-2rem))] overflow-y-auto overscroll-contain z-[9999]"
   >
     {step.title && (
       <header className="mb-4 pb-3.5 border-b border-border/70 text-center">

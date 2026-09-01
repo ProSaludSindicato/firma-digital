@@ -114,7 +114,7 @@ const pdfAreaTourContent = (
 
 export type AppTourViewerVariant = 'default' | 'document-editor';
 
-function createViewerSteps(
+export function createViewerSteps(
   layout: 'compact' | 'wide',
   viewerVariant: AppTourViewerVariant = 'default',
 ): Step[] {
@@ -142,10 +142,11 @@ function createViewerSteps(
           content: pdfAreaTourContent,
         }
       : {
-          target: '#tour-pdf-area',
-          placement: 'bottom',
+          // El visor ocupa casi todo el viewport en móvil; anclar el globo a
+          // `#tour-pdf-area` con top/bottom lo empuja fuera de pantalla.
+          target: 'body',
+          placement: 'center',
           skipBeacon: true,
-          skipScroll: true,
           title: pdfAreaTourTitle,
           content: pdfAreaTourContent,
         };
@@ -166,7 +167,13 @@ function createViewerSteps(
     },
     {
       target: '#tour-pdf-toolbar-zoom',
-      placement: 'bottom',
+      // Convenio: control flotante a la derecha. Visor clásico: barra superior.
+      placement:
+        viewerVariant === 'document-editor'
+          ? layout === 'compact'
+            ? 'top'
+            : 'left'
+          : 'bottom',
       skipBeacon: true,
       skipScroll: true,
       title: (

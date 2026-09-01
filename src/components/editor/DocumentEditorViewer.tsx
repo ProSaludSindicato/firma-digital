@@ -619,7 +619,7 @@ export const DocumentEditorViewer = forwardRef<
               </div>
             </div>
           ) : continuousScroll && totalPages > 0 ? (
-            <div className="flex w-full min-h-0 flex-col items-center gap-4 py-2 pb-24 pr-14 md:gap-6 md:pb-8 md:pr-4 lg:pb-6">
+            <div className="flex w-full min-h-0 flex-col items-center gap-4 py-2 pb-24 md:gap-6 md:pb-8 lg:pb-6">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(
                 (page) => (
                   <div
