@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
-import { PDFDocument } from "pdf-lib";
 import { pdfSignatureConfig } from "@/lib/pdfSignatureConfig";
+import { loadPdfDocument } from "@/lib/loadPdfDocument";
 
 interface SignaturePosition {
   x: number;
@@ -41,7 +41,7 @@ export const usePDFSigner = () => {
     }
 
     const arrayBuffer = await pdfFile.arrayBuffer();
-    const pdfDoc = await PDFDocument.load(arrayBuffer);
+    const pdfDoc = await loadPdfDocument(arrayBuffer);
     const pages = pdfDoc.getPages();
     const page = pages[signaturePosition.page - 1];
 

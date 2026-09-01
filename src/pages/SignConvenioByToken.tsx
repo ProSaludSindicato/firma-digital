@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { AppTour } from "@/components/AppTour";
+import { EditorGuideBar } from "@/components/editor/EditorGuideBar";
 import { Header } from "@/components/Header";
 import {
   DocumentEditorViewer,
@@ -287,6 +288,8 @@ const SignConvenioByToken = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSent, setIsSent] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
 
   const editor = useDocumentEditor(isMobile);
   const { setFile } = editor;
@@ -571,6 +574,7 @@ const SignConvenioByToken = () => {
         phase={tourCurrentPhase}
         run={tour.run}
         stepIndex={tour.stepIndex}
+        viewerVariant="document-editor"
         onStepChange={tour.setStepIndex}
         onPhaseEnd={handleTourPhaseEnd}
       />
@@ -580,6 +584,8 @@ const SignConvenioByToken = () => {
       ) : metaLoading || pdfLoading ? (
         <>
           <Header
+            variant="document"
+            showDocumentIcon
             showFinishButton={false}
             isProcessing={true}
             isSent={false}
@@ -617,12 +623,24 @@ const SignConvenioByToken = () => {
       ) : (
         <>
           <Header
+            variant="document"
+            showDocumentIcon
+            title={resolvedViewerHeaderTitle}
+            subtitle={totalPages > 0 ? `Página ${currentPage} de ${totalPages}` : undefined}
             showFinishButton={Boolean(signature && signaturePosition) && !isSent}
             onFinish={handleFinishAndSend}
             isProcessing={isDownloading || isSubmitting}
             isSent={isSent}
-            title={resolvedViewerHeaderTitle}
+            finishLabel="Enviar"
           />
+
+          {!isSent && !signature ? (
+            <EditorGuideBar
+              showDefaultHint={false}
+              placingType={null}
+              customHint="Desplázate hasta la última página y toca donde quieras colocar tu firma."
+            />
+          ) : null}
 
           <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {pdfFile ? (
@@ -643,6 +661,8 @@ const SignConvenioByToken = () => {
                     onPlaceField={editor.addFieldAt}
                     onSetPlacingType={editor.setPlacingType}
                     onSignatureModalOpen={handleSignatureModalOpen}
+                    onCurrentPageChange={setCurrentPage}
+                    onTotalPagesChange={setTotalPages}
                     scrollToSignaturePageOnLoad={
                       pdfViewerConfig.scrollToSignaturePageOnLoad
                     }
@@ -658,83 +678,118 @@ const SignConvenioByToken = () => {
 
                 {(() => {
                   const completedSteps = isSent ? 3 : signature ? 2 : 1;
+                  const steps = [
+                    { label: "Abrir", done: completedSteps >= 1 },
+                    { label: "Firmar", done: completedSteps >= 2 },
+                    { label: "Enviar", done: completedSteps >= 3 },
+                  ];
                   return (
                     <div
-                      className="flex-shrink-0 w-full bg-background/95 backdrop-blur-sm border-t border-border/50 z-50"
-                      style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
+                      className="shrink-0 w-full border-t border-border/40 bg-white z-50"
+                      style={{ paddingBottom: "max(0.25rem, env(safe-area-inset-bottom))" }}
                     >
-                      <div
-                        className={`flex flex-col items-center max-w-lg mx-auto px-3 ${isLandscapeMobile ? "gap-1 py-1" : "gap-1.5 py-2 md:py-2.5"}`}
-                      >
-                        {isSent ? (
-                          <div className="flex flex-col items-center gap-2 w-full">
-                            <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 text-xs font-medium">
-                              <CheckCircle className="w-4 h-4" />
-                              Convenio firmado y enviado correctamente
-                            </div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="w-full max-w-xs"
-                              onClick={handleManualDownloadSignedPdf}
-                            >
-                              <Download className="w-3.5 h-3.5 mr-1.5" />
-                              Descargar convenio firmado
-                            </Button>
-                            <p className="text-[11px] text-muted-foreground text-center">
-                              Puedes cerrar esta ventana. Si necesitas ayuda, escribe a{" "}
-                              <a
-                                href={`mailto:${AFFILIATE_HELP_EMAIL}`}
-                                className="text-primary font-medium underline-offset-4 hover:underline"
-                              >
-                                {AFFILIATE_HELP_EMAIL}
-                              </a>
-                            </p>
+                      {isSent ? (
+                        <div className="flex flex-col items-center gap-2.5 px-4 py-3 max-w-md mx-auto">
+                          <div className="flex items-center gap-2 rounded-full bg-green-50 px-4 py-1.5 text-xs font-medium text-green-700">
+                            <CheckCircle className="w-4 h-4" />
+                            Convenio firmado y enviado
                           </div>
-                        ) : (
-                          <>
-                            {!isLandscapeMobile && (
-                              <div className="flex items-center gap-1.5 w-full">
-                                <div className="flex items-center gap-0.5 flex-1">
-                                  {[1, 2, 3].map((s) => (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full max-w-xs h-9"
+                            onClick={handleManualDownloadSignedPdf}
+                          >
+                            <Download className="w-3.5 h-3.5 mr-1.5" />
+                            Descargar convenio firmado
+                          </Button>
+                          <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+                            Puedes cerrar esta ventana. ¿Necesitas ayuda?{" "}
+                            <a
+                              href={`mailto:${AFFILIATE_HELP_EMAIL}`}
+                              className="text-primary font-medium underline-offset-4 hover:underline"
+                            >
+                              {AFFILIATE_HELP_EMAIL}
+                            </a>
+                          </p>
+                        </div>
+                      ) : (
+                        <div className={cn(
+                          "mx-auto w-full",
+                          signature ? "max-w-lg px-4" : "max-w-md px-5",
+                          isLandscapeMobile ? "py-1.5" : signature ? "py-2.5 md:py-3" : "py-3.5 md:py-4",
+                        )}>
+                          {!isLandscapeMobile && (
+                            <div
+                              className={cn(
+                                "flex items-center justify-center",
+                                !signature && "rounded-2xl border border-border/50 bg-muted/25 px-5 py-3.5 sm:px-6 sm:py-4",
+                                signature && "mb-2.5",
+                              )}
+                            >
+                              {steps.map((step, i) => (
+                                <div key={step.label} className="flex items-center">
+                                  <div className={cn("flex flex-col items-center", signature ? "gap-1" : "gap-1.5")}>
                                     <div
-                                      key={s}
-                                      className={`h-0.5 rounded-full flex-1 transition-all duration-300 ${
-                                        s <= completedSteps ? "bg-primary" : "bg-border"
-                                      }`}
+                                      className={cn(
+                                        "flex items-center justify-center rounded-full font-bold transition-colors",
+                                        signature
+                                          ? "h-6 w-6 text-[10px]"
+                                          : "h-8 w-8 text-xs sm:h-9 sm:w-9 sm:text-sm",
+                                        step.done
+                                          ? "bg-primary text-primary-foreground shadow-sm"
+                                          : !step.done && i === completedSteps
+                                            ? "border-2 border-primary/40 bg-primary/5 text-primary"
+                                            : "border border-border bg-background text-muted-foreground",
+                                      )}
+                                    >
+                                      {step.done ? (
+                                        <Check className={cn(signature ? "h-3.5 w-3.5" : "h-4 w-4")} strokeWidth={2.5} />
+                                      ) : (
+                                        i + 1
+                                      )}
+                                    </div>
+                                    <span className={cn(
+                                      "font-medium leading-none",
+                                      signature ? "text-[10px]" : "text-xs sm:text-sm",
+                                      step.done || (!step.done && i === completedSteps)
+                                        ? "text-primary"
+                                        : "text-muted-foreground/70",
+                                    )}>
+                                      {step.label}
+                                    </span>
+                                  </div>
+                                  {i < steps.length - 1 && (
+                                    <div
+                                      className={cn(
+                                        "mx-2 transition-colors sm:mx-3",
+                                        signature ? "h-px w-10 sm:w-14 -translate-y-1.5" : "h-0.5 w-12 sm:w-16 -translate-y-2",
+                                        steps[i + 1].done ? "bg-primary" : "bg-border",
+                                      )}
                                     />
-                                  ))}
+                                  )}
                                 </div>
-                                <span className="text-[10px] text-muted-foreground/60 whitespace-nowrap">
-                                  {completedSteps} de 3
-                                </span>
-                              </div>
-                            )}
+                              ))}
+                            </div>
+                          )}
 
-                            {signature ? (
-                              <Button
-                                id="tour-footer-action"
-                                onClick={handleFinishAndSend}
-                                disabled={isDownloading || isSubmitting}
-                                className={`w-full ${isLandscapeMobile ? "h-8" : "h-9"}`}
-                                size="sm"
-                              >
-                                <Send className="w-3.5 h-3.5 mr-1.5" />
-                                {isDownloading || isSubmitting ? "Procesando…" : "Enviar convenio firmado"}
-                              </Button>
-                            ) : null}
-
-                            {!isLandscapeMobile && (
-                              <p className="text-[10px] text-muted-foreground/50 text-center leading-tight">
-                                {!signature
-                                  ? "En la página de firma, toca el documento donde quieras colocarla y sigue el asistente para crear tu firma."
-                                  : "Revisa tu firma y envía el documento"}
-                              </p>
-                            )}
-                          </>
-                        )}
-                      </div>
+                          {signature ? (
+                            <Button
+                              id="tour-footer-action"
+                              onClick={handleFinishAndSend}
+                              disabled={isDownloading || isSubmitting}
+                              className={cn(
+                                "w-full gap-2 rounded-full font-semibold shadow-sm",
+                                isLandscapeMobile ? "h-8 text-xs" : "h-10 text-sm",
+                              )}
+                            >
+                              <Send className="w-4 h-4" />
+                              {isDownloading || isSubmitting ? "Procesando…" : "Enviar convenio firmado"}
+                            </Button>
+                          ) : null}
+                        </div>
+                      )}
                     </div>
                   );
                 })()}

@@ -40,20 +40,34 @@ const DocumentEditorPage = () => {
   const finishDisabled = !canFinishDocument(editor.fields);
 
   const editorTour = useEditorTour();
-  const { run: tourRun, stepIndex: tourStepIndex, setStepIndex: setTourStepIndex, hasBeenShown: tourHasBeenShown, start: startEditorTour, end: endEditorTour } = editorTour;
+  const {
+    run: tourRun,
+    stepIndex: tourStepIndex,
+    setStepIndex: setTourStepIndex,
+    canAutoStart: canAutoStartTourForContext,
+    start: startEditorTour,
+    end: endEditorTour,
+  } = editorTour;
+
+  const tourContextKey = editor.file?.name ?? null;
 
   useEffect(() => {
     if (!editor.file) return;
-    if (tourHasBeenShown) return;
+    if (!tourContextKey) return;
+    if (!canAutoStartTourForContext(tourContextKey)) return;
     if (tourRun) return;
 
-    const timer = setTimeout(() => startEditorTour(), 700);
+    const timer = setTimeout(() => {
+      if (canAutoStartTourForContext(tourContextKey)) {
+        startEditorTour();
+      }
+    }, 700);
     return () => clearTimeout(timer);
-  }, [editor.file, tourHasBeenShown, tourRun, startEditorTour]);
+  }, [editor.file, tourContextKey, canAutoStartTourForContext, tourRun, startEditorTour]);
 
   const handleEditorTourEnd = useCallback(() => {
-    endEditorTour();
-  }, [endEditorTour]);
+    endEditorTour(tourContextKey ?? undefined);
+  }, [endEditorTour, tourContextKey]);
 
   const documentTitle = editor.file
     ? editor.file.name.replace(/\.pdf$/i, "")

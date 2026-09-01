@@ -144,22 +144,39 @@ const finishStep: Step = {
     'Cuando completes todos los campos obligatorios, podrás descargar o enviar el documento desde este botón.',
 };
 
+const embedFinishStep: Step = {
+  target: 'body',
+  placement: 'center',
+  skipBeacon: true,
+  title: (
+    <span className="flex items-center gap-2">
+      <Send className="w-4 h-4 text-primary flex-shrink-0" />
+      Enviar documento
+    </span>
+  ),
+  content:
+    'Cuando completes todos los campos obligatorios, usa el botón «Enviar documento» en la barra superior de esta ventana.',
+};
+
 function createEditorSteps(
   lockedPlacement: boolean,
   layout: 'compact' | 'wide',
+  embedMode = false,
 ): Step[] {
   const pdfAreaStep = createPdfAreaStep(layout, lockedPlacement);
+  const finish = embedMode ? embedFinishStep : finishStep;
 
   if (lockedPlacement) {
-    return [lockedWelcomeStep, pdfAreaStep, finishStep];
+    return [lockedWelcomeStep, pdfAreaStep, finish];
   }
-  return [welcomeStep, toolbarStep, pdfAreaStep, finishStep];
+  return [welcomeStep, toolbarStep, pdfAreaStep, finish];
 }
 
 interface EditorTourProps {
   run: boolean;
   stepIndex: number;
   lockedPlacement?: boolean;
+  embedMode?: boolean;
   onStepChange: (idx: number) => void;
   onEnd: () => void;
 }
@@ -168,6 +185,7 @@ export function EditorTour({
   run,
   stepIndex,
   lockedPlacement = false,
+  embedMode = false,
   onStepChange,
   onEnd,
 }: EditorTourProps) {
@@ -186,8 +204,8 @@ export function EditorTour({
   }, []);
 
   const steps = useMemo(
-    () => createEditorSteps(lockedPlacement, viewerLayout),
-    [lockedPlacement, viewerLayout],
+    () => createEditorSteps(lockedPlacement, viewerLayout, embedMode),
+    [lockedPlacement, viewerLayout, embedMode],
   );
 
   const handleCallback = useCallback(

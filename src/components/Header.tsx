@@ -87,13 +87,13 @@ export const Header = ({
   if (isDocumentVariant) {
     return (
       <header className="sticky top-0 z-50 shrink-0 border-b border-border/40 bg-white">
-        <div className="mx-auto w-full max-w-7xl px-3 py-2.5 sm:px-5 sm:py-3.5">
+        <div className="w-full px-2 py-2 sm:px-3 sm:py-2.5 md:px-4 md:py-3">
           <div
             className={cn(
-              "grid gap-x-2.5 gap-y-1.5 sm:items-center sm:gap-x-3",
+              "grid w-full justify-items-start gap-x-2 gap-y-1 sm:items-center sm:gap-x-2.5",
               showDocumentIcon
-                ? "grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_auto]"
-                : "grid-cols-[1fr] sm:grid-cols-[1fr_auto]",
+                ? "grid-cols-[auto_1fr] sm:grid-cols-[auto_minmax(0,1fr)_auto]"
+                : "grid-cols-[minmax(0,1fr)] sm:grid-cols-[minmax(0,1fr)_auto]",
             )}
           >
             {showDocumentIcon ? (
@@ -118,7 +118,7 @@ export const Header = ({
 
             <h1
               className={cn(
-                "min-w-0 truncate font-serif text-sm font-semibold leading-tight text-foreground sm:text-lg",
+                "min-w-0 truncate text-left font-serif text-sm font-semibold leading-tight text-foreground sm:text-base md:text-lg",
                 showDocumentIcon ? "col-start-2" : "col-start-1",
                 "row-start-1",
               )}

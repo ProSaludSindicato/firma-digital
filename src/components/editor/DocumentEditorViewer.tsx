@@ -471,27 +471,61 @@ export const DocumentEditorViewer = forwardRef<
   const markedPage =
     fields[0]?.page ?? constrainedPage ?? null;
 
-  const showPlacementCursor =
-    Boolean(placingType) &&
-    showToolbar &&
+  const isImplicitSignaturePlacement =
+    !showToolbar &&
+    !hasSignatureValue &&
     !isLocked &&
-    !constraints?.lockedPlacement &&
-    cursorPosition !== null;
+    !constraints?.lockedPlacement;
+
+  const activePlacingType =
+    placingType ?? (isImplicitSignaturePlacement ? "signature" : null);
+
+  const showPlacementCursor =
+    activePlacingType !== null &&
+    cursorPosition !== null &&
+    !isLocked &&
+    (Boolean(placingType)
+      ? showToolbar && !constraints?.lockedPlacement
+      : isImplicitSignaturePlacement);
 
   const handleDocumentAreaMouseMove = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
-      if (
-        !placingType ||
-        !showToolbar ||
-        isLocked ||
-        constraints?.lockedPlacement
-      ) {
+      if (isLocked) {
         setCursorPosition(null);
         return;
       }
+
+      const implicitPlacement =
+        !showToolbar && !hasSignatureValue && !constraints?.lockedPlacement;
+      const explicitPlacement =
+        Boolean(placingType) && showToolbar && !constraints?.lockedPlacement;
+
+      if (!implicitPlacement && !explicitPlacement) {
+        setCursorPosition(null);
+        return;
+      }
+
+      if (implicitPlacement && constrainedPage != null) {
+        const pageEl = (event.target as HTMLElement).closest("[data-pdf-page]");
+        const hoveredPage = pageEl
+          ? Number.parseInt(pageEl.getAttribute("data-pdf-page") ?? "", 10)
+          : null;
+        if (hoveredPage !== constrainedPage) {
+          setCursorPosition(null);
+          return;
+        }
+      }
+
       setCursorPosition({ x: event.clientX, y: event.clientY });
     },
-    [constraints?.lockedPlacement, isLocked, placingType, showToolbar],
+    [
+      constrainedPage,
+      constraints?.lockedPlacement,
+      hasSignatureValue,
+      isLocked,
+      placingType,
+      showToolbar,
+    ],
   );
 
   const handleDocumentAreaMouseLeave = useCallback(() => {
@@ -585,7 +619,7 @@ export const DocumentEditorViewer = forwardRef<
               </div>
             </div>
           ) : continuousScroll && totalPages > 0 ? (
-            <div className="flex w-full min-h-0 flex-col items-center gap-4 py-2 pb-[5.5rem] md:gap-6">
+            <div className="flex w-full min-h-0 flex-col items-center gap-4 py-2 pb-24 pr-14 md:gap-6 md:pb-8 md:pr-4 lg:pb-6">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(
                 (page) => (
                   <div
@@ -629,9 +663,9 @@ export const DocumentEditorViewer = forwardRef<
         />
       ) : null}
 
-      {showPlacementCursor && placingType ? (
+      {showPlacementCursor && activePlacingType ? (
         <PlacementCursorIndicator
-          placingType={placingType}
+          placingType={activePlacingType}
           x={cursorPosition!.x}
           y={cursorPosition!.y}
         />

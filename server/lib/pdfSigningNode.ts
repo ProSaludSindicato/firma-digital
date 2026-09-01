@@ -29,7 +29,7 @@ export async function signPDFWithBuffer(
   isPng: boolean,
   config: SignatureConfig,
 ): Promise<Buffer> {
-  const pdfDoc = await PDFDocument.load(pdfBuffer);
+  const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
   const pages = pdfDoc.getPages();
 
   if (config.page < 1 || config.page > pages.length) {

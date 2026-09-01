@@ -7,6 +7,7 @@ import {
   fieldTextPaddingPt,
   VIEWER_LINE_HEIGHT,
 } from "@/lib/fieldLayoutInsets";
+import { loadPdfDocument } from "@/lib/loadPdfDocument";
 import { pdfSignatureConfig } from "@/lib/pdfSignatureConfig";
 import type { DocumentField } from "@/types/documentEditor";
 
@@ -325,7 +326,7 @@ export async function exportDocumentToPdf(
 ): Promise<Blob> {
   const arrayBuffer =
     originalPdf instanceof File ? await originalPdf.arrayBuffer() : originalPdf;
-  const pdfDoc = await PDFDocument.load(arrayBuffer);
+  const pdfDoc = await loadPdfDocument(arrayBuffer);
   const pages = pdfDoc.getPages();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
 

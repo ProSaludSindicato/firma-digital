@@ -1,5 +1,5 @@
-import { PDFDocument } from "pdf-lib";
 import { AutoSignatureConfig } from "@/hooks/useAutoPDFSigner";
+import { loadPdfDocument } from "@/lib/loadPdfDocument";
 
 /**
  * Firma un archivo PDF insertando una imagen en la posición especificada.
@@ -13,7 +13,7 @@ export async function signPDFWithImage(
   config: AutoSignatureConfig,
 ): Promise<Blob> {
   const arrayBuffer = await pdfFile.arrayBuffer();
-  const pdfDoc = await PDFDocument.load(arrayBuffer);
+  const pdfDoc = await loadPdfDocument(arrayBuffer);
   const pages = pdfDoc.getPages();
 
   if (config.page < 1 || config.page > pages.length) {

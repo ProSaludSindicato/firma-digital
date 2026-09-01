@@ -57,6 +57,7 @@ type DocumentMetadataPayload = {
     expires_at?: string | null;
     fields?: ApiDocumentField[];
     locked_placement?: boolean;
+    tour_context_key?: string;
   };
   message?: string;
 };
@@ -107,6 +108,7 @@ const DocumentByToken = () => {
   const [isSent, setIsSent] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
+  const [tourContextKey, setTourContextKey] = useState<string | null>(null);
 
   const fieldProgress = useMemo(
     () => getFieldProgressCounts(editor.fields),
@@ -153,18 +155,32 @@ const DocumentByToken = () => {
     isSent,
   ]);
 
-  const editorTour = useEditorTour();
-  const { run: tourRun, stepIndex: tourStepIndex, setStepIndex: setTourStepIndex, hasBeenShown: tourHasBeenShown, start: startEditorTour, end: endEditorTour } = editorTour;
+  const editorTour = useEditorTour(isEmbedMode ? 'embed' : 'standalone');
+  const {
+    run: tourRun,
+    stepIndex: tourStepIndex,
+    setStepIndex: setTourStepIndex,
+    canAutoStart: canAutoStartTourForContext,
+    start: startEditorTour,
+    end: endEditorTour,
+  } = editorTour;
 
   useEffect(() => {
     if (!editor.file) return;
     if (metaLoading || pdfLoading) return;
     if (metaError) return;
     if (isSent) return;
-    if (tourHasBeenShown) return;
+    if (totalPages === 0) return;
+    if (!tourContextKey) return;
+    if (!canAutoStartTourForContext(tourContextKey)) return;
     if (tourRun) return;
 
-    const timer = setTimeout(() => startEditorTour(), 700);
+    const delay = isEmbedMode ? 1200 : 700;
+    const timer = setTimeout(() => {
+      if (canAutoStartTourForContext(tourContextKey)) {
+        startEditorTour();
+      }
+    }, delay);
     return () => clearTimeout(timer);
   }, [
     editor.file,
@@ -172,14 +188,35 @@ const DocumentByToken = () => {
     pdfLoading,
     metaError,
     isSent,
-    tourHasBeenShown,
+    totalPages,
+    tourContextKey,
+    canAutoStartTourForContext,
     tourRun,
     startEditorTour,
+    isEmbedMode,
   ]);
 
+  useEffect(() => {
+    if (!isEmbedMode) {
+      return undefined;
+    }
+
+    function handleParentMessage(event: MessageEvent) {
+      if (event.data?.type === 'request-tour') {
+        startEditorTour();
+      }
+    }
+
+    window.addEventListener('message', handleParentMessage);
+
+    return () => {
+      window.removeEventListener('message', handleParentMessage);
+    };
+  }, [isEmbedMode, startEditorTour]);
+
   const handleEditorTourEnd = useCallback(() => {
-    endEditorTour();
-  }, [endEditorTour]);
+    endEditorTour(tourContextKey ?? undefined);
+  }, [endEditorTour, tourContextKey]);
 
   const pendingField = useMemo(
     () =>
@@ -226,6 +263,11 @@ const DocumentByToken = () => {
         typeof data?.header_title === "string" ? data.header_title.trim() : "";
       setHeaderTitle(rawTitle !== "" ? rawTitle : null);
       setDocumentName(data?.document_name ?? "");
+      setTourContextKey(
+        typeof data?.tour_context_key === "string" && data.tour_context_key.trim() !== ""
+          ? data.tour_context_key.trim()
+          : null,
+      );
       setCanEdit(data?.can_edit !== false);
 
       if (data?.can_edit === false) {
@@ -508,6 +550,7 @@ const DocumentByToken = () => {
           run={tourRun}
           stepIndex={tourStepIndex}
           lockedPlacement={lockedPlacement}
+          embedMode={isEmbedMode}
           onStepChange={setTourStepIndex}
           onEnd={handleEditorTourEnd}
         />

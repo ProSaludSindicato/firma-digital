@@ -112,7 +112,12 @@ const pdfAreaTourContent = (
   </div>
 );
 
-function createViewerSteps(layout: 'compact' | 'wide'): Step[] {
+export type AppTourViewerVariant = 'default' | 'document-editor';
+
+function createViewerSteps(
+  layout: 'compact' | 'wide',
+  viewerVariant: AppTourViewerVariant = 'default',
+): Step[] {
   const pdfAreaStep: Step =
     layout === 'wide'
       ? {
@@ -180,7 +185,12 @@ function createViewerSteps(layout: 'compact' | 'wide'): Step[] {
         </div>
       ),
     },
-    {
+  ];
+
+  // DocumentEditorViewer (convenio / campos) no incluye la barra #tour-pdf-toolbar-pages;
+  // incluir ese paso deja Joyride sin ancla y bloquea la pantalla con el overlay.
+  if (viewerVariant === 'default') {
+    steps.push({
       target: '#tour-pdf-toolbar-pages',
       placement: 'bottom',
       skipBeacon: true,
@@ -204,8 +214,8 @@ function createViewerSteps(layout: 'compact' | 'wide'): Step[] {
             </p> */}
         </div>
       ),
-    },
-  ];
+    });
+  }
 
   // The thumbnails panel uses `hidden md:block` so it is invisible on mobile.
   // Including it on compact layout causes Joyride to show only a dark overlay
@@ -222,7 +232,9 @@ function createViewerSteps(layout: 'compact' | 'wide'): Step[] {
         </span>
       ),
       content:
-        'Vista rápida de todas las páginas. Haz clic en cualquier miniatura para saltar directamente a esa página.',
+        viewerVariant === 'document-editor'
+          ? 'Vista rápida de todas las páginas. Desplázate o haz clic en una miniatura; la página de firma aparece resaltada.'
+          : 'Vista rápida de todas las páginas. Haz clic en cualquier miniatura para saltar directamente a esa página.',
     });
   }
 
@@ -344,6 +356,8 @@ interface AppTourProps {
   phase: TourPhase;
   run: boolean;
   stepIndex: number;
+  /** Visor con barra de páginas (PDFViewer) vs scroll continuo (DocumentEditorViewer). */
+  viewerVariant?: AppTourViewerVariant;
   onStepChange: (idx: number) => void;
   onPhaseEnd: () => void;
 }
@@ -352,6 +366,7 @@ export const AppTour = ({
   phase,
   run,
   stepIndex,
+  viewerVariant = 'default',
   onStepChange,
   onPhaseEnd,
 }: AppTourProps) => {
@@ -371,9 +386,9 @@ export const AppTour = ({
 
   const steps = useMemo(() => {
     if (phase === 'none') return [];
-    if (phase === 'viewer') return createViewerSteps(viewerLayout);
+    if (phase === 'viewer') return createViewerSteps(viewerLayout, viewerVariant);
     return STATIC_PHASE_STEPS[phase];
-  }, [phase, viewerLayout]);
+  }, [phase, viewerLayout, viewerVariant]);
 
   const handleCallback = useCallback(
     (data: EventData) => {

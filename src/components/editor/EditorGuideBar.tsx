@@ -2,9 +2,22 @@ import { Info } from "lucide-react";
 import { FIELD_TYPE_LABELS, getPlacementHint } from "@/lib/fieldDefaults";
 import type { FieldType } from "@/types/documentEditor";
 
+function GuideBarMessage({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="shrink-0 border-b border-amber-200/60 bg-[#fff5e6] px-3 py-2 text-center text-xs text-[#7d5a2d] sm:px-4 sm:text-sm">
+      <span className="inline-flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5">
+        <Info className="inline h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+        <span>{children}</span>
+      </span>
+    </div>
+  );
+}
+
 interface EditorGuideBarProps {
   /** Muestra el hint neutro cuando no hay herramienta activa. */
   showDefaultHint?: boolean;
+  /** Mensaje personalizado (estilo barra ámbar del editor). */
+  customHint?: string | null;
   placingType: FieldType | null;
   constrainedPage?: number;
   isOnConstrainedPage?: boolean;
@@ -16,6 +29,7 @@ interface EditorGuideBarProps {
 
 export function EditorGuideBar({
   showDefaultHint = true,
+  customHint = null,
   placingType,
   constrainedPage,
   isOnConstrainedPage = true,
@@ -24,14 +38,13 @@ export function EditorGuideBar({
   onCancel,
   onNavigate,
 }: EditorGuideBarProps) {
+  if (customHint) {
+    return <GuideBarMessage>{customHint}</GuideBarMessage>;
+  }
+
   if (lockedPlacement && pendingFieldLabel) {
     return (
-      <div className="shrink-0 border-b border-amber-200/60 bg-[#fff5e6] px-4 py-2 text-center text-xs text-[#7d5a2d] sm:text-sm">
-        <span className="inline-flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5">
-          <Info className="inline h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
-          <span>Completa el campo “{pendingFieldLabel}”</span>
-        </span>
-      </div>
+      <GuideBarMessage>Completa el campo “{pendingFieldLabel}”</GuideBarMessage>
     );
   }
 
@@ -42,11 +55,11 @@ export function EditorGuideBar({
       : `Toca el documento donde va ${getPlacementHint(placingType)}.`;
 
     return (
-      <div className="shrink-0 border-b border-amber-200/60 bg-[#fff5e6] px-4 py-2 text-center text-xs text-[#7d5a2d] sm:text-sm">
-        <span className="inline-flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5">
-          <Info className="inline h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
-          <span>{message}</span>
-          {needsNavigation && onNavigate ? (
+      <GuideBarMessage>
+        {message}
+        {needsNavigation && onNavigate ? (
+          <>
+            {" "}
             <button
               type="button"
               onClick={onNavigate}
@@ -54,7 +67,10 @@ export function EditorGuideBar({
             >
               Ir a la página
             </button>
-          ) : onCancel ? (
+          </>
+        ) : onCancel ? (
+          <>
+            {" "}
             <button
               type="button"
               onClick={onCancel}
@@ -62,9 +78,9 @@ export function EditorGuideBar({
             >
               Cancelar
             </button>
-          ) : null}
-        </span>
-      </div>
+          </>
+        ) : null}
+      </GuideBarMessage>
     );
   }
 
@@ -73,14 +89,8 @@ export function EditorGuideBar({
   }
 
   return (
-    <div className="shrink-0 border-b border-amber-200/60 bg-[#fff5e6] px-4 py-2 text-center text-xs text-[#7d5a2d] sm:text-sm">
-      <span className="inline-flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5">
-        <Info className="inline h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
-        <span>
-          Elige un tipo de campo abajo y luego toca el documento donde quieras
-          colocarlo.
-        </span>
-      </span>
-    </div>
+    <GuideBarMessage>
+      Elige un tipo de campo abajo y luego toca el documento donde quieras colocarlo.
+    </GuideBarMessage>
   );
 }

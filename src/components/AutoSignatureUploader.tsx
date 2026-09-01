@@ -12,8 +12,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PDFDocument } from "pdf-lib";
 import { validatePDFFile, validatePDFIntegrity, validateImageFile } from "@/lib/validation";
+import { loadPdfDocument } from "@/lib/loadPdfDocument";
 import { validateAndCompressImage } from "@/lib/imageCompression";
 import { toast } from "@/hooks/use-toast";
 import { AutoSignatureConfig } from "@/hooks/useAutoPDFSigner";
@@ -166,7 +166,7 @@ export const AutoSignatureUploader = ({
     (async () => {
       try {
         const ab = await pdfFile.arrayBuffer();
-        const doc = await PDFDocument.load(ab);
+        const doc = await loadPdfDocument(ab);
         onTotalPagesChange(doc.getPages().length);
       } catch { /* non-critical */ }
     })();

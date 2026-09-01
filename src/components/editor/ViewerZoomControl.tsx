@@ -27,8 +27,8 @@ export function ViewerZoomControl({
       role="group"
       aria-label="Zoom del documento"
       className={cn(
-        "viewer-zoom-glass fixed z-40",
-        "right-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))]",
+        "viewer-zoom-glass absolute z-40 pointer-events-auto",
+        "right-2 bottom-2 sm:right-3 sm:bottom-3",
         "lg:right-5 lg:top-1/2 lg:bottom-auto lg:-translate-y-1/2",
         className,
       )}
