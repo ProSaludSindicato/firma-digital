@@ -20,10 +20,6 @@ function formatDisplayDate(isoDate: string): string {
   });
 }
 
-function stopFieldPointer(event: React.SyntheticEvent) {
-  event.stopPropagation();
-}
-
 export function DateField({ field, isLocked, onChangeValue }: DateFieldProps) {
   const isoDate = field.value?.type === "date" ? field.value.isoDate : "";
 
@@ -63,9 +59,7 @@ export function DateField({ field, isLocked, onChangeValue }: DateFieldProps) {
             : null,
         );
       }}
-      onPointerDown={stopFieldPointer}
-      onMouseDown={stopFieldPointer}
-      onClick={stopFieldPointer}
+      onClick={(event) => event.stopPropagation()}
       className="h-full w-full min-w-0 appearance-none bg-transparent px-1 text-foreground outline-none [color-scheme:light]"
       style={fontStyle}
     />

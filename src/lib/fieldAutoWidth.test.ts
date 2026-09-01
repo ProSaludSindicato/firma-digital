@@ -15,6 +15,6 @@ describe("computeAutoGrowFieldWidth", () => {
 
   it("respects max width limits for number fields", () => {
     const next = computeAutoGrowFieldWidth(500, 1, "number", 72);
-    expect(next).toBe(400);
+    expect(next).toBe(240);
   });
 });

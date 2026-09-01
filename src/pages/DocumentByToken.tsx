@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import {
   AlertCircle,
   CheckCircle,
@@ -86,6 +86,9 @@ function ErrorPanel({ message }: { message: string }) {
 
 const DocumentByToken = () => {
   const { token } = useParams<{ token: string }>();
+  const [searchParams] = useSearchParams();
+  const returnUrl = searchParams.get("return_url");
+  const isEmbedMode = searchParams.get("embed") === "1";
   const isMobile = useIsMobile();
   const editor = useDocumentEditor(isMobile);
   const { setFile, loadFields } = editor;
@@ -114,6 +117,41 @@ const DocumentByToken = () => {
     [editor.fields],
   );
   const finishDisabled = !canFinishDocument(editor.fields);
+
+  const pageSubtitle = useMemo(
+    () => (totalPages > 0 ? `Página ${currentPage} de ${totalPages}` : undefined),
+    [currentPage, totalPages],
+  );
+
+  useEffect(() => {
+    if (!isEmbedMode || metaLoading || pdfLoading || metaError) {
+      return;
+    }
+
+    window.parent.postMessage(
+      {
+        type: "editor-state",
+        subtitle: pageSubtitle,
+        progress: fieldProgress,
+        finishDisabled,
+        finishDisabledTitle,
+        isSubmitting,
+        isSent,
+      },
+      "*",
+    );
+  }, [
+    isEmbedMode,
+    metaLoading,
+    pdfLoading,
+    metaError,
+    pageSubtitle,
+    fieldProgress,
+    finishDisabled,
+    finishDisabledTitle,
+    isSubmitting,
+    isSent,
+  ]);
 
   const editorTour = useEditorTour();
   const { run: tourRun, stepIndex: tourStepIndex, setStepIndex: setTourStepIndex, hasBeenShown: tourHasBeenShown, start: startEditorTour, end: endEditorTour } = editorTour;
@@ -258,6 +296,24 @@ const DocumentByToken = () => {
     setShowConfirm(true);
   }, [editor.fields.length, editor.incompleteRequiredFields]);
 
+  useEffect(() => {
+    if (!isEmbedMode) {
+      return undefined;
+    }
+
+    function handleParentMessage(event: MessageEvent) {
+      if (event.data?.type === "request-submit") {
+        handleFinish();
+      }
+    }
+
+    window.addEventListener("message", handleParentMessage);
+
+    return () => {
+      window.removeEventListener("message", handleParentMessage);
+    };
+  }, [isEmbedMode, handleFinish]);
+
   const handleConfirmSubmit = async () => {
     if (!token || !canEdit || !editor.file) {
       return;
@@ -268,13 +324,20 @@ const DocumentByToken = () => {
       const signedBlob = await exportDocumentToPdf(editor.file, editor.fields);
       const fd = new FormData();
       fd.append("pdf", signedBlob, exportedFileName(editor.file.name));
+      if (returnUrl) {
+        fd.append("return_url", returnUrl);
+      }
 
       const res = await fetch(documentSubmitUrl(token), {
         method: "POST",
         body: fd,
       });
 
-      const json = (await res.json()) as { success?: boolean; message?: string };
+      const json = (await res.json()) as {
+        success?: boolean;
+        message?: string;
+        redirect_url?: string;
+      };
       if (!res.ok || !json.success) {
         throw new Error(json.message ?? "No se pudo enviar el documento.");
       }
@@ -282,9 +345,31 @@ const DocumentByToken = () => {
       setIsSent(true);
       setShowConfirm(false);
       signedPdfRef.current = signedBlob;
-      toast.success("Documento enviado correctamente.");
+      if (!isEmbedMode) {
+        toast.success("Documento enviado correctamente.");
+      }
+
+      const resolvedRedirectUrl = json.redirect_url ?? returnUrl;
+
+      if (isEmbedMode) {
+        window.parent.postMessage(
+          {
+            type: "document-signed",
+            token,
+          },
+          "*",
+        );
+      } else if (resolvedRedirectUrl) {
+        window.setTimeout(() => {
+          window.location.href = resolvedRedirectUrl;
+        }, 1200);
+      }
 
       window.setTimeout(() => {
+        if (isEmbedMode) {
+          return;
+        }
+
         try {
           const url = URL.createObjectURL(signedBlob);
           const link = document.createElement("a");
@@ -324,19 +409,24 @@ const DocumentByToken = () => {
   }, [editor.file]);
 
   const resolvedTitle = headerTitle ?? appConfig.documentHeaderTitle;
+  const rootClassName = isEmbedMode
+    ? "flex h-full flex-col overflow-hidden bg-background"
+    : "flex h-dvh flex-col overflow-hidden bg-background";
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-background">
+    <div className={rootClassName}>
       {!token ? (
         <ErrorPanel message={GENERIC_INVALID_LINK_MESSAGE} />
       ) : metaLoading || pdfLoading ? (
         <>
-          <Header
-            showFinishButton={false}
-            isProcessing
-            isSent={false}
-            title={resolvedTitle}
-          />
+          {!isEmbedMode && (
+            <Header
+              showFinishButton={false}
+              isProcessing
+              isSent={false}
+              title={resolvedTitle}
+            />
+          )}
           <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin" />
             <p className="text-sm">Cargando documento…</p>
@@ -346,23 +436,23 @@ const DocumentByToken = () => {
         <ErrorPanel message={metaError} />
       ) : (
         <>
-          <Header
-            variant="document"
-            showDocumentIcon
-            title={resolvedTitle}
-            subtitle={
-              totalPages > 0 ? `Página ${currentPage} de ${totalPages}` : undefined
-            }
-            fieldProgress={fieldProgress}
-            finishDisabled={finishDisabled}
-            finishDisabledTitle={finishDisabledTitle}
-            showFinishButton={!isSent}
-            onFinish={handleFinish}
-            isProcessing={isSubmitting}
-            isSent={isSent}
-            finishLabel="Enviar documento"
-          />
-          {isSent ? (
+          {!isEmbedMode && (
+            <Header
+              variant="document"
+              showDocumentIcon
+              title={resolvedTitle}
+              subtitle={pageSubtitle}
+              fieldProgress={fieldProgress}
+              finishDisabled={finishDisabled}
+              finishDisabledTitle={finishDisabledTitle}
+              showFinishButton={!isSent}
+              onFinish={handleFinish}
+              isProcessing={isSubmitting}
+              isSent={isSent}
+              finishLabel="Enviar documento"
+            />
+          )}
+          {!isEmbedMode && isSent ? (
             <div className="flex shrink-0 items-center justify-center gap-1.5 border-b border-green-200/60 bg-green-50 px-4 py-2 text-xs font-medium text-green-700 sm:text-sm">
               <CheckCircle className="h-4 w-4 shrink-0" />
               Documento enviado correctamente
@@ -374,7 +464,7 @@ const DocumentByToken = () => {
                 Descargar copia
               </button>
             </div>
-          ) : (
+          ) : !isSent ? (
             <EditorGuideBar
               showDefaultHint={!lockedPlacement}
               placingType={lockedPlacement ? null : editor.placingType}
@@ -384,7 +474,7 @@ const DocumentByToken = () => {
               onCancel={() => editor.setPlacingType(null)}
               onNavigate={() => viewerRef.current?.goToConstrainedPage()}
             />
-          )}
+          ) : null}
           <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {editor.file ? (
               <div className="min-h-0 flex-1 overflow-hidden">

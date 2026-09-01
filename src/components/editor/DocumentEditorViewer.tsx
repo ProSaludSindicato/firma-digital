@@ -116,11 +116,11 @@ export const DocumentEditorViewer = forwardRef<
     const width = window.innerWidth;
     const height = window.innerHeight;
     if (height < 500 && width > height) {
-      return Math.max(0.5, Math.min(1.4, (width - 24) / 612));
+      return Math.max(0.5, Math.min(1.6, (width - 24) / 612));
     }
     if (width >= 1440) return 1.8;
-    if (width >= 1200) return 1.4;
-    if (width >= 1024) return 1.4;
+    if (width >= 1200) return 1.6;
+    if (width >= 1024) return 1.6;
     if (width >= 768) return 1.2;
     const mobileZoom = (width - 8) / 612;
     return Math.max(0.5, Math.min(1.0, mobileZoom));

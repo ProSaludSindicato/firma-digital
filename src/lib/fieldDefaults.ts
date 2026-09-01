@@ -71,42 +71,42 @@ export function getFieldSizeLimits(
   switch (type) {
     case "signature":
       return {
-        defaultWidth: isMobile ? 90 : 150,
-        defaultHeight: isMobile ? 36 : 80,
-        minWidth: isMobile ? 56 : 80,
-        minHeight: isMobile ? 24 : 32,
-        maxWidth: 400,
-        maxHeight: 220,
+        defaultWidth: isMobile ? 90 : 112,
+        defaultHeight: isMobile ? 36 : 52,
+        minWidth: isMobile ? 56 : 72,
+        minHeight: isMobile ? 24 : 28,
+        maxWidth: 320,
+        maxHeight: 180,
         lockAspectRatio: true,
       };
     case "text":
       return {
-        defaultWidth: isMobile ? 96 : 180,
-        defaultHeight: isMobile ? 22 : 28,
-        minWidth: isMobile ? 40 : 60,
-        minHeight: isMobile ? 14 : 18,
-        maxWidth: 640,
-        maxHeight: 280,
+        defaultWidth: isMobile ? 96 : 100,
+        defaultHeight: isMobile ? 22 : 18,
+        minWidth: isMobile ? 40 : 48,
+        minHeight: isMobile ? 14 : 16,
+        maxWidth: 480,
+        maxHeight: 120,
         lockAspectRatio: false,
       };
     case "number":
       return {
-        defaultWidth: isMobile ? 44 : 72,
-        defaultHeight: isMobile ? 22 : 28,
-        minWidth: isMobile ? 28 : 36,
-        minHeight: isMobile ? 14 : 18,
-        maxWidth: 400,
-        maxHeight: 72,
+        defaultWidth: isMobile ? 44 : 48,
+        defaultHeight: isMobile ? 22 : 18,
+        minWidth: isMobile ? 28 : 32,
+        minHeight: isMobile ? 14 : 16,
+        maxWidth: 240,
+        maxHeight: 48,
         lockAspectRatio: false,
       };
     case "date":
       return {
-        defaultWidth: isMobile ? 92 : 152,
-        defaultHeight: isMobile ? 22 : 28,
-        minWidth: isMobile ? 56 : 80,
-        minHeight: isMobile ? 14 : 20,
-        maxWidth: 280,
-        maxHeight: 72,
+        defaultWidth: isMobile ? 92 : 98,
+        defaultHeight: isMobile ? 22 : 18,
+        minWidth: isMobile ? 56 : 72,
+        minHeight: isMobile ? 14 : 16,
+        maxWidth: 220,
+        maxHeight: 48,
         lockAspectRatio: false,
       };
     case "checkbox":
@@ -202,7 +202,19 @@ export function createDocumentField(
  */
 export function apiFieldsToDocumentFields(
   apiFields: ApiDocumentField[],
-): DocumentField[] {
+): {
+    id: string;
+    type: "signature" | "text" | "number" | "date" | "checkbox";
+    label: string;
+    required: boolean;
+    page: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    scale: number;
+    value: { type: string; checked: boolean }
+}[] {
   return apiFields.map((api) => {
     const width = Math.max(8, api.width);
     const height = Math.max(8, api.height);
