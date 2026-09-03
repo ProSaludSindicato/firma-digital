@@ -33,11 +33,13 @@ import { appConfig } from "@/lib/appConfig";
 import { CONVENIO_EDITOR_CONSTRAINTS } from "@/lib/convenioEditorConfig";
 import { exportDocumentToPdf } from "@/lib/pdfFieldExporter";
 import { pdfViewerConfig } from "@/lib/pdfViewerConfig";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import {
   convenioFirmaDocumentUrl,
   convenioFirmaMetadataUrl,
   convenioFirmaSubmitUrl,
 } from "@/lib/prosaludConvenioApi";
+import { verifyAffiliateSignatureRegistered } from "@/lib/verifyAffiliateSignatureRegistered";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -107,13 +109,13 @@ function resolveBlockedSigningKind(signingEstado: string | null | undefined): Bl
 
 function HelpEmailFooter() {
   return (
-    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-      <span className="text-sm text-foreground/50">¿Necesitas ayuda?</span>
+    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+      <span className="text-xs text-foreground/50 sm:text-sm">¿Necesitas ayuda?</span>
       <a
         href={`mailto:${AFFILIATE_HELP_EMAIL}`}
-        className="inline-flex items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline"
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-primary underline-offset-4 hover:underline sm:gap-2 sm:text-sm"
       >
-        <Mail className="h-4 w-4 shrink-0" aria-hidden />
+        <Mail className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
         {AFFILIATE_HELP_EMAIL}
       </a>
     </div>
@@ -133,12 +135,12 @@ function StatusMark({ icon: Icon, tone }: { icon: LucideIcon; tone: StatusTone }
   return (
     <div
       className={cn(
-        "flex h-11 w-11 shrink-0 items-center justify-center rounded-full lg:h-14 lg:w-14",
+        "flex h-10 w-10 shrink-0 items-center justify-center rounded-full sm:h-11 sm:w-11 lg:h-14 lg:w-14",
         STATUS_MARK_TONE[tone],
       )}
       aria-hidden
     >
-      <Icon className="h-5 w-5 lg:h-6 lg:w-6" strokeWidth={2.25} />
+      <Icon className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" strokeWidth={2.25} />
     </div>
   );
 }
@@ -146,10 +148,12 @@ function StatusMark({ icon: Icon, tone }: { icon: LucideIcon; tone: StatusTone }
 function StatusPageShell({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-white dark:bg-background">
-      <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-5 py-8 sm:px-8 md:px-10 lg:px-12 lg:py-12 xl:px-16">
-        <div className="flex flex-1 flex-col justify-center py-4 lg:py-8">{children}</div>
+      <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-4 py-5 sm:px-8 sm:py-8 md:px-10 lg:px-12 lg:py-12 xl:px-16">
+        <div className="flex flex-1 flex-col justify-start py-1 sm:py-4 lg:justify-center lg:py-8">
+          {children}
+        </div>
         {footer ? (
-          <footer className="mt-10 shrink-0 border-t border-border/70 pt-5 lg:mt-12 lg:pt-6">
+          <footer className="mt-6 shrink-0 border-t border-border/70 pt-4 sm:mt-10 sm:pt-5 lg:mt-12 lg:pt-6">
             {footer}
           </footer>
         ) : null}
@@ -160,9 +164,11 @@ function StatusPageShell({ children, footer }: { children: ReactNode; footer?: R
 
 function MetaField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 space-y-1.5">
-      <dt className="text-xs font-medium uppercase tracking-[0.16em] text-foreground/45">{label}</dt>
-      <dd className="text-base font-medium leading-snug text-foreground sm:text-lg">{value}</dd>
+    <div className="min-w-0 space-y-1">
+      <dt className="text-[10px] font-medium uppercase tracking-[0.14em] text-foreground/45 sm:text-xs sm:tracking-[0.16em]">
+        {label}
+      </dt>
+      <dd className="text-sm font-medium leading-snug text-foreground sm:text-base sm:text-lg">{value}</dd>
     </div>
   );
 }
@@ -250,22 +256,26 @@ function ConvenioCannotSignPanel({
     <StatusPageShell footer={<HelpEmailFooter />}>
       <div
         className={cn(
-          "flex flex-col gap-12",
+          "flex flex-col gap-5 sm:gap-10 lg:gap-12",
           metaFields.length > 0 &&
             "lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(17rem,0.85fr)] lg:items-start lg:gap-16 xl:gap-24",
         )}
         role={blockedKind === "firmado_afiliado" ? "status" : undefined}
       >
-        <div className="flex items-start gap-4 sm:gap-5 lg:gap-6">
+        <div className="flex items-start gap-3 sm:gap-5 lg:gap-6">
           <StatusMark icon={icon} tone={tone} />
-          <div className="min-w-0 space-y-4 pt-0.5 lg:space-y-5">
-            <h1 className="font-serif text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-[2.75rem] xl:text-5xl lg:leading-[1.12]">
+          <div className="min-w-0 space-y-3 pt-0.5 sm:space-y-4 lg:space-y-5">
+            <h1 className="text-balance font-serif text-2xl font-semibold tracking-tight text-foreground sm:text-3xl md:text-4xl lg:text-[2.75rem] xl:text-5xl lg:leading-[1.12]">
               {title}
             </h1>
-            <div className="max-w-xl space-y-3">
-              <p className="text-base leading-relaxed text-foreground/60 lg:text-lg">{description}</p>
+            <div className="max-w-xl space-y-2 sm:space-y-3">
+              <p className="text-sm leading-snug text-foreground/60 sm:text-base sm:leading-relaxed lg:text-lg">
+                {description}
+              </p>
               {extraNote ? (
-                <p className="text-base leading-relaxed text-foreground/75 lg:text-lg">{extraNote}</p>
+                <p className="text-sm leading-snug text-foreground/75 sm:text-base sm:leading-relaxed lg:text-lg">
+                  {extraNote}
+                </p>
               ) : null}
             </div>
             {onDownload ? (
@@ -273,7 +283,7 @@ function ConvenioCannotSignPanel({
                 type="button"
                 variant="outline"
                 onClick={onDownload}
-                className="mt-1 h-11 rounded-full px-5 text-sm font-semibold sm:h-12 sm:px-6"
+                className="mt-0.5 h-10 rounded-full px-4 text-sm font-semibold sm:mt-1 sm:h-11 sm:px-5 md:h-12 md:px-6"
               >
                 <Download className="mr-2 h-4 w-4" />
                 Descargar convenio firmado
@@ -283,8 +293,8 @@ function ConvenioCannotSignPanel({
         </div>
 
         {metaFields.length > 0 ? (
-          <aside className="border-t border-border/70 pt-8 lg:border-l lg:border-t-0 lg:pt-1 lg:pl-12 xl:pl-16">
-            <dl className="grid gap-7 sm:grid-cols-2 lg:grid-cols-1 lg:gap-8">
+          <aside className="border-t border-border/70 pt-4 sm:pt-8 lg:border-l lg:border-t-0 lg:pt-1 lg:pl-12 xl:pl-16">
+            <dl className="grid gap-4 sm:grid-cols-2 sm:gap-7 lg:grid-cols-1 lg:gap-8">
               {metaFields.map((field) => (
                 <MetaField key={field.label} label={field.label} value={field.value} />
               ))}
@@ -308,13 +318,15 @@ function ConvenioCannotSignPanel({
 function ConvenioGenericErrorPanel({ message }: { message: string }) {
   return (
     <StatusPageShell footer={<HelpEmailFooter />}>
-      <div className="flex max-w-3xl items-start gap-4 sm:gap-5 lg:gap-6">
+      <div className="flex max-w-3xl items-start gap-3 sm:gap-5 lg:gap-6">
         <StatusMark icon={AlertCircle} tone="danger" />
-        <div className="min-w-0 space-y-4 pt-0.5">
-          <h1 className="font-serif text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-5xl lg:leading-[1.12]">
+        <div className="min-w-0 space-y-3 pt-0.5 sm:space-y-4">
+          <h1 className="text-balance font-serif text-2xl font-semibold tracking-tight text-foreground sm:text-3xl md:text-4xl lg:text-5xl lg:leading-[1.12]">
             No pudimos abrir el enlace
           </h1>
-          <p className="max-w-2xl text-base leading-relaxed text-foreground/60 lg:text-lg">{message}</p>
+          <p className="max-w-2xl text-sm leading-snug text-foreground/60 sm:text-base sm:leading-relaxed lg:text-lg">
+            {message}
+          </p>
         </div>
       </div>
     </StatusPageShell>
@@ -529,6 +541,43 @@ const SignConvenioByToken = () => {
     Boolean(pdfFile),
   );
 
+  const markAffiliateSignatureReceived = (
+    signedBlob: Blob | null,
+    firmadoAt?: string | null,
+  ) => {
+    setFirmadoAfiliadoAt(firmadoAt ?? new Date().toISOString());
+    setIsSent(true);
+    setCanRateSatisfaction(true);
+    setShowConfirm(false);
+    setFile(null);
+    trackEvent("document_confirmed");
+    toast.success("Convenio enviado correctamente.");
+
+    if (!signedBlob) {
+      return;
+    }
+
+    signedPdfForDownloadRef.current = signedBlob;
+    const blobForDownload = signedBlob;
+    window.setTimeout(() => {
+      try {
+        trackEvent("document_downloaded", { auto: true });
+        const url = URL.createObjectURL(blobForDownload);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = downloadFilename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      } catch (downloadError) {
+        const errorMessage =
+          downloadError instanceof Error ? downloadError.message : "Error al descargar el PDF";
+        toast.error("Error al descargar", { description: errorMessage });
+      }
+    }, 500);
+  };
+
   const handleConfirmSubmit = async () => {
     if (!token || !canSign) {
       return;
@@ -578,36 +627,17 @@ const SignConvenioByToken = () => {
         throw new Error(json.message ?? "No se pudo enviar el documento.");
       }
 
-      setFirmadoAfiliadoAt(new Date().toISOString());
-      setIsSent(true);
-      setCanRateSatisfaction(true);
-      setShowConfirm(false);
-      trackEvent("document_confirmed");
-      toast.success("Convenio enviado correctamente.");
-
-      signedPdfForDownloadRef.current = signedBlob;
-      const blobForDownload = signedBlob;
-      window.setTimeout(() => {
-        if (!blobForDownload) {
-          return;
-        }
-        try {
-          trackEvent("document_downloaded", { auto: true });
-          const url = URL.createObjectURL(blobForDownload);
-          const link = document.createElement("a");
-          link.href = url;
-          link.download = downloadFilename;
-          document.body.appendChild(link);
-          link.click();
-          link.remove();
-          URL.revokeObjectURL(url);
-        } catch (downloadError) {
-          const errorMessage =
-            downloadError instanceof Error ? downloadError.message : "Error al descargar el PDF";
-          toast.error("Error al descargar", { description: errorMessage });
-        }
-      }, 500);
+      markAffiliateSignatureReceived(signedBlob);
     } catch (e) {
+      const verification = await verifyAffiliateSignatureRegistered(token);
+      if (verification.registered) {
+        markAffiliateSignatureReceived(
+          signedBlob,
+          verification.firmadoAfiliadoAt,
+        );
+        return;
+      }
+
       const msg = e instanceof Error ? e.message : "Error al enviar el convenio.";
       toast.error(msg);
     } finally {
@@ -779,35 +809,52 @@ const SignConvenioByToken = () => {
             {pdfFile ? (
               <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                 <div className="flex-1 min-h-0 overflow-hidden">
-                  <DocumentEditorViewer
-                    ref={pdfViewerRef}
-                    file={pdfFile}
-                    fields={editor.fields}
-                    activeFieldId={editor.activeFieldId}
-                    placingType={editor.placingType}
-                    constraints={CONVENIO_EDITOR_CONSTRAINTS}
-                    isLocked={isSent}
-                    onSelectField={editor.selectField}
-                    onUpdateField={editor.updateField}
-                    onRemoveField={editor.removeField}
-                    onChangeValue={editor.setValue}
-                    onPlaceField={editor.addFieldAt}
-                    onSetPlacingType={editor.setPlacingType}
-                    onSignatureModalOpen={handleSignatureModalOpen}
-                    onCurrentPageChange={setCurrentPage}
-                    onTotalPagesChange={setTotalPages}
-                    onTrackEvent={trackEvent}
-                    scrollToSignaturePageOnLoad={
-                      pdfViewerConfig.scrollToSignaturePageOnLoad
+                  <ErrorBoundary
+                    phase="viewer"
+                    fallback={
+                      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+                        <p className="max-w-sm text-sm text-muted-foreground">
+                          No pudimos mostrar el documento. Recarga para intentarlo de nuevo.
+                        </p>
+                        <Button
+                          type="button"
+                          onClick={() => window.location.reload()}
+                        >
+                          Recargar documento
+                        </Button>
+                      </div>
                     }
-                    signaturePageScrollDelayMs={
-                      pdfViewerConfig.signaturePageScrollDelayMs
-                    }
-                    continuousScroll={pdfViewerConfig.continuousScroll}
-                    signaturePageScrollBlock={
-                      pdfViewerConfig.signaturePageScrollBlock
-                    }
-                  />
+                  >
+                    <DocumentEditorViewer
+                      ref={pdfViewerRef}
+                      file={pdfFile}
+                      fields={editor.fields}
+                      activeFieldId={editor.activeFieldId}
+                      placingType={editor.placingType}
+                      constraints={CONVENIO_EDITOR_CONSTRAINTS}
+                      isLocked={isSent}
+                      onSelectField={editor.selectField}
+                      onUpdateField={editor.updateField}
+                      onRemoveField={editor.removeField}
+                      onChangeValue={editor.setValue}
+                      onPlaceField={editor.addFieldAt}
+                      onSetPlacingType={editor.setPlacingType}
+                      onSignatureModalOpen={handleSignatureModalOpen}
+                      onCurrentPageChange={setCurrentPage}
+                      onTotalPagesChange={setTotalPages}
+                      onTrackEvent={trackEvent}
+                      scrollToSignaturePageOnLoad={
+                        pdfViewerConfig.scrollToSignaturePageOnLoad
+                      }
+                      signaturePageScrollDelayMs={
+                        pdfViewerConfig.signaturePageScrollDelayMs
+                      }
+                      continuousScroll={pdfViewerConfig.continuousScroll}
+                      signaturePageScrollBlock={
+                        pdfViewerConfig.signaturePageScrollBlock
+                      }
+                    />
+                  </ErrorBoundary>
                 </div>
 
                 {(() => {

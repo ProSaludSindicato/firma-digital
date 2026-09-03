@@ -14,6 +14,7 @@ describe("prosaludConvenioApi", () => {
       convenioFirmaDocumentUrl,
       convenioFirmaSubmitUrl,
       convenioFirmaSatisfactionUrl,
+      convenioFirmaReportErrorUrl,
     } = await import("./prosaludConvenioApi");
 
     expect(convenioFirmaMetadataUrl("abcToken")).toBe(
@@ -27,6 +28,9 @@ describe("prosaludConvenioApi", () => {
     );
     expect(convenioFirmaSatisfactionUrl("abcToken")).toBe(
       "/api/public/convenio-firma/abcToken/satisfaction-rating",
+    );
+    expect(convenioFirmaReportErrorUrl()).toBe(
+      "/api/public/convenio-firma/report-error",
     );
   });
 

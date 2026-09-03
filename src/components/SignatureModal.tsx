@@ -378,7 +378,7 @@ export const SignatureModal = ({
     return (
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent
-          className="w-screen h-[100dvh] max-w-none max-h-none m-0 p-0 rounded-none border-none flex flex-col [&>button]:hidden"
+          className="w-screen h-[100dvh] max-w-none !max-w-none max-h-none m-0 p-0 rounded-none border-none flex flex-col [&>button]:hidden"
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >
@@ -545,7 +545,7 @@ export const SignatureModal = ({
     return (
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent
-          className="w-screen h-[100dvh] max-w-none max-h-none m-0 p-0 rounded-none border-none flex flex-col [&>button]:hidden"
+          className="w-screen h-[100dvh] max-w-none !max-w-none max-h-none m-0 p-0 rounded-none border-none flex flex-col [&>button]:hidden"
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >

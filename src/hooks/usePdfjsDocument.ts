@@ -22,14 +22,19 @@ export function usePdfjsDocument(file: File | null) {
     }
 
     let cancelled = false;
+    let loadingTask: ReturnType<typeof pdfjsLib.getDocument> | null = null;
+    let loadedPdf: pdfjsLib.PDFDocumentProxy | null = null;
     setIsLoading(true);
     setError(null);
 
     const load = async () => {
       try {
         const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+        loadedPdf = pdf;
         if (cancelled) {
+          void pdf.destroy();
           return;
         }
         setPdfDoc(pdf);
@@ -56,6 +61,10 @@ export function usePdfjsDocument(file: File | null) {
 
     return () => {
       cancelled = true;
+      void loadingTask?.destroy();
+      if (loadedPdf) {
+        void loadedPdf.destroy();
+      }
     };
   }, [file]);
 

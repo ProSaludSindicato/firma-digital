@@ -27,3 +27,7 @@ export function convenioFirmaSubmitUrl(token: string): string {
 export function convenioFirmaSatisfactionUrl(token: string): string {
   return `${getProsaludApiBaseUrl()}/public/convenio-firma/${encodeURIComponent(token)}/satisfaction-rating`;
 }
+
+export function convenioFirmaReportErrorUrl(): string {
+  return `${getProsaludApiBaseUrl()}/public/convenio-firma/report-error`;
+}

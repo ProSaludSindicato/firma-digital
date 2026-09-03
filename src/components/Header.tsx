@@ -174,15 +174,15 @@ export const Header = ({
   if (hasBrandRow) {
     return (
       <header className="sticky top-0 z-50 shrink-0 border-b border-border/50 bg-white dark:bg-white">
-        <div className="mx-auto flex w-full max-w-7xl items-center gap-4 px-5 py-3.5 sm:gap-5 sm:px-8 sm:py-4 md:px-10 md:py-4.5 lg:px-12 xl:px-16">
+        <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-2.5 sm:gap-5 sm:px-8 sm:py-4 md:px-10 md:py-4.5 lg:px-12 xl:px-16">
           <img
             src={brandLogoSrc}
             alt={brandLogoAlt}
-            className="h-9 w-auto max-w-[10.5rem] shrink-0 object-contain object-left sm:h-10 sm:max-w-[12rem] md:h-11 md:max-w-[13rem] lg:h-12"
+            className="h-8 w-auto max-w-[9.5rem] shrink-0 object-contain object-left sm:h-10 sm:max-w-[12rem] md:h-11 md:max-w-[13rem] lg:h-12"
           />
           <span className="hidden h-6 w-px shrink-0 bg-border sm:block md:h-7" aria-hidden />
           <p
-            className="min-w-0 truncate text-base font-medium leading-snug text-foreground/65 sm:text-lg md:text-xl"
+            className="min-w-0 truncate text-sm font-medium leading-snug text-foreground/65 sm:text-lg md:text-xl"
             title={title}
           >
             {title}

@@ -21,7 +21,7 @@ const queryClient = new QueryClient({
 });
 
 const App = () => (
-  <ErrorBoundary>
+  <ErrorBoundary phase="app">
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
