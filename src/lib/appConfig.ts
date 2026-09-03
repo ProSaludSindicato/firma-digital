@@ -1,3 +1,12 @@
+function buildDataTreatmentPolicyUrl(): string {
+  const portal = (import.meta.env.VITE_PROSALUD_PORTAL_URL as string | undefined)?.trim()?.replace(/\/$/, "");
+  if (portal) {
+    return `${portal}/politica-de-tratamiento-de-datos`;
+  }
+
+  return "https://www.prosalud.org.co/politica-de-tratamiento-de-datos";
+}
+
 /**
  * Configuración de producto / marca. Valores estáticos por defecto.
  *
@@ -18,4 +27,6 @@ export const appConfig = {
   documentHeaderTitle: "Completar documento",
   /** Logo para cabeceras de confirmación (archivo en `public/`). */
   proSaludBrandLogoSrc: "/prosalud-logo.webp",
+  /** URL pública de la política de tratamiento de datos personales (portal ProSalud). */
+  dataTreatmentPolicyUrl: buildDataTreatmentPolicyUrl(),
 } as const;
