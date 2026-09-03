@@ -35,6 +35,19 @@ describe("documentEditorReducer", () => {
     expect(next.activeFieldId).toBeNull();
   });
 
+  it("releases the loaded file when SET_FILE receives null", () => {
+    const file = new File(["%PDF"], "doc.pdf", { type: "application/pdf" });
+    const withFile = documentEditorReducer(initialDocumentEditorState, {
+      type: "SET_FILE",
+      file,
+    });
+
+    const next = documentEditorReducer(withFile, { type: "SET_FILE", file: null });
+
+    expect(next.file).toBeNull();
+    expect(next.fields).toEqual([]);
+  });
+
   it("adds a field, selects it, and keeps the active placement tool", () => {
     const field = sampleField();
     const placing = documentEditorReducer(initialDocumentEditorState, {

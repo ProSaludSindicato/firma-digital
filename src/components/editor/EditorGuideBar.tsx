@@ -4,11 +4,14 @@ import type { FieldType } from "@/types/documentEditor";
 
 function GuideBarMessage({ children }: { children: React.ReactNode }) {
   return (
-    <div className="shrink-0 border-b border-amber-200/60 bg-[#fff5e6] px-3 py-2 text-center text-xs text-[#7d5a2d] sm:px-4 sm:text-sm">
-      <span className="inline-flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5">
-        <Info className="inline h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
-        <span>{children}</span>
-      </span>
+    <div className="shrink-0 border-b border-amber-200/60 bg-[#fff5e6] px-3 py-2 text-center text-xs leading-snug text-[#7d5a2d] sm:px-4 sm:text-sm">
+      <p className="inline">
+        <Info
+          className="mr-1.5 inline h-3.5 w-3.5 shrink-0 translate-y-[-1px] opacity-80"
+          aria-hidden
+        />
+        {children}
+      </p>
     </div>
   );
 }

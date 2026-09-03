@@ -129,6 +129,11 @@ export function ConvenioSatisfactionRating({
           role="radiogroup"
           aria-label="Calificación del proceso de firma, de 1 a 5"
           onMouseLeave={() => setHovered(null)}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+              setHovered(null);
+            }
+          }}
         >
           {([1, 2, 3, 4, 5] as const).map((score) => {
             const filled = preview !== null && score <= preview;
@@ -141,7 +146,11 @@ export function ConvenioSatisfactionRating({
                 aria-label={`${score} de 5: ${SATISFACTION_SCORE_LABELS[score]}`}
                 disabled={isSubmitting}
                 onMouseEnter={() => setHovered(score)}
-                onFocus={() => setHovered(score)}
+                onFocus={(event) => {
+                  if (event.currentTarget.matches(":focus-visible")) {
+                    setHovered(score);
+                  }
+                }}
                 onClick={() => void handleSelect(score)}
                 className={cn(
                   "flex h-12 w-12 items-center justify-center rounded-full transition-colors sm:h-[3.25rem] sm:w-[3.25rem]",

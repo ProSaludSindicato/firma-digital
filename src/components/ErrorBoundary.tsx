@@ -2,10 +2,12 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { reportClientError } from '@/lib/reportClientError';
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  phase?: string;
 }
 
 interface State {
@@ -29,14 +31,15 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log error to console in development
     if (import.meta.env.DEV) {
       console.error('ErrorBoundary caught an error:', error, errorInfo);
     }
-    
-    // TODO: Log to error tracking service (Sentry, LogRocket, etc.)
-    // Example: Sentry.captureException(error, { contexts: { react: errorInfo } });
-    
+
+    reportClientError(error, {
+      componentStack: errorInfo.componentStack,
+      phase: this.props.phase ?? 'app',
+    });
+
     this.setState({
       error,
       errorInfo,
