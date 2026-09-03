@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { AppTour } from "@/components/AppTour";
+import { ConvenioSatisfactionRatingModal } from "@/components/ConvenioSatisfactionRatingModal";
 import { EditorGuideBar } from "@/components/editor/EditorGuideBar";
 import { Header } from "@/components/Header";
 import {
@@ -61,6 +62,8 @@ type MetadataPayload = {
     can_sign?: boolean;
     nombre_afiliado?: string;
     nombre_convenio?: string;
+    documento?: string;
+    download_filename?: string;
     expires_at?: string | null;
     /** Título de cabecera del visor (viene del backend). */
     header_title?: string | null;
@@ -68,6 +71,8 @@ type MetadataPayload = {
     firmado_presidente_at?: string | null;
     rechazado_at?: string | null;
     motivo_rechazo?: string | null;
+    can_rate_satisfaction?: boolean;
+    satisfaction_score?: number | null;
   };
   message?: string;
 };
@@ -246,7 +251,8 @@ function ConvenioCannotSignPanel({
       <div
         className={cn(
           "flex flex-col gap-12",
-          metaFields.length > 0 && "lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(17rem,0.85fr)] lg:items-start lg:gap-16 xl:gap-24",
+          metaFields.length > 0 &&
+            "lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(17rem,0.85fr)] lg:items-start lg:gap-16 xl:gap-24",
         )}
         role={blockedKind === "firmado_afiliado" ? "status" : undefined}
       >
@@ -332,7 +338,12 @@ const SignConvenioByToken = () => {
   const [rechazadoAt, setRechazadoAt] = useState<string | null>(null);
   const [motivoRechazo, setMotivoRechazo] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [canRateSatisfaction, setCanRateSatisfaction] = useState(false);
+  const [satisfactionScore, setSatisfactionScore] = useState<number | null>(null);
+  const [satisfactionModalOpen, setSatisfactionModalOpen] = useState(false);
+  const satisfactionModalScheduledRef = useRef(false);
   const [viewerHeaderTitle, setViewerHeaderTitle] = useState<string | null>(null);
+  const [downloadFilename, setDownloadFilename] = useState("convenio-firmado-afiliado.pdf");
   const [pdfLoading, setPdfLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -440,12 +451,21 @@ const SignConvenioByToken = () => {
       const rawHeaderTitle = typeof d?.header_title === "string" ? d.header_title.trim() : "";
       setViewerHeaderTitle(rawHeaderTitle !== "" ? rawHeaderTitle : null);
       setAffiliateName(d?.nombre_afiliado ?? "");
+      setDownloadFilename(
+        typeof d?.download_filename === "string" && d.download_filename.trim() !== ""
+          ? d.download_filename.trim()
+          : "convenio-firmado-afiliado.pdf",
+      );
       setSigningEstado(d?.signing_estado ?? null);
       setFirmadoAfiliadoAt(d?.firmado_afiliado_at ?? null);
       setFirmadoPresidenteAt(d?.firmado_presidente_at ?? null);
       setRechazadoAt(d?.rechazado_at ?? null);
       setMotivoRechazo(d?.motivo_rechazo ?? null);
       setExpiresAt(d?.expires_at ?? null);
+      setCanRateSatisfaction(Boolean(d?.can_rate_satisfaction));
+      setSatisfactionScore(
+        typeof d?.satisfaction_score === "number" ? d.satisfaction_score : null,
+      );
       setCanSign(Boolean(d?.can_sign));
 
       if (!d?.can_sign) {
@@ -471,7 +491,7 @@ const SignConvenioByToken = () => {
         setMetaError("La aplicación de firma no está configurada para conectar con ProSalud.");
         return;
       }
-      setMetaError("Error de conexión. Intenta nuevamente más tarde.");
+      setMetaError("Error de conexión. Intenta nuevamente mas tarde.");
     } finally {
       setMetaLoading(false);
     }
@@ -532,7 +552,7 @@ const SignConvenioByToken = () => {
 
       signedBlob = await exportDocumentToPdf(pdfFile, editor.fields);
       const fd = new FormData();
-      fd.append("pdf", signedBlob, "convenio-firmado-afiliado.pdf");
+      fd.append("pdf", signedBlob, downloadFilename);
       fd.append("audit_log", JSON.stringify(auditLog));
       fd.append("terms_accepted", "1");
 
@@ -560,6 +580,7 @@ const SignConvenioByToken = () => {
 
       setFirmadoAfiliadoAt(new Date().toISOString());
       setIsSent(true);
+      setCanRateSatisfaction(true);
       setShowConfirm(false);
       trackEvent("document_confirmed");
       toast.success("Convenio enviado correctamente.");
@@ -575,7 +596,7 @@ const SignConvenioByToken = () => {
           const url = URL.createObjectURL(blobForDownload);
           const link = document.createElement("a");
           link.href = url;
-          link.download = "convenio-firmado-afiliado.pdf";
+          link.download = downloadFilename;
           document.body.appendChild(link);
           link.click();
           link.remove();
@@ -605,7 +626,7 @@ const SignConvenioByToken = () => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "convenio-firmado-afiliado.pdf";
+      link.download = downloadFilename;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -615,7 +636,7 @@ const SignConvenioByToken = () => {
         downloadError instanceof Error ? downloadError.message : "Error al descargar el PDF";
       toast.error("Error al descargar", { description: errorMessage });
     }
-  }, [trackEvent]);
+  }, [downloadFilename, trackEvent]);
 
   const convenioBlockedKind = useMemo((): BlockedSigningKind | null => {
     if (!token || metaLoading || pdfLoading || metaError || canSign) {
@@ -623,6 +644,43 @@ const SignConvenioByToken = () => {
     }
     return resolveBlockedSigningKind(signingEstado);
   }, [token, metaLoading, pdfLoading, metaError, canSign, signingEstado]);
+
+  const shouldOfferSatisfaction =
+    Boolean(token) && canRateSatisfaction && satisfactionScore === null;
+
+  useEffect(() => {
+    if (!shouldOfferSatisfaction || satisfactionModalScheduledRef.current) {
+      return;
+    }
+
+    const canPromptAfterSend = isSent;
+    const canPromptOnReturn = convenioBlockedKind === "firmado_afiliado";
+    if (!canPromptAfterSend && !canPromptOnReturn) {
+      return;
+    }
+
+    satisfactionModalScheduledRef.current = true;
+    const delayMs = isSent ? 700 : 900;
+    const timer = window.setTimeout(() => {
+      setSatisfactionModalOpen(true);
+    }, delayMs);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [shouldOfferSatisfaction, isSent, convenioBlockedKind]);
+
+  const handleSatisfactionRated = useCallback((score: number) => {
+    setSatisfactionScore(score);
+  }, []);
+
+  const handleSatisfactionModalOpenChange = useCallback((open: boolean) => {
+    setSatisfactionModalOpen(open);
+  }, []);
+
+  const showSatisfactionModal =
+    Boolean(token) &&
+    (satisfactionModalOpen || (canRateSatisfaction && satisfactionScore === null));
 
   const resolvedViewerHeaderTitle = viewerHeaderTitle ?? appConfig.headerTitle;
 
@@ -636,6 +694,17 @@ const SignConvenioByToken = () => {
         onStepChange={tour.setStepIndex}
         onPhaseEnd={handleTourPhaseEnd}
       />
+
+      {showSatisfactionModal ? (
+        <ConvenioSatisfactionRatingModal
+          token={token!}
+          canRate={canRateSatisfaction}
+          initialScore={satisfactionScore}
+          open={satisfactionModalOpen}
+          onOpenChange={handleSatisfactionModalOpenChange}
+          onRated={handleSatisfactionRated}
+        />
+      ) : null}
 
       {!token ? (
         <ConvenioGenericErrorPanel message={GENERIC_INVALID_OR_MISSING_LINK_MESSAGE} />
@@ -694,11 +763,15 @@ const SignConvenioByToken = () => {
             finishLabel="Enviar"
           />
 
-          {!isSent && !signature ? (
+          {!isSent ? (
             <EditorGuideBar
               showDefaultHint={false}
               placingType={null}
-              customHint="Desplázate hasta la última página y toca donde quieras colocar tu firma."
+              customHint={
+                signature
+                  ? "Arrastra la firma para colocarla sobre la línea. El lápiz la edita."
+                  : "Desplázate hasta la última página y toca donde quieras colocar tu firma."
+              }
             />
           ) : null}
 
@@ -751,12 +824,12 @@ const SignConvenioByToken = () => {
                     >
                         <div className={cn(
                           "mx-auto w-full",
-                          signature ? "max-w-lg px-4 lg:max-w-xl" : "max-w-md px-5 lg:max-w-lg",
+                          signature ? "max-w-lg px-4 lg:max-w-xl" : "max-w-md px-4 lg:max-w-lg",
                           isLandscapeMobile
                             ? "py-1.5"
                             : signature
                               ? "py-2.5 md:py-3 lg:py-4"
-                              : "py-3.5 md:py-4 lg:py-5",
+                              : "py-2 md:py-2.5 lg:py-3",
                         )}>
                           {signature ? (
                             <Button
@@ -780,18 +853,15 @@ const SignConvenioByToken = () => {
                             <div
                               className={cn(
                                 "flex items-center justify-center",
-                                !signature && "rounded-2xl border border-border/50 bg-muted/25 px-5 py-3.5 sm:px-6 sm:py-4 lg:px-8 lg:py-5",
+                                !signature && "rounded-xl border border-border/50 bg-muted/25 px-3 py-2 sm:px-4 sm:py-2.5",
                               )}
                             >
                               {steps.map((step, i) => (
                                 <div key={step.label} className="flex items-center">
-                                  <div className={cn("flex flex-col items-center", signature ? "gap-1 lg:gap-1.5" : "gap-1.5")}>
+                                  <div className="flex flex-col items-center gap-1 lg:gap-1.5">
                                     <div
                                       className={cn(
-                                        "flex items-center justify-center rounded-full font-bold transition-colors",
-                                        signature
-                                          ? "h-6 w-6 text-[10px] lg:h-8 lg:w-8 lg:text-xs"
-                                          : "h-8 w-8 text-xs sm:h-9 sm:w-9 sm:text-sm lg:h-11 lg:w-11 lg:text-base",
+                                        "flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold transition-colors lg:h-8 lg:w-8 lg:text-xs",
                                         step.done
                                           ? "bg-primary text-primary-foreground shadow-sm"
                                           : !step.done && i === completedSteps
@@ -800,14 +870,13 @@ const SignConvenioByToken = () => {
                                       )}
                                     >
                                       {step.done ? (
-                                        <Check className={cn(signature ? "h-3.5 w-3.5 lg:h-4 lg:w-4" : "h-4 w-4 lg:h-5 lg:w-5")} strokeWidth={2.5} />
+                                        <Check className="h-3.5 w-3.5 lg:h-4 lg:w-4" strokeWidth={2.5} />
                                       ) : (
                                         i + 1
                                       )}
                                     </div>
                                     <span className={cn(
-                                      "font-medium leading-none",
-                                      signature ? "text-[10px] lg:text-sm" : "text-xs sm:text-sm lg:text-base",
+                                      "text-[10px] font-medium leading-none lg:text-sm",
                                       step.done || (!step.done && i === completedSteps)
                                         ? "text-primary"
                                         : "text-muted-foreground/70",
@@ -818,10 +887,7 @@ const SignConvenioByToken = () => {
                                   {i < steps.length - 1 && (
                                     <div
                                       className={cn(
-                                        "mx-2 transition-colors sm:mx-3 lg:mx-4",
-                                        signature
-                                          ? "h-px w-10 sm:w-14 lg:w-20 -translate-y-1.5 lg:-translate-y-2.5"
-                                          : "h-0.5 w-12 sm:w-16 lg:w-24 -translate-y-2 lg:-translate-y-2.5",
+                                        "mx-2 h-px w-10 -translate-y-1.5 transition-colors sm:mx-3 sm:w-14 lg:mx-4 lg:w-20 lg:-translate-y-2.5",
                                         steps[i + 1].done ? "bg-primary" : "bg-border",
                                       )}
                                     />

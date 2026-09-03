@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { Maximize2, X } from "lucide-react";
+import { Maximize2, Move, Pencil, X } from "lucide-react";
 import { getScaledFieldSizeLimits } from "@/lib/fieldDefaults";
 import { isFieldVisuallyComplete } from "@/lib/fieldValidation";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ interface FieldOverlayProps {
   onUpdate: (changes: Partial<DocumentField>) => void;
   onRemove: () => void;
   onDragStateChange?: (isDragging: boolean) => void;
+  onRequestEdit?: () => void;
   children: React.ReactNode;
 }
 
@@ -34,6 +35,21 @@ function clamp(value: number, min: number, max: number): number {
 
 const DRAG_THRESHOLD_PX = 5;
 
+function suppressNextClick() {
+  const suppress = (event: MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    document.removeEventListener("click", suppress, true);
+  };
+  document.addEventListener("click", suppress, true);
+  window.setTimeout(() => {
+    document.removeEventListener("click", suppress, true);
+  }, 50);
+}
+
+const CHROME_BUTTON =
+  "absolute z-20 flex items-center justify-center rounded-full shadow-sm";
+
 export function FieldOverlay({
   field,
   viewerScale,
@@ -45,6 +61,7 @@ export function FieldOverlay({
   onUpdate,
   onRemove,
   onDragStateChange,
+  onRequestEdit,
   children,
 }: FieldOverlayProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -63,30 +80,46 @@ export function FieldOverlay({
   const useExternalChrome = field.type === "checkbox" || isCompact;
   const usesFillState = FILL_STATE_TYPES.has(field.type);
   const isFilled = usesFillState && isFieldVisuallyComplete(field);
+  const hasSignatureImage =
+    field.type === "signature" && field.value?.type === "signature";
+  const showEditControl = Boolean(onRequestEdit) && !isLocked && isSelected && hasSignatureImage;
+  const showMoveHandle = canMove && isSelected && field.type === "signature";
 
   const startDrag = useCallback(
-    (pointerId: number, startClientX: number, startClientY: number) => {
+    (
+      pointerId: number,
+      startClientX: number,
+      startClientY: number,
+      currentClient?: { x: number; y: number },
+    ) => {
       setIsDragging(true);
       onDragStateChange?.(true);
 
       const startX = field.x;
       const startY = field.y;
+      const halfW = field.width / 2;
+      const halfH = field.height / 2;
+      const maxX = canvasSize.width / scaleRatio - halfW;
+      const maxY = canvasSize.height / scaleRatio - halfH;
+
+      const applyMove = (clientX: number, clientY: number) => {
+        const deltaX = (clientX - startClientX) / scaleRatio;
+        const deltaY = (clientY - startClientY) / scaleRatio;
+        onUpdate({
+          x: clamp(startX + deltaX, halfW, Math.max(halfW, maxX)),
+          y: clamp(startY + deltaY, halfH, Math.max(halfH, maxY)),
+        });
+      };
+
+      if (currentClient) {
+        applyMove(currentClient.x, currentClient.y);
+      }
 
       const handleMove = (moveEvent: PointerEvent) => {
         if (moveEvent.pointerId !== pointerId) {
           return;
         }
-        const deltaX = (moveEvent.clientX - startClientX) / scaleRatio;
-        const deltaY = (moveEvent.clientY - startClientY) / scaleRatio;
-        const halfW = field.width / 2;
-        const halfH = field.height / 2;
-        const maxX = canvasSize.width / scaleRatio - halfW;
-        const maxY = canvasSize.height / scaleRatio - halfH;
-
-        onUpdate({
-          x: clamp(startX + deltaX, halfW, Math.max(halfW, maxX)),
-          y: clamp(startY + deltaY, halfH, Math.max(halfH, maxY)),
-        });
+        applyMove(moveEvent.clientX, moveEvent.clientY);
       };
 
       const handleUp = (upEvent: PointerEvent) => {
@@ -97,6 +130,7 @@ export function FieldOverlay({
         onDragStateChange?.(false);
         document.removeEventListener("pointermove", handleMove);
         document.removeEventListener("pointerup", handleUp);
+        suppressNextClick();
       };
 
       document.addEventListener("pointermove", handleMove);
@@ -158,7 +192,10 @@ export function FieldOverlay({
           document.activeElement.blur();
         }
 
-        startDrag(pointerId, startClientX, startClientY);
+        startDrag(pointerId, startClientX, startClientY, {
+          x: moveEvent.clientX,
+          y: moveEvent.clientY,
+        });
       };
 
       const handleUpBeforeDrag = (upEvent: PointerEvent) => {
@@ -255,7 +292,12 @@ export function FieldOverlay({
     <div
       ref={overlayRef}
       role="group"
-      aria-label={field.label}
+      aria-label={
+        canMove && field.type === "signature"
+          ? `${field.label}. Arrastra para mover`
+          : field.label
+      }
+      title={canMove && field.type === "signature" ? "Arrastra para mover" : undefined}
       className={cn(
         "absolute z-10 select-none overflow-visible rounded-md touch-none",
         usesFillState
@@ -265,7 +307,8 @@ export function FieldOverlay({
                 ? "is-filled border-solid border-[#0F6B5C] bg-[#E3EFEA]"
                 : "border-dashed border-[#B8791A] bg-[#FBEEDD]",
               isSelected && isFilled && "ring-2 ring-[#0F6B5C]/40 ring-offset-1",
-              canMove ? "cursor-move" : "cursor-default",
+              canMove && (isDragging ? "cursor-grabbing" : "cursor-grab"),
+              !canMove && "cursor-default",
             )
           : cn(
               "transition-colors duration-150",
@@ -275,9 +318,10 @@ export function FieldOverlay({
               isLocked
                 ? "cursor-default ring-muted-foreground/30 bg-muted/10"
                 : isSelected
-                  ? "cursor-move bg-primary/5 ring-primary"
-                  : "cursor-move bg-white/50 ring-primary/40 ring-dashed hover:ring-primary/70 dark:bg-white/5",
+                  ? "cursor-grab bg-primary/5 ring-primary"
+                  : "cursor-grab bg-white/50 ring-primary/40 ring-dashed hover:ring-primary/70 dark:bg-white/5",
               (isDragging || isResizing) && "ring-primary",
+              isDragging && "cursor-grabbing",
             ),
       )}
       style={{
@@ -296,6 +340,29 @@ export function FieldOverlay({
         {children}
       </div>
 
+      {showEditControl ? (
+        <button
+          type="button"
+          data-no-drag
+          aria-label={`Editar ${field.label}`}
+          title="Editar firma"
+          className={cn(
+            CHROME_BUTTON,
+            "h-5 w-5 border border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground md:h-6 md:w-6",
+            useExternalChrome
+              ? "right-full top-1/2 mr-1.5 -translate-y-1/2"
+              : "-top-2.5 -left-2.5",
+          )}
+          onClick={(event) => {
+            event.stopPropagation();
+            onRequestEdit?.();
+          }}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <Pencil className="h-2.5 w-2.5 md:h-3 md:w-3" />
+        </button>
+      ) : null}
+
       {canMove && isSelected ? (
         <>
           <button
@@ -303,7 +370,8 @@ export function FieldOverlay({
             data-no-drag
             aria-label={`Eliminar ${field.label}`}
             className={cn(
-              "absolute z-20 flex h-5 w-5 items-center justify-center rounded-full border border-red-500/70 bg-red-50 text-red-600 shadow-sm hover:border-destructive hover:bg-destructive hover:text-destructive-foreground",
+              CHROME_BUTTON,
+              "h-5 w-5 border border-red-500/70 bg-red-50 text-red-600 hover:border-destructive hover:bg-destructive hover:text-destructive-foreground",
               useExternalChrome
                 ? "left-1/2 top-0 -translate-x-1/2 -translate-y-[calc(100%+6px)]"
                 : "-top-2.5 -right-2.5",
@@ -320,7 +388,8 @@ export function FieldOverlay({
             data-no-drag
             aria-label={`Redimensionar ${field.label}`}
             className={cn(
-              "absolute z-20 flex cursor-se-resize items-center justify-center rounded-full bg-primary/80 text-primary-foreground shadow-sm hover:bg-primary",
+              CHROME_BUTTON,
+              "cursor-se-resize bg-primary/80 text-primary-foreground hover:bg-primary",
               useExternalChrome
                 ? "left-full top-1/2 ml-1.5 h-6 w-6 -translate-y-1/2"
                 : "-bottom-1.5 -right-1.5 h-5 w-5 md:h-6 md:w-6",
@@ -330,6 +399,22 @@ export function FieldOverlay({
             <Maximize2 className="h-2.5 w-2.5 rotate-90 md:h-3 md:w-3" />
           </div>
         </>
+      ) : null}
+
+      {showMoveHandle ? (
+        <div
+          aria-label={`Mover ${field.label}`}
+          className={cn(
+            CHROME_BUTTON,
+            "cursor-grab border border-[#0F6B5C]/40 bg-white text-[#0F6B5C]",
+            isDragging && "cursor-grabbing",
+            useExternalChrome
+              ? "left-1/2 top-full mt-1.5 h-6 w-6 -translate-x-1/2"
+              : "-bottom-1.5 -left-1.5 h-5 w-5 md:h-6 md:w-6",
+          )}
+        >
+          <Move className="h-2.5 w-2.5 md:h-3 md:w-3" />
+        </div>
       ) : null}
     </div>
   );

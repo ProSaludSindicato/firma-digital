@@ -23,3 +23,7 @@ export function convenioFirmaDocumentUrl(token: string): string {
 export function convenioFirmaSubmitUrl(token: string): string {
   return `${getProsaludApiBaseUrl()}/public/convenio-firma/${encodeURIComponent(token)}/submit-affiliate-signature`;
 }
+
+export function convenioFirmaSatisfactionUrl(token: string): string {
+  return `${getProsaludApiBaseUrl()}/public/convenio-firma/${encodeURIComponent(token)}/satisfaction-rating`;
+}

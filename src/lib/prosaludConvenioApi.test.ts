@@ -9,8 +9,12 @@ describe("prosaludConvenioApi", () => {
   it("builds same-origin convenio URLs when the API base is relative", async () => {
     vi.stubEnv("VITE_PROSALUD_API_URL", "/api");
     vi.resetModules();
-    const { convenioFirmaMetadataUrl, convenioFirmaDocumentUrl, convenioFirmaSubmitUrl } =
-      await import("./prosaludConvenioApi");
+    const {
+      convenioFirmaMetadataUrl,
+      convenioFirmaDocumentUrl,
+      convenioFirmaSubmitUrl,
+      convenioFirmaSatisfactionUrl,
+    } = await import("./prosaludConvenioApi");
 
     expect(convenioFirmaMetadataUrl("abcToken")).toBe(
       "/api/public/convenio-firma/abcToken/metadata",
@@ -20,6 +24,9 @@ describe("prosaludConvenioApi", () => {
     );
     expect(convenioFirmaSubmitUrl("abcToken")).toBe(
       "/api/public/convenio-firma/abcToken/submit-affiliate-signature",
+    );
+    expect(convenioFirmaSatisfactionUrl("abcToken")).toBe(
+      "/api/public/convenio-firma/abcToken/satisfaction-rating",
     );
   });
 

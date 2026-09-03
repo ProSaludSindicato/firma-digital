@@ -262,6 +262,50 @@ All colors MUST be HSL.
     }
   }
 
+  .satisfaction-rating-card {
+    isolation: isolate;
+    overflow: hidden;
+    width: 100%;
+    max-width: 28rem;
+    border-radius: 1.25rem;
+    padding: 2px;
+    box-shadow: 0 10px 28px -14px rgba(15, 23, 42, 0.18);
+  }
+
+  .satisfaction-rating-card__border {
+    pointer-events: none;
+    position: absolute;
+    inset: -60%;
+    background: conic-gradient(
+      from 0deg,
+      hsl(var(--primary)) 0%,
+      hsl(var(--primary) / 0.28) 25%,
+      hsl(var(--primary)) 50%,
+      hsl(var(--primary) / 0.28) 75%,
+      hsl(var(--primary)) 100%
+    );
+    animation: field-toolbar-border-spin 6s linear infinite;
+  }
+
+  .satisfaction-rating-card__inner {
+    position: relative;
+    z-index: 1;
+    border-radius: calc(1.25rem - 2px);
+    background: hsl(var(--background));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .satisfaction-rating-card__border {
+      animation: none;
+      inset: 0;
+      background: linear-gradient(
+        135deg,
+        hsl(var(--primary)),
+        hsl(var(--primary) / 0.35)
+      );
+    }
+  }
+
   .viewer-zoom-glass {
     isolation: isolate;
     overflow: hidden;

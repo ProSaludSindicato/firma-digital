@@ -304,7 +304,7 @@ const DocumentByToken = () => {
       }
       setPdfLoading(false);
     } catch {
-      setMetaError("Error de conexión. Intenta nuevamente más tarde.");
+      setMetaError("Error de conexión. Intenta nuevamente mas tarde.");
     } finally {
       setMetaLoading(false);
     }

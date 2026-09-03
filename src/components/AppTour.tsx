@@ -304,8 +304,8 @@ const placedSteps: Step[] = [
         <div className="flex items-start gap-2 text-xs">
           <Move className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
           <p>
-            <strong>Arrastra</strong> desde el recuadro de la firma para moverla (el cursor en
-            forma de cruz indica que puedes desplazarla).
+            <strong>Arrastra</strong> el recuadro de la firma para moverla. El icono de flechas
+            (esquina inferior izquierda) y el cursor de mano indican que puedes desplazarla.
           </p>
         </div>
         <div className="flex items-start gap-2 text-xs">

@@ -18,25 +18,12 @@ export function SignatureField({
 
   if (dataUrl) {
     return (
-      <button
-        type="button"
-        data-no-drag
-        className="flex h-full w-full items-center justify-center"
-        onClick={(event) => {
-          event.stopPropagation();
-          if (!isLocked) {
-            onRequestEdit();
-          }
-        }}
-        aria-label={`Editar ${field.label}`}
-      >
-        <img
-          src={dataUrl}
-          alt={field.label}
-          className="block h-full w-full object-contain pointer-events-none"
-          draggable={false}
-        />
-      </button>
+      <img
+        src={dataUrl}
+        alt={field.label}
+        className="block h-full w-full object-contain pointer-events-none"
+        draggable={false}
+      />
     );
   }
 

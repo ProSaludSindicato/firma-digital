@@ -184,6 +184,11 @@ export function DocumentEditorPageView({
           onUpdate={(changes) => onUpdateField(field.id, changes)}
           onRemove={() => onRemoveField(field.id)}
           onDragStateChange={handleFieldDragStateChange}
+          onRequestEdit={
+            field.type === "signature"
+              ? () => onRequestSignatureEdit(field.id)
+              : undefined
+          }
         >
           <FieldRenderer
             field={field}
