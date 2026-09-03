@@ -1,10 +1,25 @@
+export function getProsaludPortalUrl(): string | undefined {
+  const portal = import.meta.env.VITE_PROSALUD_PORTAL_URL?.trim().replace(/\/$/, "");
+  return portal || undefined;
+}
+
 function buildDataTreatmentPolicyUrl(): string {
-  const portal = (import.meta.env.VITE_PROSALUD_PORTAL_URL as string | undefined)?.trim()?.replace(/\/$/, "");
+  const portal = getProsaludPortalUrl();
   if (portal) {
     return `${portal}/politica-de-tratamiento-de-datos`;
   }
 
   return "https://www.prosalud.org.co/politica-de-tratamiento-de-datos";
+}
+
+/** Herramientas sin token (`/` y `/editor`). Solo `true` o `1` las habilitan. */
+export function parsePublicToolsEnabledFlag(value: string | undefined): boolean {
+  const raw = value?.trim().toLowerCase();
+  return raw === "true" || raw === "1";
+}
+
+export function isPublicToolsEnabled(): boolean {
+  return parsePublicToolsEnabledFlag(import.meta.env.VITE_PUBLIC_TOOLS_ENABLED);
 }
 
 /**
@@ -29,4 +44,6 @@ export const appConfig = {
   proSaludBrandLogoSrc: "/prosalud-logo.webp",
   /** URL pública de la política de tratamiento de datos personales (portal ProSalud). */
   dataTreatmentPolicyUrl: buildDataTreatmentPolicyUrl(),
+  /** Correo de soporte para afiliados (estados bloqueados y herramientas públicas deshabilitadas). */
+  affiliateHelpEmail: "auxiliartalento.sprosalud@gmail.com",
 } as const;
