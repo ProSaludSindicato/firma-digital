@@ -10,7 +10,11 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AuditEventType } from "@/hooks/useAuditTrail";
-import type { SignaturePageScrollBlock } from "@/lib/pdfViewerConfig";
+import {
+  getResponsiveViewerZoom,
+  stepViewerZoom,
+  type SignaturePageScrollBlock,
+} from "@/lib/pdfViewerConfig";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.mjs",
@@ -82,33 +86,18 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
   const isMobile = useIsMobile();
   const isLandscapeMobile = useIsLandscapeMobile();
 
-  const getResponsiveZoom = useCallback(() => {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    // Phone landscape: no sidebar, fit page width to the full screen width
-    if (height < 500 && width > height) {
-      return Math.max(0.5, Math.min(1.4, (width - 24) / 612));
-    }
-    if (width >= 1440) return 1.8;
-    if (width >= 1200) return 1.4;
-    if (width >= 1024) return 1.4;
-    if (width >= 768) return 1.2;
-    const mobileZoom = (width - 8) / 612;
-    return Math.max(0.5, Math.min(1.0, mobileZoom));
-  }, []);
-
-  const [scale, setScale] = useState(getResponsiveZoom);
+  const [scale, setScale] = useState(getResponsiveViewerZoom);
 
   // Recalculate zoom when orientation changes (e.g. portrait ↔ landscape on mobile)
   useEffect(() => {
     const handleOrientationChange = () => {
       // Brief delay to let the browser finalise the new viewport dimensions
-      const t = window.setTimeout(() => setScale(getResponsiveZoom()), 120);
+      const t = window.setTimeout(() => setScale(getResponsiveViewerZoom()), 120);
       return t;
     };
     window.addEventListener("orientationchange", handleOrientationChange);
     return () => window.removeEventListener("orientationchange", handleOrientationChange);
-  }, [getResponsiveZoom]);
+  }, []);
 
   const scrollPageIntoView = useCallback(
     (
@@ -351,11 +340,11 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
   }), [handleActivatePlacementMode]);
 
   const handleZoomIn = useCallback(() => {
-    setScale((s) => Math.min(2, s + 0.2));
+    setScale((s) => stepViewerZoom(s, 1));
   }, []);
 
   const handleZoomOut = useCallback(() => {
-    setScale((s) => Math.max(0.5, s - 0.2));
+    setScale((s) => stepViewerZoom(s, -1));
   }, []);
 
   const handleFirstPage = useCallback(() => {
@@ -478,7 +467,7 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setScale((s) => Math.max(0.5, s - 0.2))}
+            onClick={handleZoomOut}
             className="h-7 w-7 text-foreground hover:bg-muted"
           >
             <ZoomOut className="w-3.5 h-3.5" />
@@ -489,7 +478,7 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setScale((s) => Math.min(2, s + 0.2))}
+            onClick={handleZoomIn}
             className="h-7 w-7 text-foreground hover:bg-muted"
           >
             <ZoomIn className="w-3.5 h-3.5" />

@@ -1,17 +1,17 @@
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
 import {
+  canvasPxToPdfPoints,
   exportFontSizePt,
   fieldContentLeftX,
   fieldTextBaselineY,
   fieldTextContentHeightPt,
   fieldTextPaddingPt,
   VIEWER_LINE_HEIGHT,
+  VIEWER_SIGNATURE_BORDER_PX,
 } from "@/lib/fieldLayoutInsets";
 import { loadPdfDocument } from "@/lib/loadPdfDocument";
 import { pdfSignatureConfig } from "@/lib/pdfSignatureConfig";
 import type { DocumentField } from "@/types/documentEditor";
-
-const SIGNATURE_BOX_INSET = 4;
 
 export interface PdfRect {
   x: number;
@@ -39,6 +39,36 @@ export function fieldToPdfRect(
     pageHeight - topPx / storedScale - height + pdfSignatureConfig.exportOffsetY;
 
   return { x, y, width, height };
+}
+
+/**
+ * Fits a signature image inside the field box the same way the viewer does:
+ * CSS `object-contain` centered in the inner area (box minus the 1px overlay border).
+ */
+export function signatureImagePdfRect(
+  field: DocumentField,
+  pageHeight: number,
+  imageAspectRatio: number,
+): PdfRect {
+  const storedScale = field.scale || 1;
+  const box = fieldToPdfRect(field, pageHeight);
+  const borderPt = canvasPxToPdfPoints(VIEWER_SIGNATURE_BORDER_PX, storedScale);
+  const innerWidth = Math.max(1, box.width - borderPt * 2);
+  const innerHeight = Math.max(1, box.height - borderPt * 2);
+  const innerX = box.x + borderPt;
+  const innerY = box.y + borderPt;
+
+  const safeRatio = imageAspectRatio > 0 ? imageAspectRatio : 1;
+  const innerRatio = innerWidth / innerHeight;
+  const width = safeRatio >= innerRatio ? innerWidth : innerHeight * safeRatio;
+  const height = safeRatio >= innerRatio ? innerWidth / safeRatio : innerHeight;
+
+  return {
+    x: innerX + (innerWidth - width) / 2,
+    y: innerY + (innerHeight - height) / 2,
+    width,
+    height,
+  };
 }
 
 function wrapTextToWidth(
@@ -124,24 +154,11 @@ async function embedSignatureImage(
     ? await pdfDoc.embedPng(imageBytes)
     : await pdfDoc.embedJpg(imageBytes);
 
-  const storedScale = field.scale || 1;
-  const imgWidthPx = field.width - 2 * SIGNATURE_BOX_INSET;
-  const maxImgHPx = field.height - 8;
-  const imgWidthPt = Math.max(1, imgWidthPx / storedScale);
-  const maxImgHPt = Math.max(1, maxImgHPx / storedScale);
-
   const nat = signatureImage.scale(1);
   const aspectRatio = nat.height > 0 ? nat.width / nat.height : 1;
-  const drawWidth = imgWidthPt;
-  const drawHeight = Math.min(imgWidthPt / aspectRatio, maxImgHPt);
+  const rect = signatureImagePdfRect(field, pageHeight, aspectRatio);
 
-  const imgLeftPx = field.x - field.width / 2 + SIGNATURE_BOX_INSET;
-  const imgTopPx = field.y - field.height / 2 + SIGNATURE_BOX_INSET;
-  const x = imgLeftPx / storedScale + pdfSignatureConfig.exportOffsetX;
-  const y =
-    pageHeight - imgTopPx / storedScale - drawHeight + pdfSignatureConfig.exportOffsetY;
-
-  page.drawImage(signatureImage, { x, y, width: drawWidth, height: drawHeight });
+  page.drawImage(signatureImage, rect);
 }
 
 function drawTextField(

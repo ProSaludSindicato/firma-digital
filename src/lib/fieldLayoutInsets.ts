@@ -3,6 +3,9 @@ import { FIELD_FONT_SIZE_RATIO, fontSizeForBoxHeight } from "@/lib/fieldDefaults
 /** Inner padding of text/date inputs inside a field overlay (Tailwind px-1). */
 export const FIELD_TEXT_PADDING_PX = 4;
 
+/** Matches FieldOverlay `border` (1px) around filled signature fields. */
+export const VIEWER_SIGNATURE_BORDER_PX = 1;
+
 /** Matches `TextField` / `DateField` line-height. */
 export const VIEWER_LINE_HEIGHT = 1.15;
 

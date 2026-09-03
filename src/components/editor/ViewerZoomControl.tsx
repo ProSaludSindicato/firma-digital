@@ -15,7 +15,7 @@ export function ViewerZoomControl({
   onZoomIn,
   onZoomOut,
   minScale = 0.5,
-  maxScale = 2,
+  maxScale = 3,
   className,
 }: ViewerZoomControlProps) {
   const atMin = scale <= minScale + 0.001;

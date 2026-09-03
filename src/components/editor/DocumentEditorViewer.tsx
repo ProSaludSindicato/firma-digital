@@ -18,10 +18,16 @@ import { PDFThumbnails } from "@/components/PDFThumbnails";
 import { SignatureModal } from "@/components/SignatureModal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsLandscapeMobile, useIsMobile } from "@/hooks/use-mobile";
+import type { AuditEventType } from "@/hooks/useAuditTrail";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { usePdfjsDocument } from "@/hooks/usePdfjsDocument";
 import { toast } from "@/hooks/use-toast";
-import type { SignaturePageScrollBlock } from "@/lib/pdfViewerConfig";
+import {
+  getResponsiveViewerZoom,
+  pdfViewerZoom,
+  stepViewerZoom,
+  type SignaturePageScrollBlock,
+} from "@/lib/pdfViewerConfig";
 import type {
   DocumentField,
   EditorConstraints,
@@ -63,6 +69,7 @@ interface DocumentEditorViewerProps {
   onUndoLastField?: () => void;
   onSignatureModalOpen?: () => void;
   onCurrentPageChange?: (page: number) => void;
+  onTrackEvent?: (type: AuditEventType, metadata?: Record<string, unknown>) => void;
 }
 
 export const DocumentEditorViewer = forwardRef<
@@ -90,12 +97,15 @@ export const DocumentEditorViewer = forwardRef<
     onUndoLastField,
     onSignatureModalOpen,
     onCurrentPageChange,
+    onTrackEvent,
   },
   ref,
 ) {
   const mainScrollRef = useRef<HTMLDivElement>(null);
   const pageAnchorRefs = useRef<(HTMLDivElement | null)[]>([]);
   const suppressPlacementClickRef = useRef(false);
+  const trackedOpenFileRef = useRef<File | null>(null);
+  const signaturePageReachedRef = useRef(false);
   const { pdfDoc, isLoading, totalPages } = usePdfjsDocument(file);
   const [currentPage, setCurrentPage] = useState(1);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -112,31 +122,17 @@ export const DocumentEditorViewer = forwardRef<
   const showPropertiesPanel = constraints?.showPropertiesPanel === true;
   const allowedPages = constraints?.allowedPages;
 
-  const getResponsiveZoom = useCallback(() => {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    if (height < 500 && width > height) {
-      return Math.max(0.5, Math.min(1.6, (width - 24) / 612));
-    }
-    if (width >= 1440) return 1.8;
-    if (width >= 1200) return 1.6;
-    if (width >= 1024) return 1.6;
-    if (width >= 768) return 1.2;
-    const mobileZoom = (width - 8) / 612;
-    return Math.max(0.5, Math.min(1.0, mobileZoom));
-  }, []);
-
-  const [scale, setScale] = useState(getResponsiveZoom);
+  const [scale, setScale] = useState(getResponsiveViewerZoom);
 
   useEffect(() => {
     const handleOrientationChange = () => {
-      const t = window.setTimeout(() => setScale(getResponsiveZoom()), 120);
+      const t = window.setTimeout(() => setScale(getResponsiveViewerZoom()), 120);
       return t;
     };
     window.addEventListener("orientationchange", handleOrientationChange);
     return () =>
       window.removeEventListener("orientationchange", handleOrientationChange);
-  }, [getResponsiveZoom]);
+  }, []);
 
   useEffect(() => {
     if (onTotalPagesChange && totalPages > 0) {
@@ -199,7 +195,36 @@ export const DocumentEditorViewer = forwardRef<
 
   useEffect(() => {
     setCurrentPage(1);
+    trackedOpenFileRef.current = null;
+    signaturePageReachedRef.current = false;
   }, [file]);
+
+  useEffect(() => {
+    if (!onTrackEvent || !pdfDoc || totalPages === 0) {
+      return;
+    }
+    if (trackedOpenFileRef.current === file) {
+      return;
+    }
+    trackedOpenFileRef.current = file;
+    onTrackEvent("document_opened", {
+      fileName: file.name,
+      totalPages,
+      fileSize: file.size,
+    });
+  }, [file, onTrackEvent, pdfDoc, totalPages]);
+
+  useEffect(() => {
+    const target = allowedPages?.[0];
+    if (!onTrackEvent || !target || signaturePageReachedRef.current) {
+      return;
+    }
+    if (currentPage !== target) {
+      return;
+    }
+    signaturePageReachedRef.current = true;
+    onTrackEvent("page_navigated", { page: target, reason: "signature_page" });
+  }, [allowedPages, currentPage, onTrackEvent]);
 
   useEffect(() => {
     if (!continuousScroll || isLoading || !pdfDoc) return;
@@ -328,8 +353,12 @@ export const DocumentEditorViewer = forwardRef<
       setSignatureFieldId(fieldId);
       setIsModalOpen(true);
       onSignatureModalOpen?.();
+      const field = fields.find((item) => item.id === fieldId);
+      onTrackEvent?.("signature_area_clicked", {
+        page: field?.page ?? currentPage,
+      });
     },
-    [onSignatureModalOpen],
+    [currentPage, fields, onSignatureModalOpen, onTrackEvent],
   );
 
   useImperativeHandle(
@@ -362,10 +391,15 @@ export const DocumentEditorViewer = forwardRef<
         scale,
       });
       if (created.type === "signature") {
+        onTrackEvent?.("signature_positioned", {
+          page: created.page,
+          x: created.x,
+          y: created.y,
+        });
         handleRequestSignatureEdit(created.id);
       }
     },
-    [handleRequestSignatureEdit, onPlaceField, placingType, scale],
+    [handleRequestSignatureEdit, onPlaceField, onTrackEvent, placingType, scale],
   );
 
   const handleDisallowedPageClick = useCallback(
@@ -395,7 +429,8 @@ export const DocumentEditorViewer = forwardRef<
   const handleClearSignature = useCallback(() => {
     if (!signatureFieldId) return;
     onChangeValue(signatureFieldId, null);
-  }, [onChangeValue, signatureFieldId]);
+    onTrackEvent?.("signature_cleared");
+  }, [onChangeValue, onTrackEvent, signatureFieldId]);
 
   const signatureField = fields.find((field) => field.id === signatureFieldId);
   const currentSignature =
@@ -414,11 +449,11 @@ export const DocumentEditorViewer = forwardRef<
   ]);
 
   const handleZoomIn = useCallback(() => {
-    setScale((s) => Math.min(2, s + 0.2));
+    setScale((s) => stepViewerZoom(s, 1));
   }, []);
 
   const handleZoomOut = useCallback(() => {
-    setScale((s) => Math.max(0.5, s - 0.2));
+    setScale((s) => stepViewerZoom(s, -1));
   }, []);
 
   useKeyboardShortcuts(
@@ -571,6 +606,13 @@ export const DocumentEditorViewer = forwardRef<
             y,
             scale,
           });
+          if (created.type === "signature") {
+            onTrackEvent?.("signature_positioned", {
+              page: created.page,
+              x: created.x,
+              y: created.y,
+            });
+          }
           handleRequestSignatureEdit(created.id);
           return;
         }
@@ -676,6 +718,8 @@ export const DocumentEditorViewer = forwardRef<
           scale={scale}
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
+          minScale={pdfViewerZoom.min}
+          maxScale={pdfViewerZoom.max}
         />
       ) : null}
 
@@ -685,6 +729,7 @@ export const DocumentEditorViewer = forwardRef<
         onSignatureCreate={handleSignatureCreate}
         onClearSignature={handleClearSignature}
         currentSignature={currentSignature}
+        onTrackEvent={onTrackEvent}
       />
     </div>
   );

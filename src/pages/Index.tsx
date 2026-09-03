@@ -333,30 +333,51 @@ const Index = () => {
                     </div>
                   ) : (
                     <div className={cn(
-                      "max-w-lg mx-auto px-4",
-                      isLandscapeMobile ? "py-1.5" : "py-2.5 md:py-3",
+                      "mx-auto max-w-lg px-4 lg:max-w-xl",
+                      isLandscapeMobile ? "py-1.5" : "py-2.5 md:py-3 lg:py-4",
                     )}>
+                      {signature ? (
+                        <Button
+                          id="tour-footer-action"
+                          onClick={handleFinishAndSend}
+                          disabled={isDownloading}
+                          className={cn(
+                            "w-full gap-2 rounded-full font-semibold shadow-sm",
+                            isLandscapeMobile
+                              ? "h-8 text-xs"
+                              : "h-10 text-sm lg:h-14 lg:gap-2.5 lg:text-lg lg:font-bold lg:shadow-md lg:[&_svg]:size-5",
+                            !isLandscapeMobile && "mb-2.5 lg:mb-3.5",
+                          )}
+                        >
+                          <Send className="h-4 w-4 lg:h-5 lg:w-5" />
+                          {isDownloading ? "Procesando..." : "Enviar documento firmado"}
+                        </Button>
+                      ) : null}
+
                       {!isLandscapeMobile && (
-                        <div className="flex items-center justify-center gap-0 mb-2.5">
+                        <div className={cn(
+                          "flex items-center justify-center gap-0",
+                          !signature && "mb-2.5 lg:mb-3.5",
+                        )}>
                           {steps.map((step, i) => (
                             <div key={step.label} className="flex items-center">
-                              <div className="flex flex-col items-center gap-1">
+                              <div className="flex flex-col items-center gap-1 lg:gap-1.5">
                                 <div
                                   className={cn(
-                                    "flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold transition-colors",
+                                    "flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold transition-colors lg:h-8 lg:w-8 lg:text-xs",
                                     step.done
                                       ? "bg-primary text-primary-foreground"
                                       : "border border-border bg-muted/40 text-muted-foreground",
                                   )}
                                 >
                                   {step.done ? (
-                                    <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+                                    <Check className="h-3.5 w-3.5 lg:h-4 lg:w-4" strokeWidth={2.5} />
                                   ) : (
                                     i + 1
                                   )}
                                 </div>
                                 <span className={cn(
-                                  "text-[10px] font-medium leading-none",
+                                  "text-[10px] font-medium leading-none lg:text-sm",
                                   step.done ? "text-primary" : "text-muted-foreground/70",
                                 )}>
                                   {step.label}
@@ -365,7 +386,7 @@ const Index = () => {
                               {i < steps.length - 1 && (
                                 <div
                                   className={cn(
-                                    "h-px w-10 sm:w-14 mx-2 transition-colors -translate-y-1.5",
+                                    "mx-2 h-px w-10 -translate-y-1.5 transition-colors sm:w-14 lg:mx-4 lg:w-20 lg:-translate-y-2.5",
                                     steps[i + 1].done ? "bg-primary" : "bg-border",
                                   )}
                                 />
@@ -375,20 +396,7 @@ const Index = () => {
                         </div>
                       )}
 
-                      {signature ? (
-                        <Button
-                          id="tour-footer-action"
-                          onClick={handleFinishAndSend}
-                          disabled={isDownloading}
-                          className={cn(
-                            "w-full gap-2 rounded-full font-semibold shadow-sm",
-                            isLandscapeMobile ? "h-8 text-xs" : "h-10 text-sm",
-                          )}
-                        >
-                          <Send className="w-4 h-4" />
-                          {isDownloading ? "Procesando..." : "Enviar documento firmado"}
-                        </Button>
-                      ) : !isLandscapeMobile ? (
+                      {!signature && !isLandscapeMobile ? (
                         <p className="text-center text-xs text-muted-foreground leading-relaxed">
                           Desplázate hasta la última página, toca donde quieras colocar tu firma y sigue el asistente.
                         </p>

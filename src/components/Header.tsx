@@ -52,7 +52,7 @@ export const Header = ({
   const isDocumentVariant = variant === "document" && !hasBrandRow;
   const resolvedFinishIcon = finishIcon ?? (
     finishLabel.toLowerCase().includes("enviar") ? (
-      <Send className="h-4 w-4 sm:h-5 sm:w-5" />
+      <Send className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
     ) : null
   );
   const isFinishBlocked = finishDisabled || isProcessing;
@@ -74,6 +74,7 @@ export const Header = ({
           "h-9 w-full shrink-0 gap-1.5 rounded-full px-3.5 text-xs font-semibold shadow-sm",
           "sm:h-11 sm:w-auto sm:gap-2.5 sm:px-6 sm:text-base sm:font-bold sm:shadow-md",
           "md:h-12 md:px-8",
+          "lg:h-14 lg:gap-3 lg:px-10 lg:text-lg lg:[&_svg]:size-6",
           finishDisabled &&
             !isProcessing &&
             "disabled:bg-muted disabled:text-muted-foreground disabled:opacity-60",
@@ -170,75 +171,62 @@ export const Header = ({
     );
   }
 
+  if (hasBrandRow) {
+    return (
+      <header className="sticky top-0 z-50 shrink-0 border-b border-border/50 bg-white dark:bg-white">
+        <div className="mx-auto flex w-full max-w-7xl items-center gap-4 px-5 py-3.5 sm:gap-5 sm:px-8 sm:py-4 md:px-10 md:py-4.5 lg:px-12 xl:px-16">
+          <img
+            src={brandLogoSrc}
+            alt={brandLogoAlt}
+            className="h-9 w-auto max-w-[10.5rem] shrink-0 object-contain object-left sm:h-10 sm:max-w-[12rem] md:h-11 md:max-w-[13rem] lg:h-12"
+          />
+          <span className="hidden h-6 w-px shrink-0 bg-border sm:block md:h-7" aria-hidden />
+          <p
+            className="min-w-0 truncate text-base font-medium leading-snug text-foreground/65 sm:text-lg md:text-xl"
+            title={title}
+          >
+            {title}
+          </p>
+          {showFinishButton && !isSent ? (
+            <Button
+              id="tour-header-send"
+              onClick={onFinish}
+              disabled={isProcessing}
+              size="sm"
+              className="ml-auto h-9 shrink-0 px-4 text-xs font-semibold sm:h-10 sm:px-5 sm:text-sm"
+            >
+              {isProcessing ? "Procesando..." : finishLabel}
+            </Button>
+          ) : null}
+        </div>
+      </header>
+    );
+  }
+
   return (
-    <header
-      className={
-        hasBrandRow
-          ? "sticky top-0 z-50 border-b border-border/40 bg-white dark:bg-white"
-          : "sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/40"
-      }
-    >
-      <div
-        className={
-          hasBrandRow
-            ? "relative max-w-7xl mx-auto w-full flex items-center min-h-[3.5rem] md:min-h-[3.75rem] px-3 md:px-5 py-2 gap-2 md:gap-4"
-            : "relative max-w-7xl mx-auto h-10 md:h-11 min-h-10 md:min-h-[2.75rem] px-3 md:px-5"
-        }
-      >
-        {hasBrandRow ? (
-          <div className="grid min-h-[3.5rem] w-full grid-cols-3 items-center gap-1 px-2 py-2 sm:gap-2 sm:px-3 md:px-5">
-            <div className="flex min-h-0 min-w-0 items-center justify-start">
-              <img
-                src={brandLogoSrc}
-                alt={brandLogoAlt}
-                className="h-10 max-h-[2.85rem] w-auto max-w-full object-contain object-left sm:max-h-[3.25rem] md:h-[3.75rem] md:max-h-[4.25rem]"
-              />
-            </div>
-            <p
-              className="min-w-0 text-center text-xs font-semibold leading-snug text-foreground sm:text-sm sm:leading-snug md:text-base md:leading-snug pointer-events-none text-balance [overflow-wrap:anywhere]"
-              title={title}
-            >
-              {title}
-            </p>
-            <div className="flex min-h-0 min-w-0 items-center justify-end">
-              {showFinishButton && !isSent ? (
-                <Button
-                  id="tour-header-send"
-                  onClick={onFinish}
-                  disabled={isProcessing}
-                  size="sm"
-                  className="h-7 px-3 text-xs font-medium sm:px-4"
-                >
-                  {isProcessing ? "Procesando..." : finishLabel}
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        ) : (
-          <>
-            <p
-              className={cn(
-                "absolute left-1/2 top-1/2 w-full -translate-x-1/2 -translate-y-1/2 text-center text-xs md:text-sm text-foreground font-semibold truncate px-3 pointer-events-none",
-                showFinishButton && !isSent
-                  ? "max-w-[calc(100%-8rem)]"
-                  : "max-w-[min(100%,42rem)]",
-              )}
-              title={title}
-            >
-              {title}
-            </p>
-            {showFinishButton && !isSent && (
-              <Button
-                id="tour-header-send"
-                onClick={onFinish}
-                disabled={isProcessing}
-                size="sm"
-                className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 font-medium px-4 h-7 text-xs z-10"
-              >
-                {isProcessing ? "Procesando..." : finishLabel}
-              </Button>
-            )}
-          </>
+    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/40">
+      <div className="relative max-w-7xl mx-auto h-11 md:h-12 lg:h-14 min-h-11 md:min-h-12 lg:min-h-14 px-3 md:px-5">
+        <p
+          className={cn(
+            "absolute left-1/2 top-1/2 w-full -translate-x-1/2 -translate-y-1/2 text-center text-xs md:text-sm text-foreground font-semibold truncate px-3 pointer-events-none",
+            showFinishButton && !isSent
+              ? "max-w-[calc(100%-9rem)] md:max-w-[calc(100%-11rem)]"
+              : "max-w-[min(100%,42rem)]",
+          )}
+          title={title}
+        >
+          {title}
+        </p>
+        {showFinishButton && !isSent && (
+          <Button
+            id="tour-header-send"
+            onClick={onFinish}
+            disabled={isProcessing}
+            size="sm"
+            className="absolute right-2 top-1/2 z-10 h-8 -translate-y-1/2 px-4 text-xs font-semibold md:right-4 md:h-10 md:px-5 md:text-sm lg:h-11 lg:px-6 lg:text-base"
+          >
+            {isProcessing ? "Procesando..." : finishLabel}
+          </Button>
         )}
       </div>
     </header>

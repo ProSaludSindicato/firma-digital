@@ -8,6 +8,7 @@ export type AuditEventType =
   | "signature_uploaded"
   | "signature_positioned"
   | "signature_cleared"
+  | "terms_accepted"
   | "document_submitted"
   | "document_confirmed"
   | "document_downloaded";
@@ -33,22 +34,80 @@ export interface AuditLog {
   };
 }
 
+export const emptyAuditSummary = (): AuditLog["summary"] => ({
+  documentName: null,
+  totalPages: 0,
+  signaturePage: null,
+  signatureMethod: null,
+  submittedAt: null,
+  downloadedAt: null,
+});
+
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function asFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+export function applyAuditEventToSummary(
+  summary: AuditLog["summary"],
+  type: AuditEventType,
+  metadata: Record<string, unknown> | undefined,
+  timestamp: string,
+): AuditLog["summary"] {
+  const next = { ...summary };
+
+  if (type === "document_opened" && typeof metadata?.fileName === "string") {
+    next.documentName = metadata.fileName;
+  }
+
+  const totalPages = asFiniteNumber(metadata?.totalPages);
+  if (totalPages !== null && totalPages > 0) {
+    next.totalPages = totalPages;
+  }
+
+  if (type === "signature_drawn") {
+    next.signatureMethod = "draw";
+  }
+  if (type === "signature_uploaded") {
+    next.signatureMethod = "upload";
+  }
+  if (type === "signature_cleared") {
+    next.signatureMethod = null;
+  }
+
+  if (type === "signature_positioned" || type === "document_submitted") {
+    const page = asFiniteNumber(metadata?.page) ?? asFiniteNumber(metadata?.signaturePage);
+    if (page !== null && page > 0) {
+      next.signaturePage = page;
+    }
+  }
+
+  if (type === "document_submitted" || type === "document_confirmed") {
+    next.submittedAt = timestamp;
+  }
+  if (type === "document_downloaded") {
+    next.downloadedAt = timestamp;
+  }
+
+  return next;
 }
 
 export const useAuditTrail = () => {
   const sessionId = useRef(generateId());
   const startedAt = useRef(new Date().toISOString());
+  const eventsRef = useRef<AuditEvent[]>([]);
   const [events, setEvents] = useState<AuditEvent[]>([]);
-  const summaryRef = useRef<AuditLog["summary"]>({
-    documentName: null,
-    totalPages: 0,
-    signaturePage: null,
-    signatureMethod: null,
-    submittedAt: null,
-    downloadedAt: null,
-  });
+  const summaryRef = useRef<AuditLog["summary"]>(emptyAuditSummary());
 
   const trackEvent = useCallback(
     (type: AuditEventType, metadata?: Record<string, unknown>) => {
@@ -59,27 +118,14 @@ export const useAuditTrail = () => {
         metadata,
       };
 
-      setEvents((prev) => [...prev, event]);
-
-      if (type === "document_opened" && metadata?.fileName) {
-        summaryRef.current.documentName = metadata.fileName as string;
-        summaryRef.current.totalPages = (metadata.totalPages as number) || 0;
-      }
-      if (type === "signature_drawn") {
-        summaryRef.current.signatureMethod = "draw";
-      }
-      if (type === "signature_uploaded") {
-        summaryRef.current.signatureMethod = "upload";
-      }
-      if (type === "signature_positioned" && metadata?.page) {
-        summaryRef.current.signaturePage = metadata.page as number;
-      }
-      if (type === "document_confirmed") {
-        summaryRef.current.submittedAt = event.timestamp;
-      }
-      if (type === "document_downloaded") {
-        summaryRef.current.downloadedAt = event.timestamp;
-      }
+      eventsRef.current = [...eventsRef.current, event];
+      setEvents(eventsRef.current);
+      summaryRef.current = applyAuditEventToSummary(
+        summaryRef.current,
+        type,
+        metadata,
+        event.timestamp,
+      );
 
       return event;
     },
@@ -90,23 +136,17 @@ export const useAuditTrail = () => {
     return {
       sessionId: sessionId.current,
       startedAt: startedAt.current,
-      events,
+      events: [...eventsRef.current],
       summary: { ...summaryRef.current },
     };
-  }, [events]);
+  }, []);
 
   const resetAuditTrail = useCallback(() => {
     sessionId.current = generateId();
     startedAt.current = new Date().toISOString();
+    eventsRef.current = [];
     setEvents([]);
-    summaryRef.current = {
-      documentName: null,
-      totalPages: 0,
-      signaturePage: null,
-      signatureMethod: null,
-      submittedAt: null,
-      downloadedAt: null,
-    };
+    summaryRef.current = emptyAuditSummary();
   }, []);
 
   return {

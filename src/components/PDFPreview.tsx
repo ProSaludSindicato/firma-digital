@@ -5,22 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PDFThumbnails } from "@/components/PDFThumbnails";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getResponsiveViewerZoom, stepViewerZoom } from "@/lib/pdfViewerConfig";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.mjs",
   import.meta.url
 ).toString();
-
-function getResponsiveZoom(): number {
-  if (typeof window === "undefined") return 1.2;
-  const width = window.innerWidth;
-  if (width >= 1440) return 1.8;
-  if (width >= 1200) return 1.4;
-  if (width >= 1024) return 1.4;
-  if (width >= 768) return 1.2;
-  const mobileZoom = (width - 24) / 612;
-  return Math.max(0.5, Math.min(1.0, mobileZoom));
-}
 
 interface PDFPreviewProps {
   pdfUrl: string;
@@ -49,7 +39,7 @@ export const PDFPreview = ({ pdfUrl, onClose }: PDFPreviewProps) => {
           setPdfDoc(pdf);
           setTotalPages(pdf.numPages);
           setCurrentPage(1);
-          setScale(getResponsiveZoom());
+          setScale(getResponsiveViewerZoom());
         }
       } catch (error) {
         console.error("Error al cargar el PDF:", error);
@@ -80,11 +70,11 @@ export const PDFPreview = ({ pdfUrl, onClose }: PDFPreviewProps) => {
   }, []);
 
   const zoomIn = useCallback(() => {
-    setScale((prev) => Math.min(prev + 0.2, 3));
+    setScale((prev) => stepViewerZoom(prev, 1));
   }, []);
 
   const zoomOut = useCallback(() => {
-    setScale((prev) => Math.max(prev - 0.2, 0.5));
+    setScale((prev) => stepViewerZoom(prev, -1));
   }, []);
 
   return (
