@@ -944,24 +944,18 @@ const SignConvenioByToken = () => {
                     htmlFor="terms-accepted"
                     className="text-xs leading-relaxed text-muted-foreground font-normal cursor-pointer select-none"
                   >
-                    Acepto los{" "}
+                    Autorizo de manera previa, expresa e informada el tratamiento de mis datos personales
+                    conforme a los lineamientos y fines definidos en la Política de Tratamiento de Datos
+                    publicada y accesible en:{" "}
                     <a
-                      href="https://prosalud.com.co/terminos-y-condiciones"
+                      href={appConfig.dataTreatmentPolicyUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary font-medium underline underline-offset-4"
                     >
-                      términos y condiciones
-                    </a>{" "}
-                    y la{" "}
-                    <a
-                      href="https://prosalud.com.co/politica-de-tratamiento-de-datos"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary font-medium underline underline-offset-4"
-                    >
-                      política de tratamiento de datos personales
-                    </a>.
+                      Política de Tratamiento de Datos
+                    </a>
+                    .
                   </Label>
                 </div>
               </div>
