@@ -22,6 +22,7 @@ import type { AuditEventType } from "@/hooks/useAuditTrail";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { usePdfjsDocument } from "@/hooks/usePdfjsDocument";
 import { toast } from "@/hooks/use-toast";
+import { hasSignatureField } from "@/lib/fieldValidation";
 import {
   getResponsiveViewerZoom,
   pdfViewerZoom,
@@ -439,10 +440,18 @@ export const DocumentEditorViewer = forwardRef<
       : null;
 
   const handleDeleteSelected = useCallback(() => {
-    if (!activeFieldId || isLocked || constraints?.lockedPlacement) return;
+    if (
+      !activeFieldId ||
+      isLocked ||
+      constraints?.lockedPlacement ||
+      constraints?.allowFieldRemoval === false
+    ) {
+      return;
+    }
     onRemoveField(activeFieldId);
   }, [
     activeFieldId,
+    constraints?.allowFieldRemoval,
     constraints?.lockedPlacement,
     isLocked,
     onRemoveField,
@@ -499,16 +508,17 @@ export const DocumentEditorViewer = forwardRef<
   );
 
   const constrainedPage = allowedPages?.[0];
-  const hasSignatureValue = fields.some(
-    (field) => field.type === "signature" && field.value?.type === "signature",
-  );
+  const hasPlacedSignature = hasSignatureField(fields);
+  const hasReachedFieldLimit =
+    constraints?.maxFields != null && fields.length >= constraints.maxFields;
 
   const markedPage =
     fields[0]?.page ?? constrainedPage ?? null;
 
   const isImplicitSignaturePlacement =
     !showToolbar &&
-    !hasSignatureValue &&
+    !hasPlacedSignature &&
+    !hasReachedFieldLimit &&
     !isLocked &&
     !constraints?.lockedPlacement;
 
@@ -531,7 +541,10 @@ export const DocumentEditorViewer = forwardRef<
       }
 
       const implicitPlacement =
-        !showToolbar && !hasSignatureValue && !constraints?.lockedPlacement;
+        !showToolbar &&
+        !hasPlacedSignature &&
+        !hasReachedFieldLimit &&
+        !constraints?.lockedPlacement;
       const explicitPlacement =
         Boolean(placingType) && showToolbar && !constraints?.lockedPlacement;
 
@@ -556,7 +569,8 @@ export const DocumentEditorViewer = forwardRef<
     [
       constrainedPage,
       constraints?.lockedPlacement,
-      hasSignatureValue,
+      hasPlacedSignature,
+      hasReachedFieldLimit,
       isLocked,
       placingType,
       showToolbar,
@@ -575,14 +589,21 @@ export const DocumentEditorViewer = forwardRef<
       fields={fields}
       activeFieldId={activeFieldId}
       placingType={
-        !showToolbar && !placingType && !hasSignatureValue && !constraints?.lockedPlacement
+        !showToolbar &&
+        !placingType &&
+        !hasPlacedSignature &&
+        !hasReachedFieldLimit &&
+        !constraints?.lockedPlacement
           ? "signature"
           : placingType
       }
       isLocked={isLocked}
       constraints={constraints}
       placementHighlight={
-        Boolean(placingType || (!showToolbar && !hasSignatureValue)) &&
+        Boolean(
+          placingType ||
+            (!showToolbar && !hasPlacedSignature && !hasReachedFieldLimit),
+        ) &&
         !isLocked &&
         (constrainedPage ? page === constrainedPage : true)
       }
@@ -595,7 +616,8 @@ export const DocumentEditorViewer = forwardRef<
         if (
           !placingType &&
           !showToolbar &&
-          !hasSignatureValue &&
+          !hasPlacedSignature &&
+          !hasReachedFieldLimit &&
           !constraints?.lockedPlacement
         ) {
           onSetPlacingType("signature");

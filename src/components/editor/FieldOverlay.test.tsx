@@ -42,7 +42,7 @@ function makeField(overrides: Partial<DocumentField> = {}): DocumentField {
 
 function renderSignatureOverlay(
   field: DocumentField,
-  extras: { isSelected?: boolean } = {},
+  extras: { isSelected?: boolean; allowFieldRemoval?: boolean } = {},
 ) {
   const onRequestEdit = vi.fn();
   const onUpdate = vi.fn();
@@ -55,6 +55,7 @@ function renderSignatureOverlay(
       canvasSize={{ width: 800, height: 600 }}
       isSelected={extras.isSelected ?? true}
       isLocked={false}
+      allowFieldRemoval={extras.allowFieldRemoval ?? true}
       onSelect={onSelect}
       onUpdate={onUpdate}
       onRemove={vi.fn()}
@@ -140,5 +141,13 @@ describe("FieldOverlay signature interactions", () => {
 
     expect(screen.getByLabelText("Mover Firma")).toBeInTheDocument();
     expect(screen.getByRole("group", { name: /Arrastra para mover/ })).toBeInTheDocument();
+  });
+
+  it("hides the remove control when field removal is disabled", () => {
+    renderSignatureOverlay(makeField(), { allowFieldRemoval: false });
+
+    expect(screen.queryByRole("button", { name: "Eliminar Firma" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Redimensionar Firma")).toBeInTheDocument();
+    expect(screen.getByLabelText("Mover Firma")).toBeInTheDocument();
   });
 });

@@ -108,4 +108,6 @@ export interface EditorConstraints {
   showPropertiesPanel?: boolean;
   /** User can fill values but not add, move, resize, or delete fields. */
   lockedPlacement?: boolean;
+  /** When false, the remove control and delete shortcuts are disabled. Defaults to true. */
+  allowFieldRemoval?: boolean;
 }

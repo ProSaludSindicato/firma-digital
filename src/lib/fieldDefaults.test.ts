@@ -12,7 +12,7 @@ describe("getFieldSizeLimits signature", () => {
   it("keeps a compact default box on mobile", () => {
     const limits = getFieldSizeLimits("signature", true);
 
-    expect(limits.defaultWidth).toBe(86);
-    expect(limits.defaultHeight).toBe(34);
+    expect(limits.defaultWidth).toBe(118);
+    expect(limits.defaultHeight).toBe(44);
   });
 });

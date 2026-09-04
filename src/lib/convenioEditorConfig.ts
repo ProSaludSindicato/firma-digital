@@ -8,4 +8,5 @@ export const CONVENIO_EDITOR_CONSTRAINTS: EditorConstraints = {
   maxFields: 1,
   showToolbar: false,
   showPropertiesPanel: false,
+  allowFieldRemoval: false,
 };

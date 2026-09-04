@@ -31,7 +31,9 @@ import { useTour } from "@/hooks/useTour";
 import { useIsLandscapeMobile, useIsMobile } from "@/hooks/use-mobile";
 import { appConfig } from "@/lib/appConfig";
 import { CONVENIO_EDITOR_CONSTRAINTS } from "@/lib/convenioEditorConfig";
+import { apiFieldsToDocumentFields } from "@/lib/fieldDefaults";
 import { exportDocumentToPdf } from "@/lib/pdfFieldExporter";
+import { detectAffiliateSignaturePlacement } from "@/lib/signatureLocationService";
 import { pdfViewerConfig } from "@/lib/pdfViewerConfig";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import {
@@ -422,7 +424,7 @@ const SignConvenioByToken = () => {
   const [totalPages, setTotalPages] = useState(0);
 
   const editor = useDocumentEditor(isMobile);
-  const { setFile } = editor;
+  const { setFile, loadFields } = editor;
   const signatureField = editor.fields.find((field) => field.type === "signature");
   const signature =
     signatureField?.value?.type === "signature"
@@ -553,7 +555,24 @@ const SignConvenioByToken = () => {
 
       const blob = await pdfRes.blob();
       const file = new File([blob], "convenio.pdf", { type: "application/pdf" });
+      let affiliateField: Awaited<
+        ReturnType<typeof detectAffiliateSignaturePlacement>
+      > = null;
+      try {
+        affiliateField = await detectAffiliateSignaturePlacement(file, {
+          isMobile,
+        });
+      } catch (detectionError) {
+        console.warn(
+          "[convenio] No se pudo detectar el recuadro de firma del afiliado.",
+          detectionError,
+        );
+      }
+
       setFile(file);
+      if (affiliateField) {
+        loadFields(apiFieldsToDocumentFields([affiliateField]));
+      }
       setPdfLoading(false);
     } catch (error) {
       if (error instanceof Error && error.message.includes("VITE_PROSALUD_API_URL")) {
@@ -564,7 +583,7 @@ const SignConvenioByToken = () => {
     } finally {
       setMetaLoading(false);
     }
-  }, [token, setFile]);
+  }, [token, setFile, loadFields, isMobile]);
 
   useEffect(() => {
     void loadMetadataAndPdf();
@@ -580,9 +599,10 @@ const SignConvenioByToken = () => {
 
   const handleFinishAndSend = useCallback(() => {
     if (!signature) {
-      pdfViewerRef.current?.activatePlacementMode("signature");
       if (signatureField) {
         pdfViewerRef.current?.openSignatureModal(signatureField.id);
+      } else {
+        pdfViewerRef.current?.activatePlacementMode("signature");
       }
       return;
     }
@@ -600,7 +620,7 @@ const SignConvenioByToken = () => {
             handleFinishAndSend();
           }
         },
-        description: "Colocar firma / Finalizar y enviar",
+        description: "Abrir panel de firma / Finalizar y enviar",
       },
     ],
     Boolean(pdfFile),
@@ -698,7 +718,7 @@ const SignConvenioByToken = () => {
         if (json.code === "document_integrity_mismatch") {
           throw new Error(
             json.message ??
-              "El documento enviado no coincide con el convenio original. Solo coloque su firma y vuelva a intentarlo.",
+              "El documento enviado no coincide con el convenio original. Solo añada su firma al recuadro y vuelva a intentarlo.",
           );
         }
 
@@ -880,9 +900,11 @@ const SignConvenioByToken = () => {
               showDefaultHint={false}
               placingType={null}
               customHint={
-                signature
-                  ? "Arrastra la firma para colocarla sobre la línea. El lápiz la edita."
-                  : "Desplázate hasta la última página y toca donde quieras colocar tu firma."
+                !signatureField
+                  ? "Desplázate hasta la página de firma y toca donde quieras colocar tu firma."
+                  : signature
+                    ? "Revisa que la firma quede sobre la línea. Puedes arrastrar el recuadro o usar el lápiz para editarla."
+                    : "Cuando termines de leer, ve a la página de firma y toca el recuadro «Firma aquí» para dibujar o subir tu firma."
               }
             />
           ) : null}
