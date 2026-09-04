@@ -41,6 +41,11 @@ import {
 } from "@/lib/prosaludConvenioApi";
 import { verifyAffiliateSignatureRegistered } from "@/lib/verifyAffiliateSignatureRegistered";
 import {
+  CONVENIO_SUCCESS_VIEW_DELAY_MS,
+  preventConfirmDialogAutoClose,
+  shouldIgnoreConfirmDialogClose,
+} from "@/lib/convenioConfirmDialog";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -145,15 +150,30 @@ function StatusMark({ icon: Icon, tone }: { icon: LucideIcon; tone: StatusTone }
   );
 }
 
-function StatusPageShell({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
+function StatusPageShell({
+  children,
+  footer,
+  centerContentOnMobile = false,
+}: {
+  children: ReactNode;
+  footer?: ReactNode;
+  centerContentOnMobile?: boolean;
+}) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-white dark:bg-background">
       <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-4 py-5 sm:px-8 sm:py-8 md:px-10 lg:px-12 lg:py-12 xl:px-16">
-        <div className="flex flex-1 flex-col justify-start py-1 sm:py-4 lg:justify-center lg:py-8">
+        <div
+          className={cn(
+            "flex flex-1 flex-col py-1 sm:py-4 lg:justify-center lg:py-8",
+            centerContentOnMobile
+              ? "justify-center gap-6 sm:justify-start sm:gap-0"
+              : "justify-start",
+          )}
+        >
           {children}
         </div>
         {footer ? (
-          <footer className="mt-6 shrink-0 border-t border-border/70 pt-4 sm:mt-10 sm:pt-5 lg:mt-12 lg:pt-6">
+          <footer className="mt-auto shrink-0 border-t border-border/70 pt-4 sm:mt-10 sm:pt-5 lg:mt-12 lg:pt-6">
             {footer}
           </footer>
         ) : null}
@@ -251,24 +271,45 @@ function ConvenioCannotSignPanel({
   }
 
   const rejectionNote = blockedKind === "rechazado" ? motivoRechazo?.trim() : undefined;
+  const isSuccessView = blockedKind === "firmado_afiliado";
 
   return (
-    <StatusPageShell footer={<HelpEmailFooter />}>
+    <StatusPageShell footer={<HelpEmailFooter />} centerContentOnMobile={isSuccessView}>
       <div
         className={cn(
-          "flex flex-col gap-5 sm:gap-10 lg:gap-12",
+          "flex w-full flex-col",
+          isSuccessView
+            ? "gap-6 sm:gap-10 lg:gap-12"
+            : "gap-5 sm:gap-10 lg:gap-12",
           metaFields.length > 0 &&
             "lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(17rem,0.85fr)] lg:items-start lg:gap-16 xl:gap-24",
         )}
-        role={blockedKind === "firmado_afiliado" ? "status" : undefined}
+        role={isSuccessView ? "status" : undefined}
       >
-        <div className="flex items-start gap-3 sm:gap-5 lg:gap-6">
+        <div
+          className={cn(
+            "flex gap-3 sm:gap-5 lg:gap-6",
+            isSuccessView
+              ? "flex-col items-center text-center sm:flex-row sm:items-start sm:text-left"
+              : "items-start",
+          )}
+        >
           <StatusMark icon={icon} tone={tone} />
-          <div className="min-w-0 space-y-3 pt-0.5 sm:space-y-4 lg:space-y-5">
+          <div
+            className={cn(
+              "min-w-0 space-y-3 pt-0.5 sm:space-y-4 lg:space-y-5",
+              isSuccessView && "flex w-full max-w-lg flex-col items-center sm:max-w-none sm:items-start",
+            )}
+          >
             <h1 className="text-balance font-serif text-2xl font-semibold tracking-tight text-foreground sm:text-3xl md:text-4xl lg:text-[2.75rem] xl:text-5xl lg:leading-[1.12]">
               {title}
             </h1>
-            <div className="max-w-xl space-y-2 sm:space-y-3">
+            <div
+              className={cn(
+                "max-w-xl space-y-2 sm:space-y-3",
+                isSuccessView && "mx-auto sm:mx-0",
+              )}
+            >
               <p className="text-sm leading-snug text-foreground/60 sm:text-base sm:leading-relaxed lg:text-lg">
                 {description}
               </p>
@@ -283,7 +324,10 @@ function ConvenioCannotSignPanel({
                 type="button"
                 variant="outline"
                 onClick={onDownload}
-                className="mt-0.5 h-10 rounded-full px-4 text-sm font-semibold sm:mt-1 sm:h-11 sm:px-5 md:h-12 md:px-6"
+                className={cn(
+                  "mt-0.5 h-10 rounded-full px-4 text-sm font-semibold sm:mt-1 sm:h-11 sm:px-5 md:h-12 md:px-6",
+                  isSuccessView && "w-full max-w-sm sm:w-auto sm:max-w-none",
+                )}
               >
                 <Download className="mr-2 h-4 w-4" />
                 Descargar convenio firmado
@@ -293,8 +337,20 @@ function ConvenioCannotSignPanel({
         </div>
 
         {metaFields.length > 0 ? (
-          <aside className="border-t border-border/70 pt-4 sm:pt-8 lg:border-l lg:border-t-0 lg:pt-1 lg:pl-12 xl:pl-16">
-            <dl className="grid gap-4 sm:grid-cols-2 sm:gap-7 lg:grid-cols-1 lg:gap-8">
+          <aside
+            className={cn(
+              "w-full",
+              isSuccessView
+                ? "mx-auto max-w-sm rounded-2xl border border-border/60 bg-muted/25 px-5 py-5 sm:max-w-none sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 lg:border-l lg:border-border/70 lg:pl-12 xl:pl-16"
+                : "border-t border-border/70 pt-4 sm:pt-8 lg:border-l lg:border-t-0 lg:pt-1 lg:pl-12 xl:pl-16",
+            )}
+          >
+            <dl
+              className={cn(
+                "grid gap-4 sm:grid-cols-2 sm:gap-7 lg:grid-cols-1 lg:gap-8",
+                isSuccessView && "gap-5 text-left sm:gap-7",
+              )}
+            >
               {metaFields.map((field) => (
                 <MetaField key={field.label} label={field.label} value={field.value} />
               ))}
@@ -337,6 +393,7 @@ const SignConvenioByToken = () => {
   const { token } = useParams<{ token: string }>();
   const pdfViewerRef = useRef<DocumentEditorViewerRef>(null);
   const signedPdfForDownloadRef = useRef<Blob | null>(null);
+  const successViewTimerRef = useRef<number | null>(null);
   const isLandscapeMobile = useIsLandscapeMobile();
   const isMobile = useIsMobile();
 
@@ -513,6 +570,14 @@ const SignConvenioByToken = () => {
     void loadMetadataAndPdf();
   }, [loadMetadataAndPdf]);
 
+  useEffect(() => {
+    return () => {
+      if (successViewTimerRef.current !== null) {
+        window.clearTimeout(successViewTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleFinishAndSend = useCallback(() => {
     if (!signature) {
       pdfViewerRef.current?.activatePlacementMode("signature");
@@ -545,37 +610,49 @@ const SignConvenioByToken = () => {
     signedBlob: Blob | null,
     firmadoAt?: string | null,
   ) => {
-    setFirmadoAfiliadoAt(firmadoAt ?? new Date().toISOString());
-    setIsSent(true);
-    setCanRateSatisfaction(true);
-    setShowConfirm(false);
-    setFile(null);
-    trackEvent("document_confirmed");
-    toast.success("Convenio enviado correctamente.");
-
-    if (!signedBlob) {
-      return;
+    if (signedBlob) {
+      signedPdfForDownloadRef.current = signedBlob;
     }
 
-    signedPdfForDownloadRef.current = signedBlob;
+    setShowConfirm(false);
+    setTermsAccepted(false);
+
+    if (successViewTimerRef.current !== null) {
+      window.clearTimeout(successViewTimerRef.current);
+    }
+
     const blobForDownload = signedBlob;
-    window.setTimeout(() => {
-      try {
-        trackEvent("document_downloaded", { auto: true });
-        const url = URL.createObjectURL(blobForDownload);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = downloadFilename;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
-      } catch (downloadError) {
-        const errorMessage =
-          downloadError instanceof Error ? downloadError.message : "Error al descargar el PDF";
-        toast.error("Error al descargar", { description: errorMessage });
+    successViewTimerRef.current = window.setTimeout(() => {
+      successViewTimerRef.current = null;
+      setFirmadoAfiliadoAt(firmadoAt ?? new Date().toISOString());
+      setIsSent(true);
+      setCanRateSatisfaction(true);
+      setFile(null);
+      trackEvent("document_confirmed");
+      toast.success("Convenio enviado correctamente.");
+
+      if (!blobForDownload) {
+        return;
       }
-    }, 500);
+
+      window.setTimeout(() => {
+        try {
+          trackEvent("document_downloaded", { auto: true });
+          const url = URL.createObjectURL(blobForDownload);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = downloadFilename;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(url);
+        } catch (downloadError) {
+          const errorMessage =
+            downloadError instanceof Error ? downloadError.message : "Error al descargar el PDF";
+          toast.error("Error al descargar", { description: errorMessage });
+        }
+      }, 500);
+    }, CONVENIO_SUCCESS_VIEW_DELAY_MS);
   };
 
   const handleConfirmSubmit = async () => {
@@ -584,6 +661,7 @@ const SignConvenioByToken = () => {
     }
 
     let signedBlob: Blob | null = null;
+    let markedReceived = false;
     setIsSubmitting(true);
     try {
       if (!pdfFile) {
@@ -627,10 +705,12 @@ const SignConvenioByToken = () => {
         throw new Error(json.message ?? "No se pudo enviar el documento.");
       }
 
+      markedReceived = true;
       markAffiliateSignatureReceived(signedBlob);
     } catch (e) {
       const verification = await verifyAffiliateSignatureRegistered(token);
       if (verification.registered) {
+        markedReceived = true;
         markAffiliateSignatureReceived(
           signedBlob,
           verification.firmadoAfiliadoAt,
@@ -641,7 +721,9 @@ const SignConvenioByToken = () => {
       const msg = e instanceof Error ? e.message : "Error al enviar el convenio.";
       toast.error(msg);
     } finally {
-      setIsSubmitting(false);
+      if (!markedReceived) {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -954,6 +1036,9 @@ const SignConvenioByToken = () => {
       )}
 
       <AlertDialog open={showConfirm} onOpenChange={(open) => {
+        if (shouldIgnoreConfirmDialogClose(isSubmitting, open)) {
+          return;
+        }
         setShowConfirm(open);
         if (!open) {
           setTermsAccepted(false);
@@ -1012,7 +1097,10 @@ const SignConvenioByToken = () => {
             <AlertDialogCancel disabled={isSubmitting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               disabled={isSubmitting || !termsAccepted}
-              onClick={() => void handleConfirmSubmit()}
+              onClick={(event) => {
+                preventConfirmDialogAutoClose(event);
+                void handleConfirmSubmit();
+              }}
               className="gap-2"
             >
               {isSubmitting ? (
