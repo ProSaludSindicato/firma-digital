@@ -99,7 +99,7 @@ export const Header = ({
           >
             {showDocumentIcon ? (
               <div
-                className="col-start-1 row-start-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/5 text-primary sm:h-10 sm:w-10"
+                className="col-start-1 row-start-1 flex h-9 w-9 shrink-0 self-center items-center justify-center rounded-lg border border-primary/20 bg-primary/5 text-primary sm:h-10 sm:w-10"
                 aria-hidden
               >
                 <svg
@@ -117,40 +117,39 @@ export const Header = ({
               </div>
             ) : null}
 
-            <h1
+            <div
               className={cn(
-                "min-w-0 truncate text-left font-serif text-sm font-semibold leading-tight text-foreground sm:text-base md:text-lg",
+                "flex min-w-0 flex-col gap-1",
                 showDocumentIcon ? "col-start-2" : "col-start-1",
                 "row-start-1",
               )}
-              title={title}
             >
-              {title}
-            </h1>
-
-            {hasMetaRow ? (
-              <div
-                className={cn(
-                  "flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 row-start-2 sm:gap-x-0",
-                  showDocumentIcon ? "col-start-2" : "col-start-1",
-                )}
+              <h1
+                className="truncate text-left font-serif text-sm font-semibold leading-tight text-foreground sm:text-base md:text-lg"
+                title={title}
               >
-                {subtitle ? (
-                  <p className="shrink-0 text-[11px] text-muted-foreground sm:text-xs">
-                    {subtitle}
-                  </p>
-                ) : null}
-                {subtitle && fieldProgress ? (
-                  <span
-                    className="mx-2 hidden h-3.5 w-px shrink-0 bg-border/70 sm:mx-4 sm:block md:mx-6"
-                    aria-hidden
-                  />
-                ) : null}
-                {fieldProgress ? (
-                  <FieldProgressChips progress={fieldProgress} />
-                ) : null}
-              </div>
-            ) : null}
+                {title}
+              </h1>
+
+              {hasMetaRow ? (
+                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 sm:gap-x-0">
+                  {subtitle ? (
+                    <p className="shrink-0 text-[11px] leading-none text-muted-foreground sm:text-xs">
+                      {subtitle}
+                    </p>
+                  ) : null}
+                  {subtitle && fieldProgress ? (
+                    <span
+                      className="mx-2 hidden h-3.5 w-px shrink-0 bg-border/70 sm:mx-4 sm:block md:mx-6"
+                      aria-hidden
+                    />
+                  ) : null}
+                  {fieldProgress ? (
+                    <FieldProgressChips progress={fieldProgress} />
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
 
             {finishButton ? (
               <div

@@ -49,6 +49,10 @@ export function canExportDocument(fields: DocumentField[]): boolean {
   return fields.length > 0 && getIncompleteRequiredFields(fields).length === 0;
 }
 
+export function hasSignatureField(fields: DocumentField[]): boolean {
+  return fields.some((field) => field.type === "signature");
+}
+
 export interface FieldProgressCounts {
   total: number;
   completed: number;

@@ -34,10 +34,8 @@ describe("createViewerSteps", () => {
     expect(zoom?.placement).toBe("left");
   });
 
-  it("keeps the zoom tooltip below the classic toolbar on compact layout", () => {
-    const steps = createViewerSteps("compact", "default");
-    const zoom = steps.find((step) => step.target === "#tour-pdf-toolbar-zoom");
-
-    expect(zoom?.placement).toBe("bottom");
+  it("uses convenio-specific copy in viewer steps", () => {
+    const intro = createViewerSteps("compact", "document-editor")[0];
+    expect(intro.content).toContain("Firma aquí");
   });
 });

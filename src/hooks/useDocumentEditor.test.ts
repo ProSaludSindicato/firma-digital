@@ -140,4 +140,24 @@ describe("documentEditorReducer", () => {
     expect(next.mode).toBe("placing");
     expect(next.activeFieldId).toBeNull();
   });
+
+  it("keeps the file and loads fields after SET_FILE then LOAD_FIELDS", () => {
+    const file = new File(["%PDF"], "convenio.pdf", { type: "application/pdf" });
+    const field = sampleField({ id: "affiliate-signature", type: "signature" });
+
+    const withFile = documentEditorReducer(initialDocumentEditorState, {
+      type: "SET_FILE",
+      file,
+    });
+    const next = documentEditorReducer(withFile, {
+      type: "LOAD_FIELDS",
+      fields: [field],
+    });
+
+    expect(next.file).toBe(file);
+    expect(next.fields).toEqual([field]);
+    expect(next.activeFieldId).toBeNull();
+    expect(next.placingType).toBeNull();
+    expect(next.mode).toBe("editing");
+  });
 });

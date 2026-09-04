@@ -5,6 +5,7 @@ import {
   getFieldProgressCounts,
   getFinishDisabledTitle,
   getIncompleteRequiredFields,
+  hasSignatureField,
   isFieldFilled,
   isFieldVisuallyComplete,
 } from "@/lib/fieldValidation";
@@ -107,5 +108,15 @@ describe("fieldValidation", () => {
     );
     expect(canFinishDocument([empty, filled])).toBe(false);
     expect(canFinishDocument([filled])).toBe(true);
+  });
+
+  it("detects a placed signature field even when it is still empty", () => {
+    expect(hasSignatureField([])).toBe(false);
+    expect(hasSignatureField([field()])).toBe(false);
+    expect(
+      hasSignatureField([
+        field({ type: "signature", label: "Firma", value: null }),
+      ]),
+    ).toBe(true);
   });
 });

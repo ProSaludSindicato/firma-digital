@@ -13,6 +13,7 @@ interface FieldOverlayProps {
   isSelected: boolean;
   isLocked: boolean;
   lockedPlacement?: boolean;
+  allowFieldRemoval?: boolean;
   onSelect: () => void;
   onUpdate: (changes: Partial<DocumentField>) => void;
   onRemove: () => void;
@@ -57,6 +58,7 @@ export function FieldOverlay({
   isSelected,
   isLocked,
   lockedPlacement = false,
+  allowFieldRemoval = true,
   onSelect,
   onUpdate,
   onRemove,
@@ -83,7 +85,10 @@ export function FieldOverlay({
   const hasSignatureImage =
     field.type === "signature" && field.value?.type === "signature";
   const showEditControl = Boolean(onRequestEdit) && !isLocked && isSelected && hasSignatureImage;
-  const showMoveHandle = canMove && isSelected && field.type === "signature";
+  const showRemoveControl = canMove && isSelected && allowFieldRemoval;
+  const showResizeControl = canMove && isSelected;
+  const showMoveHandle =
+    canMove && isSelected && field.type === "signature";
 
   const startDrag = useCallback(
     (
@@ -363,42 +368,43 @@ export function FieldOverlay({
         </button>
       ) : null}
 
-      {canMove && isSelected ? (
-        <>
-          <button
-            type="button"
-            data-no-drag
-            aria-label={`Eliminar ${field.label}`}
-            className={cn(
-              CHROME_BUTTON,
-              "h-5 w-5 border border-red-500/70 bg-red-50 text-red-600 hover:border-destructive hover:bg-destructive hover:text-destructive-foreground",
-              useExternalChrome
-                ? "left-1/2 top-0 -translate-x-1/2 -translate-y-[calc(100%+6px)]"
-                : "-top-2.5 -right-2.5",
-            )}
-            onClick={(event) => {
-              event.stopPropagation();
-              onRemove();
-            }}
-            onPointerDown={(event) => event.stopPropagation()}
-          >
-            <X className="h-3 w-3" />
-          </button>
-          <div
-            data-no-drag
-            aria-label={`Redimensionar ${field.label}`}
-            className={cn(
-              CHROME_BUTTON,
-              "cursor-se-resize bg-primary/80 text-primary-foreground hover:bg-primary",
-              useExternalChrome
-                ? "left-full top-1/2 ml-1.5 h-6 w-6 -translate-y-1/2"
-                : "-bottom-1.5 -right-1.5 h-5 w-5 md:h-6 md:w-6",
-            )}
-            onPointerDown={handleResizePointerDown}
-          >
-            <Maximize2 className="h-2.5 w-2.5 rotate-90 md:h-3 md:w-3" />
-          </div>
-        </>
+      {showRemoveControl ? (
+        <button
+          type="button"
+          data-no-drag
+          aria-label={`Eliminar ${field.label}`}
+          className={cn(
+            CHROME_BUTTON,
+            "h-5 w-5 border border-red-500/70 bg-red-50 text-red-600 hover:border-destructive hover:bg-destructive hover:text-destructive-foreground",
+            useExternalChrome
+              ? "left-1/2 top-0 -translate-x-1/2 -translate-y-[calc(100%+6px)]"
+              : "-top-2.5 -right-2.5",
+          )}
+          onClick={(event) => {
+            event.stopPropagation();
+            onRemove();
+          }}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <X className="h-3 w-3" />
+        </button>
+      ) : null}
+
+      {showResizeControl ? (
+        <div
+          data-no-drag
+          aria-label={`Redimensionar ${field.label}`}
+          className={cn(
+            CHROME_BUTTON,
+            "cursor-se-resize bg-primary/80 text-primary-foreground hover:bg-primary",
+            useExternalChrome
+              ? "left-full top-1/2 ml-1.5 h-6 w-6 -translate-y-1/2"
+              : "-bottom-1.5 -right-1.5 h-5 w-5 md:h-6 md:w-6",
+          )}
+          onPointerDown={handleResizePointerDown}
+        >
+          <Maximize2 className="h-2.5 w-2.5 rotate-90 md:h-3 md:w-3" />
+        </div>
       ) : null}
 
       {showMoveHandle ? (

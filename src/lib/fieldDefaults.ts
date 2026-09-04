@@ -71,8 +71,8 @@ export function getFieldSizeLimits(
   switch (type) {
     case "signature":
       return {
-        defaultWidth: isMobile ? 86 : 106,
-        defaultHeight: isMobile ? 34 : 48,
+        defaultWidth: isMobile ? 118 : 106,
+        defaultHeight: isMobile ? 44 : 48,
         minWidth: isMobile ? 56 : 72,
         minHeight: isMobile ? 24 : 28,
         maxWidth: 320,

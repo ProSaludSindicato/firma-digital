@@ -180,6 +180,7 @@ export function DocumentEditorPageView({
           isSelected={activeFieldId === field.id}
           isLocked={isLocked}
           lockedPlacement={constraints?.lockedPlacement}
+          allowFieldRemoval={constraints?.allowFieldRemoval !== false}
           onSelect={() => onSelectField(field.id)}
           onUpdate={(changes) => onUpdateField(field.id, changes)}
           onRemove={() => onRemoveField(field.id)}

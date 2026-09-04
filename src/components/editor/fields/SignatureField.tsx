@@ -1,4 +1,4 @@
-import { PenLine } from "lucide-react";
+import { Signature } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DocumentField } from "@/types/documentEditor";
 
@@ -38,13 +38,18 @@ export function SignatureField({
         }
       }}
       className={cn(
-        "flex h-full w-full items-center justify-center gap-1.5 px-2",
+        "flex h-full w-full items-center justify-center gap-1 px-1.5 md:gap-1.5",
         "text-[#9A6314] transition-colors hover:bg-[#B8791A]/10",
+        "text-[length:clamp(8px,12cqw,14px)] md:text-[length:clamp(11px,15cqw,17px)]",
       )}
       aria-label={`Dibujar ${field.label}`}
     >
-      <PenLine className="h-3.5 w-3.5 shrink-0" />
-      <span className="truncate text-[11px] font-medium sm:text-xs">
+      <Signature
+        className="size-[1.2em] shrink-0 md:size-[1.35em]"
+        strokeWidth={1.75}
+        aria-hidden
+      />
+      <span className="min-w-0 font-medium leading-none">
         Firma aquí
       </span>
     </button>

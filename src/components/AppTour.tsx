@@ -93,14 +93,21 @@ const welcomeSteps: Step[] = [
 /** Tailwind `md` — ancho suficiente para anclar el globo a la derecha del visor. */
 const VIEWER_WIDE_MIN_WIDTH_PX = 768;
 
-const pdfAreaTourTitle = (
+const pdfAreaTourTitleClassic = (
   <span className="flex items-center gap-2">
     <MousePointerClick className="w-4 h-4 text-primary flex-shrink-0" />
     Área del documento
   </span>
 );
 
-const pdfAreaTourContent = (
+const pdfAreaTourTitleConvenio = (
+  <span className="flex items-center gap-2">
+    <PenLine className="w-4 h-4 text-primary flex-shrink-0" />
+    Recuadro de firma
+  </span>
+);
+
+const pdfAreaTourContentClassic = (
   <div className="space-y-1.5">
     <p>
       Esta es el área principal de visualización. Cuando estés en la{' '}
@@ -111,6 +118,31 @@ const pdfAreaTourContent = (
     </p>
   </div>
 );
+
+const pdfAreaTourContentConvenio = (
+  <div className="space-y-1.5">
+    <p>
+      En la <strong>página de firma</strong> verás un recuadro{' '}
+      <strong>«Firma aquí»</strong> ya ubicado sobre la línea. Tócalo para abrir
+      el panel y dibujar o subir tu firma.
+    </p>
+    <p className="text-xs text-muted-foreground/70">
+      Si no queda bien alineado, podrás moverlo y cambiar su tamaño después.
+    </p>
+  </div>
+);
+
+function pdfAreaTourTitle(viewerVariant: AppTourViewerVariant) {
+  return viewerVariant === 'document-editor'
+    ? pdfAreaTourTitleConvenio
+    : pdfAreaTourTitleClassic;
+}
+
+function pdfAreaTourContent(viewerVariant: AppTourViewerVariant) {
+  return viewerVariant === 'document-editor'
+    ? pdfAreaTourContentConvenio
+    : pdfAreaTourContentClassic;
+}
 
 export type AppTourViewerVariant = 'default' | 'document-editor';
 
@@ -138,8 +170,8 @@ export function createViewerSteps(
               crossAxis: true,
             },
           },
-          title: pdfAreaTourTitle,
-          content: pdfAreaTourContent,
+          title: pdfAreaTourTitle(viewerVariant),
+          content: pdfAreaTourContent(viewerVariant),
         }
       : {
           // El visor ocupa casi todo el viewport en móvil; anclar el globo a
@@ -147,8 +179,8 @@ export function createViewerSteps(
           target: 'body',
           placement: 'center',
           skipBeacon: true,
-          title: pdfAreaTourTitle,
-          content: pdfAreaTourContent,
+          title: pdfAreaTourTitle(viewerVariant),
+          content: pdfAreaTourContent(viewerVariant),
         };
 
   const steps: Step[] = [
@@ -163,7 +195,9 @@ export function createViewerSteps(
         </span>
       ),
       content:
-        'Tu documento está listo. El visor te permite navegar, hacer zoom y colocar tu firma en la página correcta.',
+        viewerVariant === 'document-editor'
+          ? 'Tu convenio está listo. Puedes leerlo con calma; en la página de firma verás el recuadro «Firma aquí» ya ubicado. Cuando quieras firmar, desplázate hasta ahí y tócalo.'
+          : 'Tu documento está listo. El visor te permite navegar, hacer zoom y colocar tu firma en la página correcta.',
     },
     {
       target: '#tour-pdf-toolbar-zoom',
@@ -240,16 +274,147 @@ export function createViewerSteps(
       ),
       content:
         viewerVariant === 'document-editor'
-          ? 'Vista rápida de todas las páginas. Desplázate o haz clic en una miniatura; la página de firma aparece resaltada.'
+          ? 'Vista rápida de todas las páginas. Desplázate o haz clic en una miniatura; la página de firma aparece resaltada con el recuadro «Firma aquí».'
           : 'Vista rápida de todas las páginas. Haz clic en cualquier miniatura para saltar directamente a esa página.',
     });
   }
 
   steps.push(pdfAreaStep);
-  /* Paso del pie "Ir al área de firma" desactivado: el botón se ocultó para evitar confusión
-     cuando el usuario ya está en la página de firma. La colocación se hace tocando el PDF. */
 
   return steps;
+}
+
+function createPlacedSteps(viewerVariant: AppTourViewerVariant): Step[] {
+  const intro =
+    viewerVariant === 'document-editor'
+      ? 'Tu firma quedó en el recuadro del documento. Revísala y, si hace falta, ajústala antes de enviar:'
+      : 'Tu firma quedó en el documento. Revísala y, si hace falta, ajústala antes de enviar:';
+
+  return [
+    {
+      target: 'body',
+      placement: 'center',
+      skipBeacon: true,
+      title: (
+        <span className="flex items-center gap-2">
+          <Check className="w-4 h-4 text-primary flex-shrink-0" />
+          ¡Firma guardada!
+        </span>
+      ),
+      content: (
+        <div className="space-y-2">
+          <p className="text-xs">{intro}</p>
+          <div className="flex items-start gap-2 text-xs">
+            <Move className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
+            <p>
+              <strong>Arrastra</strong> el recuadro para moverla. El icono de flechas
+              (esquina inferior izquierda) indica que puedes desplazarla.
+            </p>
+          </div>
+          <div className="flex items-start gap-2 text-xs">
+            <Maximize2 className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5 rotate-90" />
+            <p>
+              Para el tamaño, usa el control de la{' '}
+              <strong>esquina inferior derecha</strong>.
+            </p>
+          </div>
+          <div className="flex items-start gap-2 text-xs">
+            <Pencil className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
+            <p>
+              Para cambiar o volver a crear la firma, pulsa el icono del{' '}
+              <strong>lápiz</strong> (arriba a la izquierda del recuadro).
+            </p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      target: '#tour-footer-action',
+      placement: 'top',
+      skipBeacon: true,
+      skipScroll: true,
+      title: (
+        <span className="flex items-center gap-2">
+          <Send className="w-4 h-4 text-primary flex-shrink-0" />
+          Enviar el convenio firmado
+        </span>
+      ),
+      content: (
+        <div className="space-y-1.5">
+          <p>
+            Cuando estés conforme con la posición de tu firma, pulsa{' '}
+            <strong>&quot;Enviar convenio firmado&quot;</strong>.
+          </p>
+          <p className="text-xs text-muted-foreground/70">
+            Se enviará tu convenio firmado a ProSalud y podrás descargar una copia.
+          </p>
+        </div>
+      ),
+    },
+  ];
+}
+
+function createPlacedStepsClassic(): Step[] {
+  return [
+    {
+      target: 'body',
+      placement: 'center',
+      skipBeacon: true,
+      title: (
+        <span className="flex items-center gap-2">
+          <Check className="w-4 h-4 text-primary flex-shrink-0" />
+          ¡Firma insertada!
+        </span>
+      ),
+      content: (
+        <div className="space-y-2">
+          <div className="flex items-start gap-2 text-xs">
+            <Move className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
+            <p>
+              <strong>Arrastra</strong> el recuadro de la firma para moverla. El icono de flechas
+              (esquina inferior izquierda) y el cursor de mano indican que puedes desplazarla.
+            </p>
+          </div>
+          <div className="flex items-start gap-2 text-xs">
+            <Maximize2 className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5 rotate-90" />
+            <p>
+              Para el tamaño, usa el círculo de la <strong>esquina inferior derecha</strong>.
+            </p>
+          </div>
+          <div className="flex items-start gap-2 text-xs">
+            <Pencil className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
+            <p>
+              Para cambiar o volver a crear la firma, pulsa el icono del <strong>lápiz</strong>{' '}
+              (arriba a la izquierda del recuadro).
+            </p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      target: '#tour-footer-action',
+      placement: 'top',
+      skipBeacon: true,
+      skipScroll: true,
+      title: (
+        <span className="flex items-center gap-2">
+          <Send className="w-4 h-4 text-primary flex-shrink-0" />
+          Enviar el documento firmado
+        </span>
+      ),
+      content: (
+        <div className="space-y-1.5">
+          <p>
+            Cuando estés conforme con la posición de tu firma, pulsa{' '}
+            <strong>&quot;Enviar documento firmado&quot;</strong>.
+          </p>
+          <p className="text-xs text-muted-foreground/70">
+            Se generará y descargará automáticamente el PDF con tu firma incrustada.
+          </p>
+        </div>
+      ),
+    },
+  ];
 }
 
 /* ─── modal phase — appears when the signature modal opens ─────────────────── */
@@ -259,7 +424,7 @@ export function createViewerSteps(
 // onPointerDownOutside (closing the dialog) whenever the Joyride tooltip is
 // clicked. Body-centered steps sidestep this entirely.
 
-const modalSteps: Step[] = [
+const modalStepsConvenio: Step[] = [
   {
     target: 'body',
     placement: 'center',
@@ -279,82 +444,48 @@ const modalSteps: Step[] = [
         </p>
         <p className="text-xs text-muted-foreground/70 leading-relaxed">
           Cuando quedes satisfecho, pulsa <strong>&quot;Usar firma&quot;</strong> para
-          insertarla en el documento.
+          guardarla en el recuadro «Firma aquí» del documento.
         </p>
       </div>
     ),
   },
 ];
 
-/* ─── placed phase — appears after the signature is placed on the document ── */
-
-const placedSteps: Step[] = [
+const modalStepsClassic: Step[] = [
   {
     target: 'body',
     placement: 'center',
     skipBeacon: true,
     title: (
       <span className="flex items-center gap-2">
-        <Check className="w-4 h-4 text-primary flex-shrink-0" />
-        ¡Firma insertada!
+        <PenLine className="w-4 h-4 text-primary flex-shrink-0" />
+        Crea y guarda tu firma
       </span>
     ),
     content: (
       <div className="space-y-2">
-        <div className="flex items-start gap-2 text-xs">
-          <Move className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
-          <p>
-            <strong>Arrastra</strong> el recuadro de la firma para moverla. El icono de flechas
-            (esquina inferior izquierda) y el cursor de mano indican que puedes desplazarla.
-          </p>
-        </div>
-        <div className="flex items-start gap-2 text-xs">
-          <Maximize2 className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5 rotate-90" />
-          <p>
-            Para el tamaño, usa el círculo de la <strong>esquina inferior derecha</strong>.
-          </p>
-        </div>
-        <div className="flex items-start gap-2 text-xs">
-          <Pencil className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
-          <p>
-            Para cambiar o volver a crear la firma, pulsa el icono del <strong>lápiz</strong>{' '}
-            (arriba a la izquierda del recuadro).
-          </p>
-        </div>
-      </div>
-    ),
-  },
-  {
-    target: '#tour-footer-action',
-    placement: 'top',
-    skipBeacon: true,
-    skipScroll: true,
-    title: (
-      <span className="flex items-center gap-2">
-        <Send className="w-4 h-4 text-primary flex-shrink-0" />
-        Enviar el documento firmado
-      </span>
-    ),
-    content: (
-      <div className="space-y-1.5">
-        <p>
-          Cuando estés conforme con la posición de tu firma, pulsa{' '}
-          <strong>"Enviar documento firmado"</strong>.
+        <p className="text-xs leading-relaxed">
+          Elige <strong>Dibujar</strong> (traza con ratón o dedo) o{' '}
+          <strong>Subir imagen</strong> (PNG o JPG). En el lienzo puedes borrar y volver a
+          dibujar las veces que necesites.
         </p>
-        <p className="text-xs text-muted-foreground/70">
-          Se generará y descargará automáticamente el PDF con tu firma incrustada.
+        <p className="text-xs text-muted-foreground/70 leading-relaxed">
+          Cuando quedes satisfecho, pulsa <strong>&quot;Usar firma&quot;</strong> para
+          guardarla en el recuadro del documento.
         </p>
       </div>
     ),
   },
 ];
 
-/* ─── Phase → Steps map (viewer se arma en el componente según ancho de ventana) ─ */
+function createModalSteps(viewerVariant: AppTourViewerVariant): Step[] {
+  return viewerVariant === 'document-editor' ? modalStepsConvenio : modalStepsClassic;
+}
 
-const STATIC_PHASE_STEPS: Record<Exclude<TourPhase, 'none' | 'viewer'>, Step[]> = {
+/* ─── Phase → Steps map (viewer y placed se arman en el componente) ─ */
+
+const STATIC_PHASE_STEPS: Record<Exclude<TourPhase, 'none' | 'viewer' | 'placed' | 'modal'>, Step[]> = {
   welcome: welcomeSteps,
-  modal: modalSteps,
-  placed: placedSteps,
 };
 
 /* ─── AppTour component ───────────────────────────────────────────────────── */
@@ -394,6 +525,14 @@ export const AppTour = ({
   const steps = useMemo(() => {
     if (phase === 'none') return [];
     if (phase === 'viewer') return createViewerSteps(viewerLayout, viewerVariant);
+    if (phase === 'placed') {
+      return viewerVariant === 'document-editor'
+        ? createPlacedSteps(viewerVariant)
+        : createPlacedStepsClassic();
+    }
+    if (phase === 'modal') {
+      return createModalSteps(viewerVariant);
+    }
     return STATIC_PHASE_STEPS[phase];
   }, [phase, viewerLayout, viewerVariant]);
 

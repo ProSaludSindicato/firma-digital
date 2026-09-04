@@ -14,6 +14,10 @@
 
 import * as pdfjsLib from "pdfjs-dist";
 import { OPS } from "pdfjs-dist";
+import { AI_SEARCH_CONFIG } from "@/lib/autoSignConfig";
+import { CONVENIO_SIGNATURE_PAGE } from "@/lib/convenioEditorConfig";
+import { getFieldSizeLimits } from "@/lib/fieldDefaults";
+import type { ApiDocumentField } from "@/types/documentEditor";
 
 if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -49,6 +53,27 @@ export interface SignatureLocationProvider {
   findTextInPDF(options: FindTextOptions): Promise<TextLocation | null>;
 }
 
+export interface HorizontalLine {
+  y: number;
+  length: number;
+  x: number;
+}
+
+export interface AffiliateFieldFromLineParams {
+  lineX: number;
+  lineY: number;
+  pageHeight: number;
+  page: number;
+  width: number;
+  height: number;
+}
+
+export interface DetectAffiliateSignatureOptions {
+  isMobile?: boolean;
+  searchText?: string;
+  pageNumber?: number;
+}
+
 // ─── Constantes ───────────────────────────────────────────────
 
 // Offset de respaldo si no se detecta la línea gráfica.
@@ -56,10 +81,100 @@ export interface SignatureLocationProvider {
 const FALLBACK_OFFSET_NAME_TO_LINE = 18;
 const FALLBACK_OFFSET_PRESIDENTE_TO_LINE = 28;
 
-// La línea de firma del presidente está en la columna izquierda (X < ~280)
-const PRESIDENT_COLUMN_MAX_X = 280;
-// Longitud mínima para considerar una línea como "línea de firma" (no un guion corto)
-const MIN_SIGNATURE_LINE_LENGTH = 50;
+export const PRESIDENT_COLUMN_MAX_X = 280;
+export const MIN_SIGNATURE_LINE_LENGTH = 50;
+export const AFFILIATE_SIGNATURE_FALLBACK_X = 360;
+export const AFFILIATE_LINE_Y_TOLERANCE = 8;
+/** Inset from the start of the affiliate signature line so the box is not flush left. */
+export const AFFILIATE_SIGNATURE_OFFSET_X = 56;
+/** Lift the box slightly so its bottom sits just above the line. */
+export const AFFILIATE_SIGNATURE_OFFSET_Y = 3;
+
+export function pickPresidentSignatureLine(
+  candidates: HorizontalLine[],
+  anchorBaselineY: number,
+): HorizontalLine | null {
+  const validCandidates = candidates.filter((candidate) => {
+    const deltaY = candidate.y - anchorBaselineY;
+    return (
+      candidate.length >= MIN_SIGNATURE_LINE_LENGTH &&
+      candidate.x < PRESIDENT_COLUMN_MAX_X &&
+      deltaY > 5 &&
+      deltaY < 60
+    );
+  });
+
+  if (validCandidates.length === 0) {
+    return null;
+  }
+
+  validCandidates.sort(
+    (a, b) => a.y - anchorBaselineY - (b.y - anchorBaselineY),
+  );
+  return validCandidates[0];
+}
+
+export function pickAffiliateSignatureLine(
+  candidates: HorizontalLine[],
+  presidentLineY: number,
+): HorizontalLine | null {
+  const validCandidates = candidates.filter(
+    (candidate) =>
+      candidate.length >= MIN_SIGNATURE_LINE_LENGTH &&
+      candidate.x >= PRESIDENT_COLUMN_MAX_X &&
+      Math.abs(candidate.y - presidentLineY) <= AFFILIATE_LINE_Y_TOLERANCE,
+  );
+
+  if (validCandidates.length === 0) {
+    return null;
+  }
+
+  validCandidates.sort((a, b) => {
+    const deltaY =
+      Math.abs(a.y - presidentLineY) - Math.abs(b.y - presidentLineY);
+    if (deltaY !== 0) {
+      return deltaY;
+    }
+    return a.x - b.x;
+  });
+  return validCandidates[0];
+}
+
+export function resolveAffiliateSignatureLine(
+  candidates: HorizontalLine[],
+  presidentLineY: number,
+  fallbackX = AFFILIATE_SIGNATURE_FALLBACK_X,
+): HorizontalLine {
+  return (
+    pickAffiliateSignatureLine(candidates, presidentLineY) ?? {
+      x: fallbackX,
+      y: presidentLineY,
+      length: 0,
+    }
+  );
+}
+
+/**
+ * Converts a PDF signature line (bottom-left origin, line Y = bottom of the box)
+ * into an API field (top-left origin).
+ */
+export function affiliateFieldFromSignatureLine({
+  lineX,
+  lineY,
+  pageHeight,
+  page,
+  width,
+  height,
+}: AffiliateFieldFromLineParams): ApiDocumentField {
+  return {
+    type: "signature",
+    page,
+    x: lineX + AFFILIATE_SIGNATURE_OFFSET_X,
+    y: Math.max(0, pageHeight - lineY - height - AFFILIATE_SIGNATURE_OFFSET_Y),
+    width,
+    height,
+  };
+}
 
 // ─── Implementación 1: pdfjs-dist (primaria) ──────────────────
 
@@ -98,21 +213,21 @@ class PDFJSTextExtractionProvider implements SignatureLocationProvider {
         const anchorBaselineY = anchorItem.transform[5];
         this.logRelevantItems(items, pg);
 
-        // Estrategia 1: detectar la línea gráfica horizontal vectorial
-        const graphicLineY = await this.findGraphicSignatureLine(
-          page,
+        const candidates = await this.collectHorizontalLines(page);
+        const presidentLine = pickPresidentSignatureLine(
+          candidates,
           anchorBaselineY,
         );
 
-        if (graphicLineY !== null) {
+        if (presidentLine) {
           console.log(
-            `[${this.providerName}] Línea de firma GRÁFICA detectada en Y=${graphicLineY.toFixed(1)} ` +
-              `(ancla baseline Y=${anchorBaselineY.toFixed(1)}, delta=${(graphicLineY - anchorBaselineY).toFixed(1)})`,
+            `[${this.providerName}] Línea de firma GRÁFICA detectada en Y=${presidentLine.y.toFixed(1)} ` +
+              `(ancla baseline Y=${anchorBaselineY.toFixed(1)}, delta=${(presidentLine.y - anchorBaselineY).toFixed(1)})`,
           );
           return {
             page: pg,
             x: anchorItem.transform[4],
-            y: graphicLineY,
+            y: presidentLine.y,
             width: anchorItem.width ?? 0,
             height: 0,
           };
@@ -145,75 +260,99 @@ class PDFJSTextExtractionProvider implements SignatureLocationProvider {
     }
   }
 
-  /**
-   * Escanea las operaciones de dibujo de la página para encontrar una línea
-   * horizontal que esté ENCIMA del bloque de firma del presidente.
-   *
-   * Criterios:
-   *  - Es una línea horizontal (misma Y en moveTo y lineTo, tolerancia 0.5pt)
-   *  - Longitud >= MIN_SIGNATURE_LINE_LENGTH pt
-   *  - Columna izquierda (X inicio < PRESIDENT_COLUMN_MAX_X)
-   *  - Y está ENCIMA del ancla (Y > anchorBaselineY) pero no demasiado lejos (< 60pt)
-   *
-   * Si hay varias candidatas, retorna la más cercana al ancla (la más baja/close).
-   */
-  private async findGraphicSignatureLine(
+  private async collectHorizontalLines(
     page: pdfjsLib.PDFPageProxy,
-    anchorBaselineY: number,
-  ): Promise<number | null> {
+  ): Promise<HorizontalLine[]> {
     const operatorList = await page.getOperatorList();
     const { fnArray, argsArray } = operatorList;
+    const candidates: HorizontalLine[] = [];
 
-    const candidates: { y: number; length: number; x: number }[] = [];
-
-    // Iterar las operaciones del PDF buscando constructPath con líneas horizontales
     for (let i = 0; i < fnArray.length; i++) {
       if (fnArray[i] === OPS.constructPath) {
         const subOps: number[] = argsArray[i][0];
         const coords: number[] = argsArray[i][1];
-
         this.extractHorizontalLines(subOps, coords, candidates);
       }
     }
 
-    // Filtrar candidatas: encima del ancla, en la columna izquierda, largo suficiente
-    const validCandidates = candidates.filter((c) => {
-      const deltaY = c.y - anchorBaselineY;
-      return (
-        c.length >= MIN_SIGNATURE_LINE_LENGTH &&
-        c.x < PRESIDENT_COLUMN_MAX_X &&
-        deltaY > 5 &&    // al menos 5pt encima del nombre
-        deltaY < 60      // no más de 60pt encima (no es una línea del texto principal)
-      );
-    });
+    return candidates;
+  }
 
-    if (validCandidates.length > 0) {
-      console.log(
-        `[${this.providerName}] Líneas gráficas candidatas (${validCandidates.length}):`,
-        validCandidates.map(
-          (c) => `Y=${c.y.toFixed(1)}, len=${c.length.toFixed(1)}, X=${c.x.toFixed(1)}`,
-        ),
-      );
-      // La más cercana al ancla (menor delta) es la línea de firma
-      validCandidates.sort((a, b) => a.y - anchorBaselineY - (b.y - anchorBaselineY));
-      return validCandidates[0].y;
+  async detectAffiliatePlacement(
+    pdfFile: File,
+    options: DetectAffiliateSignatureOptions = {},
+  ): Promise<ApiDocumentField | null> {
+    const searchText = options.searchText ?? AI_SEARCH_CONFIG.searchText;
+    const isMobile = options.isMobile ?? false;
+    const preferredPage = options.pageNumber ?? CONVENIO_SIGNATURE_PAGE;
+    const { defaultWidth, defaultHeight } = getFieldSizeLimits(
+      "signature",
+      isMobile,
+    );
+
+    const arrayBuffer = await pdfFile.arrayBuffer();
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+    const pdfDoc = await loadingTask.promise;
+    const totalPages = pdfDoc.numPages;
+    const pagesToSearch = [
+      preferredPage,
+      ...Array.from({ length: totalPages }, (_, i) => i + 1).filter(
+        (page) => page !== preferredPage,
+      ),
+    ];
+
+    try {
+      for (const pg of pagesToSearch) {
+        if (pg < 1 || pg > totalPages) {
+          continue;
+        }
+
+        const page = await pdfDoc.getPage(pg);
+        const textContent = await page.getTextContent();
+        const items = textContent.items.filter(
+          (item): item is pdfjsLib.TextItem => "str" in item,
+        );
+
+        const nameItem = this.findText(items, searchText);
+        const presidenteItem = this.findText(items, "PRESIDENTE");
+        const anchorItem = nameItem ?? presidenteItem;
+        if (!anchorItem) {
+          continue;
+        }
+
+        const anchorBaselineY = anchorItem.transform[5];
+        const candidates = await this.collectHorizontalLines(page);
+        const presidentLine = pickPresidentSignatureLine(
+          candidates,
+          anchorBaselineY,
+        );
+        const presidentLineY = presidentLine
+          ? presidentLine.y
+          : anchorBaselineY +
+            (nameItem
+              ? FALLBACK_OFFSET_NAME_TO_LINE
+              : FALLBACK_OFFSET_PRESIDENTE_TO_LINE);
+
+        const affiliateLine = resolveAffiliateSignatureLine(
+          candidates,
+          presidentLineY,
+        );
+        const viewport = page.getViewport({ scale: 1 });
+
+        return affiliateFieldFromSignatureLine({
+          lineX: affiliateLine.x,
+          lineY: affiliateLine.y,
+          pageHeight: viewport.height,
+          page: pg,
+          width: defaultWidth,
+          height: defaultHeight,
+        });
+      }
+
+      return null;
+    } finally {
+      await pdfDoc.destroy();
     }
-
-    // Log todas las líneas horizontales encontradas para diagnóstico
-    if (candidates.length > 0) {
-      console.log(
-        `[${this.providerName}] Líneas gráficas encontradas pero ninguna válida. Todas:`,
-        candidates
-          .filter((c) => c.length >= 30)
-          .map(
-            (c) =>
-              `Y=${c.y.toFixed(1)}, len=${c.length.toFixed(1)}, X=${c.x.toFixed(1)}, ` +
-              `deltaFromAnchor=${(c.y - anchorBaselineY).toFixed(1)}`,
-          ),
-      );
-    }
-
-    return null;
   }
 
   /**
@@ -230,7 +369,7 @@ class PDFJSTextExtractionProvider implements SignatureLocationProvider {
   private extractHorizontalLines(
     subOps: number[],
     coords: number[],
-    candidates: { y: number; length: number; x: number }[],
+    candidates: HorizontalLine[],
   ): void {
     let coordIdx = 0;
     let lastX = 0;
@@ -387,4 +526,12 @@ export function calculateSignaturePosition(
     y: Math.max(0, textLocation.y + offsetY),
     page: textLocation.page,
   };
+}
+
+export async function detectAffiliateSignaturePlacement(
+  pdfFile: File,
+  options: DetectAffiliateSignatureOptions = {},
+): Promise<ApiDocumentField | null> {
+  const provider = new PDFJSTextExtractionProvider();
+  return provider.detectAffiliatePlacement(pdfFile, options);
 }
