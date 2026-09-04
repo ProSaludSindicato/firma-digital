@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useAuditTrail } from "@/hooks/useAuditTrail";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
@@ -43,13 +44,16 @@ import {
 } from "@/lib/prosaludConvenioApi";
 import { verifyAffiliateSignatureRegistered } from "@/lib/verifyAffiliateSignatureRegistered";
 import {
-  CONVENIO_SUCCESS_VIEW_DELAY_MS,
-  preventConfirmDialogAutoClose,
+  CONVENIO_SUBMIT_PROGRESS_TICK_MS,
+  confirmSuccessTransitionDelays,
+  convenioSubmitPhaseCopy,
+  convenioSubmitPhaseStart,
+  nextSubmitProgress,
   shouldIgnoreConfirmDialogClose,
+  type ConvenioSubmitPhase,
 } from "@/lib/convenioConfirmDialog";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -396,6 +400,8 @@ const SignConvenioByToken = () => {
   const pdfViewerRef = useRef<DocumentEditorViewerRef>(null);
   const signedPdfForDownloadRef = useRef<Blob | null>(null);
   const successViewTimerRef = useRef<number | null>(null);
+  const dialogCloseTimerRef = useRef<number | null>(null);
+  const submitInFlightRef = useRef(false);
   const isLandscapeMobile = useIsLandscapeMobile();
   const isMobile = useIsMobile();
 
@@ -419,6 +425,8 @@ const SignConvenioByToken = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitPhase, setSubmitPhase] = useState<ConvenioSubmitPhase>("idle");
+  const [submitProgress, setSubmitProgress] = useState(0);
   const [isSent, setIsSent] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -591,13 +599,34 @@ const SignConvenioByToken = () => {
 
   useEffect(() => {
     return () => {
+      if (dialogCloseTimerRef.current !== null) {
+        window.clearTimeout(dialogCloseTimerRef.current);
+      }
       if (successViewTimerRef.current !== null) {
         window.clearTimeout(successViewTimerRef.current);
       }
     };
   }, []);
 
+  useEffect(() => {
+    if (!isSubmitting || submitPhase === "idle") {
+      return;
+    }
+
+    setSubmitProgress((current) => Math.max(current, convenioSubmitPhaseStart(submitPhase)));
+    const timer = window.setInterval(() => {
+      setSubmitProgress((current) => nextSubmitProgress(current, submitPhase));
+    }, CONVENIO_SUBMIT_PROGRESS_TICK_MS);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [isSubmitting, submitPhase]);
+
   const handleFinishAndSend = useCallback(() => {
+    if (submitInFlightRef.current || isSent) {
+      return;
+    }
     if (!signature) {
       if (signatureField) {
         pdfViewerRef.current?.openSignatureModal(signatureField.id);
@@ -607,7 +636,7 @@ const SignConvenioByToken = () => {
       return;
     }
     setShowConfirm(true);
-  }, [signature, signatureField]);
+  }, [isSent, signature, signatureField]);
 
   useKeyboardShortcuts(
     [
@@ -634,16 +663,30 @@ const SignConvenioByToken = () => {
       signedPdfForDownloadRef.current = signedBlob;
     }
 
-    setShowConfirm(false);
-    setTermsAccepted(false);
+    setSubmitPhase("finishing");
+    setSubmitProgress(100);
 
+    if (dialogCloseTimerRef.current !== null) {
+      window.clearTimeout(dialogCloseTimerRef.current);
+    }
     if (successViewTimerRef.current !== null) {
       window.clearTimeout(successViewTimerRef.current);
     }
 
+    const { closeDialogAfterMs, showSuccessAfterMs } = confirmSuccessTransitionDelays();
     const blobForDownload = signedBlob;
+
+    dialogCloseTimerRef.current = window.setTimeout(() => {
+      dialogCloseTimerRef.current = null;
+      setShowConfirm(false);
+      setTermsAccepted(false);
+    }, closeDialogAfterMs);
+
     successViewTimerRef.current = window.setTimeout(() => {
       successViewTimerRef.current = null;
+      setIsSubmitting(false);
+      setSubmitPhase("idle");
+      setSubmitProgress(0);
       setFirmadoAfiliadoAt(firmadoAt ?? new Date().toISOString());
       setIsSent(true);
       setCanRateSatisfaction(true);
@@ -672,17 +715,20 @@ const SignConvenioByToken = () => {
           toast.error("Error al descargar", { description: errorMessage });
         }
       }, 500);
-    }, CONVENIO_SUCCESS_VIEW_DELAY_MS);
+    }, showSuccessAfterMs);
   };
 
   const handleConfirmSubmit = async () => {
-    if (!token || !canSign) {
+    if (!token || !canSign || submitInFlightRef.current) {
       return;
     }
 
     let signedBlob: Blob | null = null;
     let markedReceived = false;
+    submitInFlightRef.current = true;
     setIsSubmitting(true);
+    setSubmitPhase("preparing");
+    setSubmitProgress(convenioSubmitPhaseStart("preparing"));
     try {
       if (!pdfFile) {
         throw new Error("No hay un documento cargado.");
@@ -697,12 +743,14 @@ const SignConvenioByToken = () => {
 
       const auditLog = getAuditLog();
 
+      setSubmitPhase("exporting");
       signedBlob = await exportDocumentToPdf(pdfFile, editor.fields);
       const fd = new FormData();
       fd.append("pdf", signedBlob, downloadFilename);
       fd.append("audit_log", JSON.stringify(auditLog));
       fd.append("terms_accepted", "1");
 
+      setSubmitPhase("sending");
       const res = await fetch(convenioFirmaSubmitUrl(token), {
         method: "POST",
         body: fd,
@@ -728,6 +776,7 @@ const SignConvenioByToken = () => {
       markedReceived = true;
       markAffiliateSignatureReceived(signedBlob);
     } catch (e) {
+      setSubmitPhase("confirming");
       const verification = await verifyAffiliateSignatureRegistered(token);
       if (verification.registered) {
         markedReceived = true;
@@ -742,7 +791,10 @@ const SignConvenioByToken = () => {
       toast.error(msg);
     } finally {
       if (!markedReceived) {
+        submitInFlightRef.current = false;
         setIsSubmitting(false);
+        setSubmitPhase("idle");
+        setSubmitProgress(0);
       }
     }
   };
@@ -1064,12 +1116,39 @@ const SignConvenioByToken = () => {
         setShowConfirm(open);
         if (!open) {
           setTermsAccepted(false);
+          setSubmitPhase("idle");
+          setSubmitProgress(0);
         }
       }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Enviar convenio firmado</AlertDialogTitle>
+            <AlertDialogTitle>
+              {isSubmitting ? "Enviando convenio" : "Enviar convenio firmado"}
+            </AlertDialogTitle>
             <AlertDialogDescription asChild>
+              {isSubmitting ? (
+                <div className="space-y-3 text-left">
+                  <p className="text-sm text-muted-foreground">
+                    Estamos armando el PDF y enviándolo a ProSalud. No cierres esta ventana.
+                  </p>
+                  <div className="space-y-2 rounded-lg bg-muted/30 p-3">
+                    <Progress
+                      value={submitProgress}
+                      className="h-2.5 border border-border/40 bg-white"
+                      aria-label="Progreso del envío del convenio"
+                    />
+                    <p
+                      className="text-sm font-medium leading-snug text-foreground"
+                      aria-live="polite"
+                    >
+                      {convenioSubmitPhaseCopy(submitPhase)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {submitProgress}% completado
+                    </p>
+                  </div>
+                </div>
+              ) : (
               <div className="text-left space-y-3 text-sm text-muted-foreground">
                 <p>
                   Al confirmar, enviarás tu convenio firmado a ProSalud. Esta acción no se puede deshacer desde aquí.
@@ -1113,31 +1192,25 @@ const SignConvenioByToken = () => {
                   </Label>
                 </div>
               </div>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {isSubmitting ? null : (
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isSubmitting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={isSubmitting || !termsAccepted}
-              onClick={(event) => {
-                preventConfirmDialogAutoClose(event);
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <Button
+              type="button"
+              disabled={!termsAccepted}
+              onClick={() => {
                 void handleConfirmSubmit();
               }}
               className="gap-2"
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Enviando…
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4" />
-                  Confirmar envío
-                </>
-              )}
-            </AlertDialogAction>
+              <Send className="h-4 w-4" />
+              Confirmar envío
+            </Button>
           </AlertDialogFooter>
+          )}
         </AlertDialogContent>
       </AlertDialog>
     </div>
