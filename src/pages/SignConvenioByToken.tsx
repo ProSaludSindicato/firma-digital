@@ -36,7 +36,6 @@ import { apiFieldsToDocumentFields } from "@/lib/fieldDefaults";
 import { exportDocumentToPdf } from "@/lib/pdfFieldExporter";
 import {
   fileFromPdfBytes,
-  isConstrainedSigningDevice,
   isPdfMagicBytes,
 } from "@/lib/convenioPdfLoad";
 import { detectAffiliateSignaturePlacement } from "@/lib/signatureLocationService";
@@ -583,10 +582,6 @@ const SignConvenioByToken = () => {
       setFile(fileFromPdfBytes(pdfBytes));
       setPdfLoading(false);
       setMetaLoading(false);
-
-      if (isConstrainedSigningDevice()) {
-        return;
-      }
 
       const detectionId = ++signatureDetectionIdRef.current;
       try {
