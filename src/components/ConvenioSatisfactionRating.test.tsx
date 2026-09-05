@@ -28,6 +28,17 @@ describe("ConvenioSatisfactionRating", () => {
     });
   });
 
+  it("does not preview a score when a star receives focus on mount", () => {
+    render(<ConvenioSatisfactionRating token="abc" canRate />);
+
+    const firstStar = screen.getByRole("radio", { name: /1 de 5/i });
+    firstStar.focus();
+
+    expect(screen.getByText("1 Muy mala · 5 Excelente")).toBeInTheDocument();
+    expect(screen.queryByText("1 · Muy mala")).not.toBeInTheDocument();
+    expect(firstStar).toHaveAttribute("aria-checked", "false");
+  });
+
   it("shows a hover preview without persisting a selection", () => {
     render(<ConvenioSatisfactionRating token="abc" canRate />);
 
