@@ -50,9 +50,8 @@ export function ConvenioSatisfactionRatingModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* Botón X oculto a propósito: se cierra con click fuera del modal para fomentar la calificación */}
       <DialogContent
-        className="max-w-[calc(100%-2rem)] border-0 bg-transparent p-0 shadow-none sm:max-w-md [&>button]:hidden"
+        className="max-w-[calc(100%-2rem)] border-0 bg-transparent p-0 shadow-none sm:max-w-md [&>button]:right-3 [&>button]:top-3 [&>button]:rounded-full [&>button]:border [&>button]:border-border/70 [&>button]:bg-background/95 [&>button]:shadow-sm"
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <DialogTitle className="sr-only">
