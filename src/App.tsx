@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useAppViewportLock } from "@/hooks/useAppViewportLock";
 import { isPublicToolsEnabled } from "@/lib/appConfig";
 import Index from "./pages/Index";
 import AutoSign from "./pages/AutoSign";
@@ -23,6 +24,7 @@ const queryClient = new QueryClient({
 });
 
 const App = () => {
+  useAppViewportLock();
   const publicToolsEnabled = isPublicToolsEnabled();
 
   return (

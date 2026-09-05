@@ -332,7 +332,7 @@ const AutoSign = () => {
   const hasContent = isBatch ? batchFiles.length > 0 || !!individual.signatureImage : !!individual.pdfFile || !!individual.signatureImage;
 
   return (
-    <div className="h-dvh bg-background flex flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
       <Header
         showFinishButton={isBatch ? canConfirm && !batch.isProcessing && !batch.isAllDone : !!individual.canProcess}
         onFinish={isBatch ? handleBatchProcess : handleProcessPDF}

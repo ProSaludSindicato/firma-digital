@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useImperativeHandle, forwardRef, useRef } from "react";
-import * as pdfjsLib from "pdfjs-dist";
+import { pdfjsLib } from "@/lib/pdfjsSetup";
 import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Loader2, PenLine, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PDFThumbnails } from "./PDFThumbnails";
@@ -10,16 +10,12 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AuditEventType } from "@/hooks/useAuditTrail";
+import { scrollChildIntoContainer } from "@/lib/scrollChildIntoContainer";
 import {
   getResponsiveViewerZoom,
   stepViewerZoom,
   type SignaturePageScrollBlock,
 } from "@/lib/pdfViewerConfig";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.mjs",
-  import.meta.url
-).toString();
 
 const SIGNATURE_PAGE = 2;
 
@@ -105,11 +101,12 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
       options?: { behavior?: ScrollBehavior; block?: ScrollLogicalPosition },
     ) => {
       const el = pageAnchorRefs.current[page - 1];
-      if (!el) return;
+      const root = mainScrollRef.current;
+      if (!el || !root) return;
       const behavior = options?.behavior ?? "smooth";
       const block =
         options?.block ?? (page === SIGNATURE_PAGE ? signaturePageScrollBlock : "start");
-      el.scrollIntoView({ behavior, block });
+      scrollChildIntoContainer(root, el, { behavior, block });
     },
     [signaturePageScrollBlock],
   );

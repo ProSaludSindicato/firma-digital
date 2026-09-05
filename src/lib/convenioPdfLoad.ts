@@ -1,12 +1,4 @@
 const PDF_MAGIC = "%PDF";
-const LOW_MEMORY_GB = 2;
-
-export type SigningDeviceHints = {
-  deviceMemory?: number;
-  saveData?: boolean;
-  hardwareConcurrency?: number;
-  viewportWidth?: number;
-};
 
 export function isPdfMagicBytes(data: ArrayBuffer | Uint8Array): boolean {
   if (data.byteLength < PDF_MAGIC.length) {
@@ -33,41 +25,4 @@ export function fileFromPdfBytes(
   return new File([copyPdfBytes(data)], filename, {
     type: "application/pdf",
   });
-}
-
-export function readSigningDeviceHints(): SigningDeviceHints {
-  if (typeof navigator === "undefined") {
-    return {};
-  }
-
-  const nav = navigator as Navigator & {
-    deviceMemory?: number;
-    connection?: { saveData?: boolean };
-  };
-
-  return {
-    deviceMemory:
-      typeof nav.deviceMemory === "number" && Number.isFinite(nav.deviceMemory)
-        ? nav.deviceMemory
-        : undefined,
-    saveData: nav.connection?.saveData === true,
-    hardwareConcurrency:
-      typeof navigator.hardwareConcurrency === "number"
-        ? navigator.hardwareConcurrency
-        : undefined,
-    viewportWidth: typeof window !== "undefined" ? window.innerWidth : undefined,
-  };
-}
-
-export function isConstrainedSigningDevice(
-  hints: SigningDeviceHints = readSigningDeviceHints(),
-): boolean {
-  if (
-    typeof hints.deviceMemory === "number" &&
-    hints.deviceMemory <= LOW_MEMORY_GB
-  ) {
-    return true;
-  }
-
-  return hints.saveData === true;
 }

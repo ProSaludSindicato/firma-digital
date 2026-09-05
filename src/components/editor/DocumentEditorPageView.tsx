@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import * as pdfjsLib from "pdfjs-dist";
+import { pdfjsLib } from "@/lib/pdfjsSetup";
 import { FieldOverlay } from "@/components/editor/FieldOverlay";
 import { FieldRenderer } from "@/components/editor/FieldRenderer";
 import { useIsMobile } from "@/hooks/use-mobile";

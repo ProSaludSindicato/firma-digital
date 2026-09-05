@@ -1,4 +1,4 @@
-import * as pdfjsLib from "pdfjs-dist";
+import { pdfjsLib } from "@/lib/pdfjsSetup";
 import { copyPdfBytes } from "@/lib/convenioPdfLoad";
 
 export type LoadPdfjsDocumentOptions = {
@@ -36,7 +36,7 @@ export async function loadPdfjsDocumentFromBytes(
     workerHost.pdfjsWorkerDisabled = true;
 
     try {
-      await import("pdfjs-dist/build/pdf.worker.mjs");
+      await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
       return await getDocumentFromBytes(data);
     } finally {
       if (previousDisabled === undefined) {

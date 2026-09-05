@@ -131,7 +131,7 @@ const DocumentEditorPage = () => {
   }, [editor.file, editor.fields, editor.incompleteRequiredFields]);
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-background">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
       <Header
         variant={editor.file ? "document" : "default"}
         showDocumentIcon={Boolean(editor.file)}

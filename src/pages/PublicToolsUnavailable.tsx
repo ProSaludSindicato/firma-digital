@@ -4,7 +4,7 @@ import { appConfig } from "@/lib/appConfig";
 
 const PublicToolsUnavailable = () => {
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-background">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
       <Header
         showFinishButton={false}
         isProcessing={false}

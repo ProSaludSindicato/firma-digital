@@ -451,9 +451,7 @@ const DocumentByToken = () => {
   }, [editor.file]);
 
   const resolvedTitle = headerTitle ?? appConfig.documentHeaderTitle;
-  const rootClassName = isEmbedMode
-    ? "flex h-full flex-col overflow-hidden bg-background"
-    : "flex h-dvh flex-col overflow-hidden bg-background";
+  const rootClassName = "flex h-full min-h-0 flex-col overflow-hidden bg-background";
 
   return (
     <div className={rootClassName}>

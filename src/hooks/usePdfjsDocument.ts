@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import * as pdfjsLib from "pdfjs-dist";
+import { pdfjsLib } from "@/lib/pdfjsSetup";
 import { loadPdfjsDocumentFromBytes } from "@/lib/loadPdfjsDocument";
 import { reportClientError } from "@/lib/reportClientError";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.mjs",
-  import.meta.url,
-).toString();
 
 export function usePdfjsDocument(file: File | null) {
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
