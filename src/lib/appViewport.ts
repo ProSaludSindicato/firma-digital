@@ -3,7 +3,20 @@ export type AppViewportSize = {
   offsetTop: number;
 };
 
-type VisualViewportLike = Pick<VisualViewport, "height" | "offsetTop"> | null | undefined;
+type VisualViewportLike =
+  | (Pick<VisualViewport, "height" | "offsetTop"> & Partial<Pick<VisualViewport, "scale">>)
+  | null
+  | undefined;
+
+const PINCH_ZOOM_SCALE_THRESHOLD = 1.01;
+
+/**
+ * El pinch-zoom nativo reduce `visualViewport.height` sin cambiar el layout.
+ * Actualizar `--app-height` en ese estado comprime header/footer y provoca jitter.
+ */
+export function isPinchZoomed(viewport: VisualViewportLike): boolean {
+  return (viewport?.scale ?? 1) > PINCH_ZOOM_SCALE_THRESHOLD;
+}
 
 /**
  * Mide el área realmente visible. En iOS Safari, `100dvh` / `window.innerHeight`

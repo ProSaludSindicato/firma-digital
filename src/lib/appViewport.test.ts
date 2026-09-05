@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   applyAppViewportCssVars,
+  isPinchZoomed,
   measureAppViewport,
   resetDocumentScroll,
 } from "@/lib/appViewport";
@@ -24,6 +25,20 @@ describe("measureAppViewport", () => {
       height: 1,
       offsetTop: 0,
     });
+  });
+});
+
+describe("isPinchZoomed", () => {
+  it("treats a missing viewport or scale of 1 as not zoomed", () => {
+    expect(isPinchZoomed(undefined)).toBe(false);
+    expect(isPinchZoomed({ height: 640, offsetTop: 0 })).toBe(false);
+    expect(isPinchZoomed({ height: 640, offsetTop: 0, scale: 1 })).toBe(false);
+    expect(isPinchZoomed({ height: 640, offsetTop: 0, scale: 1.01 })).toBe(false);
+  });
+
+  it("detects an active pinch-zoom so layout updates can be skipped", () => {
+    expect(isPinchZoomed({ height: 320, offsetTop: 40, scale: 1.02 })).toBe(true);
+    expect(isPinchZoomed({ height: 280, offsetTop: 80, scale: 2 })).toBe(true);
   });
 });
 
