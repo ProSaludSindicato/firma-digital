@@ -22,7 +22,7 @@ const SIGNATURE_PAD_MIN_WIDTH = 2.5;
 const SIGNATURE_PAD_MAX_WIDTH = 5;
 
 const DESKTOP_PAD_HEIGHT =
-  "h-[clamp(176px,calc(100dvh-20rem),300px)] md:h-[clamp(200px,calc(100dvh-20rem),376px)] lg:h-[clamp(220px,calc(100dvh-20rem),432px)]";
+  "h-[clamp(176px,calc(var(--app-height,100dvh)-20rem),300px)] md:h-[clamp(200px,calc(var(--app-height,100dvh)-20rem),376px)] lg:h-[clamp(220px,calc(var(--app-height,100dvh)-20rem),432px)]";
 
 function SignatureImageUploadNotice({ className }: { className?: string }) {
   return (
@@ -464,7 +464,7 @@ export const SignatureModal = ({
     return (
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent
-          className="m-0 flex h-[100dvh] w-screen max-h-none max-w-none !max-w-none flex-col gap-0 rounded-none border-none p-0 [&>button]:hidden"
+          className="m-0 flex h-[var(--app-height,100dvh)] w-screen max-h-none max-w-none !max-w-none flex-col gap-0 rounded-none border-none p-0 [&>button]:hidden"
           aria-describedby={undefined}
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
@@ -583,7 +583,7 @@ export const SignatureModal = ({
     return (
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent
-          className="m-0 flex h-[100dvh] w-screen max-h-none max-w-none !max-w-none flex-col gap-0 rounded-none border-none p-0 [&>button]:hidden"
+          className="m-0 flex h-[var(--app-height,100dvh)] w-screen max-h-none max-w-none !max-w-none flex-col gap-0 rounded-none border-none p-0 [&>button]:hidden"
           aria-describedby={undefined}
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}

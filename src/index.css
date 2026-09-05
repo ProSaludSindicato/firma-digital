@@ -157,8 +157,25 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
   body {
     @apply bg-background text-foreground;
+  }
+
+  #root {
+    position: fixed;
+    top: var(--app-offset-top, 0px);
+    left: 0;
+    width: 100%;
+    height: var(--app-height, 100dvh);
+    max-height: var(--app-height, 100dvh);
+    overflow: hidden;
   }
 }
 

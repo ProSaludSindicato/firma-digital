@@ -886,7 +886,7 @@ const SignConvenioByToken = () => {
   const resolvedViewerHeaderTitle = viewerHeaderTitle ?? appConfig.headerTitle;
 
   return (
-    <div className="h-dvh bg-background flex flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
       <AppTour
         phase={tourCurrentPhase}
         run={tour.run}

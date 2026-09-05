@@ -22,6 +22,7 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { usePdfjsDocument } from "@/hooks/usePdfjsDocument";
 import { toast } from "@/hooks/use-toast";
 import { hasSignatureField } from "@/lib/fieldValidation";
+import { scrollChildIntoContainer } from "@/lib/scrollChildIntoContainer";
 import {
   getResponsiveViewerZoom,
   pdfViewerZoom,
@@ -150,13 +151,14 @@ export const DocumentEditorViewer = forwardRef<
       options?: { behavior?: ScrollBehavior; block?: ScrollLogicalPosition },
     ) => {
       const el = pageAnchorRefs.current[page - 1];
-      if (!el) return;
+      const root = mainScrollRef.current;
+      if (!el || !root) return;
       const behavior = options?.behavior ?? "smooth";
       const isConstrainedPage = allowedPages?.includes(page);
       const block =
         options?.block ??
         (isConstrainedPage ? signaturePageScrollBlock : "start");
-      el.scrollIntoView({ behavior, block });
+      scrollChildIntoContainer(root, el, { behavior, block });
     },
     [allowedPages, signaturePageScrollBlock],
   );

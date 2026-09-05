@@ -4,8 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const loadPdfjsDocumentFromBytes = vi.fn();
 const reportClientError = vi.fn();
 
-vi.mock("pdfjs-dist", () => ({
-  GlobalWorkerOptions: { workerSrc: "" },
+vi.mock("@/lib/pdfjsSetup", () => ({
+  pdfjsLib: {
+    GlobalWorkerOptions: { workerSrc: "" },
+  },
 }));
 
 vi.mock("@/lib/loadPdfjsDocument", () => ({

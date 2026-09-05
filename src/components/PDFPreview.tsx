@@ -1,16 +1,11 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import * as pdfjsLib from "pdfjs-dist";
+import { pdfjsLib } from "@/lib/pdfjsSetup";
 import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PDFThumbnails } from "@/components/PDFThumbnails";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getResponsiveViewerZoom, stepViewerZoom } from "@/lib/pdfViewerConfig";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.mjs",
-  import.meta.url
-).toString();
 
 interface PDFPreviewProps {
   pdfUrl: string;

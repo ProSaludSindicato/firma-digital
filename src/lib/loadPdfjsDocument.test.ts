@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getDocumentMock = vi.fn();
 
-vi.mock("pdfjs-dist", () => ({
-  getDocument: (params: { data: ArrayBuffer }) => getDocumentMock(params),
-  GlobalWorkerOptions: { workerSrc: "worker.js" },
+vi.mock("@/lib/pdfjsSetup", () => ({
+  pdfjsLib: {
+    getDocument: (params: { data: ArrayBuffer }) => getDocumentMock(params),
+    GlobalWorkerOptions: { workerSrc: "worker.js" },
+  },
 }));
 
-vi.mock("pdfjs-dist/build/pdf.worker.mjs", () => ({}));
+vi.mock("pdfjs-dist/legacy/build/pdf.worker.mjs", () => ({}));
 
 describe("loadPdfjsDocumentFromBytes", () => {
   beforeEach(() => {

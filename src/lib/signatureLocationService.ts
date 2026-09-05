@@ -12,19 +12,11 @@
  * con este proveedor, la operación debe fallar para ese documento.
  */
 
-import * as pdfjsLib from "pdfjs-dist";
-import { OPS } from "pdfjs-dist";
+import { pdfjsLib, OPS } from "@/lib/pdfjsSetup";
 import { AI_SEARCH_CONFIG } from "@/lib/autoSignConfig";
 import { CONVENIO_SIGNATURE_PAGE } from "@/lib/convenioEditorConfig";
 import { getFieldSizeLimits } from "@/lib/fieldDefaults";
 import type { ApiDocumentField } from "@/types/documentEditor";
-
-if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-    "pdfjs-dist/build/pdf.worker.mjs",
-    import.meta.url,
-  ).toString();
-}
 
 // ─── Interfaces ───────────────────────────────────────────────
 

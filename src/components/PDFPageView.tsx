@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback, memo } from "react";
-import * as pdfjsLib from "pdfjs-dist";
+import { pdfjsLib } from "@/lib/pdfjsSetup";
 import { Maximize2, Pencil } from "lucide-react";
 import { SignaturePlaceholder } from "./SignaturePlaceholder";
 
