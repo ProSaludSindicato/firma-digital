@@ -146,11 +146,6 @@ export function ConvenioSatisfactionRating({
                 aria-label={`${score} de 5: ${SATISFACTION_SCORE_LABELS[score]}`}
                 disabled={isSubmitting}
                 onMouseEnter={() => setHovered(score)}
-                onFocus={(event) => {
-                  if (event.currentTarget.matches(":focus-visible")) {
-                    setHovered(score);
-                  }
-                }}
                 onClick={() => void handleSelect(score)}
                 className={cn(
                   "flex h-12 w-12 items-center justify-center rounded-full transition-colors sm:h-[3.25rem] sm:w-[3.25rem]",
