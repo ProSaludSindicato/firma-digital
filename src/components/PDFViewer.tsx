@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useImperativeHandle, forwardRef, useRef } from "react";
+import { useEffect, useState, useCallback, useImperativeHandle, forwardRef, useLayoutEffect, useRef } from "react";
 import { pdfjsLib } from "@/lib/pdfjsSetup";
 import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Loader2, PenLine, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,13 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AuditEventType } from "@/hooks/useAuditTrail";
+import {
+  consumePinchZoomHint,
+  PINCH_ZOOM_HINT_DESCRIPTION,
+  PINCH_ZOOM_HINT_TITLE,
+} from "@/lib/pinchZoomHint";
 import { scrollChildIntoContainer } from "@/lib/scrollChildIntoContainer";
+import { preserveScrollCenterOnScaleChange } from "@/lib/viewerScroll";
 import {
   getResponsiveViewerZoom,
   stepViewerZoom,
@@ -69,6 +75,7 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
 }, ref) => {
   const mainScrollRef = useRef<HTMLDivElement>(null);
   const pageAnchorRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const zoomRatioRef = useRef(1);
 
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -337,11 +344,56 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
   }), [handleActivatePlacementMode]);
 
   const handleZoomIn = useCallback(() => {
-    setScale((s) => stepViewerZoom(s, 1));
+    setScale((s) => {
+      const next = stepViewerZoom(s, 1);
+      zoomRatioRef.current = next / s;
+      return next;
+    });
   }, []);
 
   const handleZoomOut = useCallback(() => {
-    setScale((s) => stepViewerZoom(s, -1));
+    setScale((s) => {
+      const next = stepViewerZoom(s, -1);
+      zoomRatioRef.current = next / s;
+      return next;
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    const ratio = zoomRatioRef.current;
+    if (ratio === 1) {
+      return;
+    }
+    zoomRatioRef.current = 1;
+    const container = mainScrollRef.current;
+    if (!container) {
+      return;
+    }
+    const next = preserveScrollCenterOnScaleChange(container, ratio);
+    container.scrollLeft = next.scrollLeft;
+    container.scrollTop = next.scrollTop;
+  }, [scale]);
+
+  useEffect(() => {
+    const container = mainScrollRef.current;
+    if (!container) {
+      return;
+    }
+
+    const handleTouchStart = (event: TouchEvent) => {
+      if (event.touches.length < 2 || !consumePinchZoomHint()) {
+        return;
+      }
+      toast({
+        title: PINCH_ZOOM_HINT_TITLE,
+        description: PINCH_ZOOM_HINT_DESCRIPTION,
+      });
+    };
+
+    container.addEventListener("touchstart", handleTouchStart, { passive: true });
+    return () => {
+      container.removeEventListener("touchstart", handleTouchStart);
+    };
   }, []);
 
   const handleFirstPage = useCallback(() => {
@@ -564,7 +616,7 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
               </div>
             </div>
           ) : continuousScroll && totalPages > 0 ? (
-            <div className="flex flex-col items-center gap-4 md:gap-6 w-full min-h-0 py-2 pb-10">
+            <div className="flex w-max min-w-full min-h-0 flex-col items-center gap-4 py-2 pb-10 md:gap-6">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                 <div
                   key={page}
@@ -606,7 +658,7 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
               ))}
             </div>
           ) : (
-            <div className="flex flex-1 items-start justify-center w-full min-h-0">
+            <div className="flex min-h-0 w-max min-w-full flex-1 items-start justify-center">
               <PDFPageView
                 pdfDoc={pdfDoc}
                 pageNumber={currentPage}

@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => {
   };
 
   return {
+    base: "/",
     server: {
       host: "::",
       port: 8080,
@@ -28,6 +29,15 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       target: "esnext",
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes("node_modules/pdfjs-dist")) {
+              return "pdfjs";
+            }
+          },
+        },
+      },
     },
     optimizeDeps: {
       esbuildOptions: {

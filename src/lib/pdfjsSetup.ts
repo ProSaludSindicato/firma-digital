@@ -1,10 +1,17 @@
 import { installPromiseWithResolversPolyfill } from "@/lib/promiseWithResolversPolyfill";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
-import pdfjsWorkerSrc from "pdfjs-dist/legacy/build/pdf.worker.mjs?url";
+import { WorkerMessageHandler } from "pdfjs-dist/legacy/build/pdf.worker.mjs";
 
 installPromiseWithResolversPolyfill();
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerSrc;
+type PdfjsWorkerHost = typeof globalThis & {
+  pdfjsWorker?: { WorkerMessageHandler: typeof WorkerMessageHandler };
+};
 
-export { pdfjsLib, pdfjsWorkerSrc };
+const workerHost = globalThis as PdfjsWorkerHost;
+workerHost.pdfjsWorker = { WorkerMessageHandler };
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+
+export { pdfjsLib };
 export { OPS } from "pdfjs-dist/legacy/build/pdf.mjs";

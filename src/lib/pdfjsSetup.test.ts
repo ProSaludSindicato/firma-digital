@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { pdfjsWorkerSrc } from "@/lib/pdfjsSetup";
 
 describe("pdfjsSetup", () => {
-  it("resolves the worker to a Vite asset URL, not a path under src/lib", () => {
-    expect(pdfjsWorkerSrc).toContain("pdf.worker");
-    expect(pdfjsWorkerSrc).not.toContain("/src/lib/pdfjs-dist/");
+  it("registers WorkerMessageHandler for main-thread PDF parsing without fetching worker assets", async () => {
+    const { pdfjsLib } = await import("@/lib/pdfjsSetup");
+    const host = globalThis as typeof globalThis & {
+      pdfjsWorker?: { WorkerMessageHandler?: unknown };
+    };
+
+    expect(host.pdfjsWorker?.WorkerMessageHandler).toBeDefined();
+    expect(pdfjsLib.GlobalWorkerOptions.workerSrc).toBe("");
   });
 });

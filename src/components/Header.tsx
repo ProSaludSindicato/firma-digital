@@ -1,9 +1,18 @@
 import { Send } from "lucide-react";
 import type { ReactNode } from "react";
 import { FieldProgressChips } from "@/components/editor/FieldProgressChips";
+import { ViewerZoomControl } from "@/components/editor/ViewerZoomControl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { FieldProgressCounts } from "@/lib/fieldValidation";
+
+export type HeaderViewerZoom = {
+  scale: number;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  minScale?: number;
+  maxScale?: number;
+};
 
 interface HeaderProps {
   showFinishButton?: boolean;
@@ -29,6 +38,8 @@ interface HeaderProps {
   showDocumentIcon?: boolean;
   /** Variante de layout para el editor de documentos. */
   variant?: "default" | "document";
+  /** Controles de zoom en la fila del título (flujo convenio / documento). */
+  viewerZoom?: HeaderViewerZoom;
 }
 
 export const Header = ({
@@ -47,6 +58,7 @@ export const Header = ({
   finishIcon,
   showDocumentIcon = false,
   variant = "default",
+  viewerZoom,
 }: HeaderProps) => {
   const hasBrandRow = Boolean(brandLogoSrc);
   const isDocumentVariant = variant === "document" && !hasBrandRow;
@@ -119,35 +131,48 @@ export const Header = ({
 
             <div
               className={cn(
-                "flex min-w-0 flex-col gap-1",
+                "flex min-w-0 items-start gap-2",
                 showDocumentIcon ? "col-start-2" : "col-start-1",
                 "row-start-1",
               )}
             >
-              <h1
-                className="truncate text-left font-serif text-sm font-semibold leading-tight text-foreground sm:text-base md:text-lg"
-                title={title}
-              >
-                {title}
-              </h1>
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <h1
+                  className="truncate text-left font-serif text-sm font-semibold leading-tight text-foreground sm:text-base md:text-lg"
+                  title={title}
+                >
+                  {title}
+                </h1>
 
-              {hasMetaRow ? (
-                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 sm:gap-x-0">
-                  {subtitle ? (
-                    <p className="shrink-0 text-[11px] leading-none text-muted-foreground sm:text-xs">
-                      {subtitle}
-                    </p>
-                  ) : null}
-                  {subtitle && fieldProgress ? (
-                    <span
-                      className="mx-2 hidden h-3.5 w-px shrink-0 bg-border/70 sm:mx-4 sm:block md:mx-6"
-                      aria-hidden
-                    />
-                  ) : null}
-                  {fieldProgress ? (
-                    <FieldProgressChips progress={fieldProgress} />
-                  ) : null}
-                </div>
+                {hasMetaRow ? (
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 sm:gap-x-0">
+                    {subtitle ? (
+                      <p className="shrink-0 text-[11px] leading-none text-muted-foreground sm:text-xs">
+                        {subtitle}
+                      </p>
+                    ) : null}
+                    {subtitle && fieldProgress ? (
+                      <span
+                        className="mx-2 hidden h-3.5 w-px shrink-0 bg-border/70 sm:mx-4 sm:block md:mx-6"
+                        aria-hidden
+                      />
+                    ) : null}
+                    {fieldProgress ? (
+                      <FieldProgressChips progress={fieldProgress} />
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+
+              {viewerZoom ? (
+                <ViewerZoomControl
+                  variant="inline"
+                  scale={viewerZoom.scale}
+                  onZoomIn={viewerZoom.onZoomIn}
+                  onZoomOut={viewerZoom.onZoomOut}
+                  minScale={viewerZoom.minScale}
+                  maxScale={viewerZoom.maxScale}
+                />
               ) : null}
             </div>
 

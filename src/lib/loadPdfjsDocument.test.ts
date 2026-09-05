@@ -9,8 +9,6 @@ vi.mock("@/lib/pdfjsSetup", () => ({
   },
 }));
 
-vi.mock("pdfjs-dist/legacy/build/pdf.worker.mjs", () => ({}));
-
 describe("loadPdfjsDocumentFromBytes", () => {
   beforeEach(() => {
     getDocumentMock.mockReset();
@@ -37,26 +35,24 @@ describe("loadPdfjsDocumentFromBytes", () => {
     expect(pdf.numPages).toBe(2);
   });
 
-  it("retries on the main thread when the worker load fails", async () => {
+  it("disables streaming and range requests for in-memory PDF bytes", async () => {
     const source = new Uint8Array([0x25, 0x50, 0x44, 0x46]).buffer;
-    const onWorkerFallback = vi.fn();
-    getDocumentMock
-      .mockImplementationOnce(() => ({
-        promise: Promise.reject(new Error("Setting up fake worker failed")),
-      }))
-      .mockImplementationOnce(() => ({
+    getDocumentMock.mockImplementation((params: Record<string, unknown>) => {
+      expect(params).toMatchObject({
+        disableAutoFetch: true,
+        disableStream: true,
+        disableRange: true,
+      });
+      return {
         promise: Promise.resolve({ numPages: 1, destroy: vi.fn() }),
-      }));
+      };
+    });
 
     const { loadPdfjsDocumentFromBytes } = await import(
       "@/lib/loadPdfjsDocument"
     );
-    const pdf = await loadPdfjsDocumentFromBytes(source, { onWorkerFallback });
+    const pdf = await loadPdfjsDocumentFromBytes(source);
 
-    expect(onWorkerFallback).toHaveBeenCalledWith(
-      expect.objectContaining({ message: "Setting up fake worker failed" }),
-    );
-    expect(getDocumentMock).toHaveBeenCalledTimes(2);
     expect(pdf.numPages).toBe(1);
   });
 });
