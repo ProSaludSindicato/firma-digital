@@ -37,6 +37,10 @@ export function getResponsiveViewerZoom(
   return Math.max(pdfViewerZoom.min, Math.min(1.0, mobileZoom));
 }
 
+export function getCanvasPixelRatio(maxRatio = 3): number {
+  return Math.min(window.devicePixelRatio || 1, maxRatio);
+}
+
 export function stepViewerZoom(scale: number, direction: 1 | -1): number {
   const next = scale + direction * pdfViewerZoom.step;
   return Math.min(pdfViewerZoom.max, Math.max(pdfViewerZoom.min, next));

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import * as pdfjsLib from "pdfjs-dist";
+import { loadPdfjsDocumentFromBytes } from "@/lib/loadPdfjsDocument";
+import { reportClientError } from "@/lib/reportClientError";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.mjs",
@@ -22,7 +24,6 @@ export function usePdfjsDocument(file: File | null) {
     }
 
     let cancelled = false;
-    let loadingTask: ReturnType<typeof pdfjsLib.getDocument> | null = null;
     let loadedPdf: pdfjsLib.PDFDocumentProxy | null = null;
     setIsLoading(true);
     setError(null);
@@ -30,8 +31,11 @@ export function usePdfjsDocument(file: File | null) {
     const load = async () => {
       try {
         const arrayBuffer = await file.arrayBuffer();
-        loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-        const pdf = await loadingTask.promise;
+        const pdf = await loadPdfjsDocumentFromBytes(arrayBuffer, {
+          onWorkerFallback: (workerError) => {
+            reportClientError(workerError, { phase: "pdf_worker_fallback" });
+          },
+        });
         loadedPdf = pdf;
         if (cancelled) {
           void pdf.destroy();
@@ -50,6 +54,10 @@ export function usePdfjsDocument(file: File | null) {
         setError(message);
         setPdfDoc(null);
         setTotalPages(0);
+        reportClientError(
+          loadError instanceof Error ? loadError : new Error(message),
+          { phase: "pdf_load" },
+        );
       } finally {
         if (!cancelled) {
           setIsLoading(false);
@@ -61,7 +69,6 @@ export function usePdfjsDocument(file: File | null) {
 
     return () => {
       cancelled = true;
-      void loadingTask?.destroy();
       if (loadedPdf) {
         void loadedPdf.destroy();
       }

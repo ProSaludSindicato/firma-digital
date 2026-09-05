@@ -6,10 +6,9 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  Loader2,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { DocumentEditorPageView } from "@/components/editor/DocumentEditorPageView";
+import { PdfViewerLoadError } from "@/components/editor/PdfViewerLoadError";
 import { FieldPropertiesPanel } from "@/components/editor/FieldPropertiesPanel";
 import { FieldToolbar } from "@/components/editor/FieldToolbar";
 import { PlacementCursorIndicator } from "@/components/editor/PlacementCursorIndicator";
@@ -107,7 +106,7 @@ export const DocumentEditorViewer = forwardRef<
   const suppressPlacementClickRef = useRef(false);
   const trackedOpenFileRef = useRef<File | null>(null);
   const signaturePageReachedRef = useRef(false);
-  const { pdfDoc, isLoading, totalPages } = usePdfjsDocument(file);
+  const { pdfDoc, isLoading, totalPages, error } = usePdfjsDocument(file);
   const [currentPage, setCurrentPage] = useState(1);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [signatureFieldId, setSignatureFieldId] = useState<string | null>(null);
@@ -682,6 +681,11 @@ export const DocumentEditorViewer = forwardRef<
                 </div>
               </div>
             </div>
+          ) : error ? (
+            <PdfViewerLoadError
+              message={error}
+              onReload={() => window.location.reload()}
+            />
           ) : continuousScroll && totalPages > 0 ? (
             <div className="flex w-full min-h-0 flex-col items-center gap-4 py-2 pb-24 md:gap-6 md:pb-8 lg:pb-6">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(
@@ -700,7 +704,10 @@ export const DocumentEditorViewer = forwardRef<
               )}
             </div>
           ) : (
-            <div className="flex min-h-0 w-full flex-1 items-start justify-center">
+            <div
+              className="flex min-h-0 w-full flex-1 items-start justify-center"
+              data-pdf-page={currentPage}
+            >
               {renderPage(currentPage)}
             </div>
           )}
@@ -735,7 +742,7 @@ export const DocumentEditorViewer = forwardRef<
         />
       ) : null}
 
-      {!isLoading && pdfDoc ? (
+      {!isLoading && pdfDoc && !error ? (
         <ViewerZoomControl
           scale={scale}
           onZoomIn={handleZoomIn}
