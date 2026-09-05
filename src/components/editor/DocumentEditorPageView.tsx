@@ -3,6 +3,7 @@ import * as pdfjsLib from "pdfjs-dist";
 import { FieldOverlay } from "@/components/editor/FieldOverlay";
 import { FieldRenderer } from "@/components/editor/FieldRenderer";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getCanvasPixelRatio } from "@/lib/pdfViewerConfig";
 import { cn } from "@/lib/utils";
 import type {
   DocumentField,
@@ -62,7 +63,7 @@ export function DocumentEditorPageView({
       }
 
       const page = await pdfDoc.getPage(pageNumber);
-      const pixelRatio = Math.min(window.devicePixelRatio || 1, 3);
+      const pixelRatio = getCanvasPixelRatio();
       const viewport = page.getViewport({ scale });
       const scaledViewport = page.getViewport({ scale: scale * pixelRatio });
 

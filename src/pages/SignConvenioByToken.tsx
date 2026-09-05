@@ -34,8 +34,14 @@ import { appConfig } from "@/lib/appConfig";
 import { CONVENIO_EDITOR_CONSTRAINTS } from "@/lib/convenioEditorConfig";
 import { apiFieldsToDocumentFields } from "@/lib/fieldDefaults";
 import { exportDocumentToPdf } from "@/lib/pdfFieldExporter";
+import {
+  fileFromPdfBytes,
+  isConstrainedSigningDevice,
+  isPdfMagicBytes,
+} from "@/lib/convenioPdfLoad";
 import { detectAffiliateSignaturePlacement } from "@/lib/signatureLocationService";
 import { pdfViewerConfig } from "@/lib/pdfViewerConfig";
+import { reportClientError } from "@/lib/reportClientError";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import {
   convenioFirmaDocumentUrl,
@@ -402,6 +408,7 @@ const SignConvenioByToken = () => {
   const successViewTimerRef = useRef<number | null>(null);
   const dialogCloseTimerRef = useRef<number | null>(null);
   const submitInFlightRef = useRef(false);
+  const signatureDetectionIdRef = useRef(0);
   const isLandscapeMobile = useIsLandscapeMobile();
   const isMobile = useIsMobile();
 
@@ -504,6 +511,7 @@ const SignConvenioByToken = () => {
 
     setMetaLoading(true);
     setMetaError(null);
+    signatureDetectionIdRef.current += 1;
 
     try {
       const metaRes = await fetch(convenioFirmaMetadataUrl(token));
@@ -561,27 +569,40 @@ const SignConvenioByToken = () => {
         return;
       }
 
-      const blob = await pdfRes.blob();
-      const file = new File([blob], "convenio.pdf", { type: "application/pdf" });
-      let affiliateField: Awaited<
-        ReturnType<typeof detectAffiliateSignaturePlacement>
-      > = null;
-      try {
-        affiliateField = await detectAffiliateSignaturePlacement(file, {
-          isMobile,
+      const pdfBytes = await pdfRes.arrayBuffer();
+      if (!isPdfMagicBytes(pdfBytes)) {
+        reportClientError(new Error("La descarga del convenio no es un PDF válido."), {
+          phase: "pdf_load",
         });
+        setMetaError("No se pudo descargar el PDF del convenio.");
+        setPdfLoading(false);
+        setMetaLoading(false);
+        return;
+      }
+
+      setFile(fileFromPdfBytes(pdfBytes));
+      setPdfLoading(false);
+      setMetaLoading(false);
+
+      if (isConstrainedSigningDevice()) {
+        return;
+      }
+
+      const detectionId = ++signatureDetectionIdRef.current;
+      try {
+        const affiliateField = await detectAffiliateSignaturePlacement(
+          fileFromPdfBytes(pdfBytes),
+          { isMobile },
+        );
+        if (affiliateField && detectionId === signatureDetectionIdRef.current) {
+          loadFields(apiFieldsToDocumentFields([affiliateField]));
+        }
       } catch (detectionError) {
         console.warn(
           "[convenio] No se pudo detectar el recuadro de firma del afiliado.",
           detectionError,
         );
       }
-
-      setFile(file);
-      if (affiliateField) {
-        loadFields(apiFieldsToDocumentFields([affiliateField]));
-      }
-      setPdfLoading(false);
     } catch (error) {
       if (error instanceof Error && error.message.includes("VITE_PROSALUD_API_URL")) {
         setMetaError("La aplicación de firma no está configurada para conectar con ProSalud.");
@@ -590,6 +611,7 @@ const SignConvenioByToken = () => {
       setMetaError("Error de conexión. Intenta nuevamente mas tarde.");
     } finally {
       setMetaLoading(false);
+      setPdfLoading(false);
     }
   }, [token, setFile, loadFields, isMobile]);
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getCanvasPixelRatio,
   getResponsiveViewerZoom,
   pdfViewerZoom,
   stepViewerZoom,
@@ -21,6 +22,28 @@ describe("getResponsiveViewerZoom", () => {
     const zoom = getResponsiveViewerZoom(844, 390);
     expect(zoom).toBeLessThan(pdfViewerZoom.desktopDefault);
     expect(zoom).toBeGreaterThanOrEqual(pdfViewerZoom.min);
+  });
+
+  it("lets portrait phones reach 100% so the page stays readable", () => {
+    expect(getResponsiveViewerZoom(620, 844)).toBe(1);
+  });
+});
+
+describe("getCanvasPixelRatio", () => {
+  it("caps device pixel ratio at the requested maximum", () => {
+    const original = window.devicePixelRatio;
+    Object.defineProperty(window, "devicePixelRatio", {
+      configurable: true,
+      value: 3,
+    });
+
+    expect(getCanvasPixelRatio(1)).toBe(1);
+    expect(getCanvasPixelRatio(3)).toBe(3);
+
+    Object.defineProperty(window, "devicePixelRatio", {
+      configurable: true,
+      value: original,
+    });
   });
 });
 
