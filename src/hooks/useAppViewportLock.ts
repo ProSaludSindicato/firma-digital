@@ -1,6 +1,7 @@
 import { useLayoutEffect } from "react";
 import {
   applyAppViewportCssVars,
+  isPinchZoomed,
   measureAppViewport,
   resetDocumentScroll,
 } from "@/lib/appViewport";
@@ -23,8 +24,13 @@ export function useAppViewportLock(): void {
       }
       syncing = true;
       try {
+        const visualViewport = window.visualViewport;
+        if (isPinchZoomed(visualViewport)) {
+          return;
+        }
+
         const measured = measureAppViewport(
-          window.visualViewport,
+          visualViewport,
           window.innerHeight,
         );
         if (

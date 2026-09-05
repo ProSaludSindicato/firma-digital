@@ -551,7 +551,7 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
         <div
           id="tour-pdf-area"
           ref={mainScrollRef}
-          className="flex-1 overflow-auto flex flex-col items-stretch p-0 md:p-3 bg-muted/20 touch-pan-x touch-pan-y touch-pinch-zoom"
+          className="flex-1 overflow-auto flex flex-col items-stretch p-0 md:p-3 bg-muted/20 touch-pan-x touch-pan-y"
         >
           {isLoading ? (
             <div className="flex flex-col items-center justify-center gap-4 py-12 animate-fade-in flex-1">

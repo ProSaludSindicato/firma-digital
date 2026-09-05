@@ -667,7 +667,7 @@ export const DocumentEditorViewer = forwardRef<
         <div
           id="tour-pdf-area"
           ref={mainScrollRef}
-          className="flex min-h-0 flex-1 flex-col items-stretch overflow-auto bg-muted/20 p-0 touch-pan-x touch-pan-y touch-pinch-zoom md:p-3"
+          className="flex min-h-0 flex-1 flex-col items-stretch overflow-auto bg-muted/20 p-0 touch-pan-x touch-pan-y md:p-3"
           onMouseMove={handleDocumentAreaMouseMove}
           onMouseLeave={handleDocumentAreaMouseLeave}
         >
