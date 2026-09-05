@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -22,7 +23,13 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { usePdfjsDocument } from "@/hooks/usePdfjsDocument";
 import { toast } from "@/hooks/use-toast";
 import { hasSignatureField } from "@/lib/fieldValidation";
+import {
+  consumePinchZoomHint,
+  PINCH_ZOOM_HINT_DESCRIPTION,
+  PINCH_ZOOM_HINT_TITLE,
+} from "@/lib/pinchZoomHint";
 import { scrollChildIntoContainer } from "@/lib/scrollChildIntoContainer";
+import { preserveScrollCenterOnScaleChange } from "@/lib/viewerScroll";
 import {
   getResponsiveViewerZoom,
   pdfViewerZoom,
@@ -107,6 +114,7 @@ export const DocumentEditorViewer = forwardRef<
   const suppressPlacementClickRef = useRef(false);
   const trackedOpenFileRef = useRef<File | null>(null);
   const signaturePageReachedRef = useRef(false);
+  const zoomRatioRef = useRef(1);
   const { pdfDoc, isLoading, totalPages, error } = usePdfjsDocument(file);
   const [currentPage, setCurrentPage] = useState(1);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -459,11 +467,56 @@ export const DocumentEditorViewer = forwardRef<
   ]);
 
   const handleZoomIn = useCallback(() => {
-    setScale((s) => stepViewerZoom(s, 1));
+    setScale((s) => {
+      const next = stepViewerZoom(s, 1);
+      zoomRatioRef.current = next / s;
+      return next;
+    });
   }, []);
 
   const handleZoomOut = useCallback(() => {
-    setScale((s) => stepViewerZoom(s, -1));
+    setScale((s) => {
+      const next = stepViewerZoom(s, -1);
+      zoomRatioRef.current = next / s;
+      return next;
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    const ratio = zoomRatioRef.current;
+    if (ratio === 1) {
+      return;
+    }
+    zoomRatioRef.current = 1;
+    const container = mainScrollRef.current;
+    if (!container) {
+      return;
+    }
+    const next = preserveScrollCenterOnScaleChange(container, ratio);
+    container.scrollLeft = next.scrollLeft;
+    container.scrollTop = next.scrollTop;
+  }, [scale]);
+
+  useEffect(() => {
+    const container = mainScrollRef.current;
+    if (!container) {
+      return;
+    }
+
+    const handleTouchStart = (event: TouchEvent) => {
+      if (event.touches.length < 2 || !consumePinchZoomHint()) {
+        return;
+      }
+      toast({
+        title: PINCH_ZOOM_HINT_TITLE,
+        description: PINCH_ZOOM_HINT_DESCRIPTION,
+      });
+    };
+
+    container.addEventListener("touchstart", handleTouchStart, { passive: true });
+    return () => {
+      container.removeEventListener("touchstart", handleTouchStart);
+    };
   }, []);
 
   useKeyboardShortcuts(
@@ -664,13 +717,14 @@ export const DocumentEditorViewer = forwardRef<
           />
         </div>
 
-        <div
-          id="tour-pdf-area"
-          ref={mainScrollRef}
-          className="flex min-h-0 flex-1 flex-col items-stretch overflow-auto bg-muted/20 p-0 touch-pan-x touch-pan-y md:p-3"
-          onMouseMove={handleDocumentAreaMouseMove}
-          onMouseLeave={handleDocumentAreaMouseLeave}
-        >
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div
+            id="tour-pdf-area"
+            ref={mainScrollRef}
+            className="flex min-h-0 flex-1 flex-col items-stretch overflow-auto bg-muted/20 p-0 touch-pan-x touch-pan-y md:p-3"
+            onMouseMove={handleDocumentAreaMouseMove}
+            onMouseLeave={handleDocumentAreaMouseLeave}
+          >
           {isLoading ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-4 py-12">
               <div className="relative">
@@ -689,7 +743,7 @@ export const DocumentEditorViewer = forwardRef<
               onReload={() => window.location.reload()}
             />
           ) : continuousScroll && totalPages > 0 ? (
-            <div className="flex w-full min-h-0 flex-col items-center gap-4 py-2 pb-24 md:gap-6 md:pb-8 lg:pb-6">
+            <div className="flex w-max min-w-full min-h-0 flex-col items-center gap-4 py-2 pb-14 md:gap-6 md:pb-16">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(
                 (page) => (
                   <div
@@ -707,12 +761,23 @@ export const DocumentEditorViewer = forwardRef<
             </div>
           ) : (
             <div
-              className="flex min-h-0 w-full flex-1 items-start justify-center"
+              className="flex min-h-0 w-max min-w-full flex-1 items-start justify-center"
               data-pdf-page={currentPage}
             >
               {renderPage(currentPage)}
             </div>
           )}
+          </div>
+
+          {!isLoading && pdfDoc && !error ? (
+            <ViewerZoomControl
+              scale={scale}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+              minScale={pdfViewerZoom.min}
+              maxScale={pdfViewerZoom.max}
+            />
+          ) : null}
         </div>
 
         {showPropertiesPanel && !isMobile ? (
@@ -741,16 +806,6 @@ export const DocumentEditorViewer = forwardRef<
           placingType={activePlacingType}
           x={cursorPosition!.x}
           y={cursorPosition!.y}
-        />
-      ) : null}
-
-      {!isLoading && pdfDoc && !error ? (
-        <ViewerZoomControl
-          scale={scale}
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          minScale={pdfViewerZoom.min}
-          maxScale={pdfViewerZoom.max}
         />
       ) : null}
 

@@ -20,18 +20,18 @@ describe("createViewerSteps", () => {
     expect(pdfArea?.placement).toBe("right-start");
   });
 
-  it("places the zoom tooltip above the floating control on compact convenio layout", () => {
+  it("places the zoom tooltip above the dock bar on compact convenio layout", () => {
     const steps = createViewerSteps("compact", "document-editor");
     const zoom = steps.find((step) => step.target === "#tour-pdf-toolbar-zoom");
 
     expect(zoom?.placement).toBe("top");
   });
 
-  it("places the zoom tooltip to the left of the floating control on wide convenio layout", () => {
+  it("places the zoom tooltip above the dock bar on wide convenio layout", () => {
     const steps = createViewerSteps("wide", "document-editor");
     const zoom = steps.find((step) => step.target === "#tour-pdf-toolbar-zoom");
 
-    expect(zoom?.placement).toBe("left");
+    expect(zoom?.placement).toBe("top");
   });
 
   it("uses convenio-specific copy in viewer steps", () => {

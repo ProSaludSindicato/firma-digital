@@ -27,6 +27,7 @@ import {
 import { useDocumentEditor } from "@/hooks/useDocumentEditor";
 import { useEditorTour } from "@/hooks/useEditorTour";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useViewerZoom } from "@/hooks/useViewerZoom";
 import { appConfig } from "@/lib/appConfig";
 import { apiFieldsToDocumentFields, FIELD_TYPE_LABELS } from "@/lib/fieldDefaults";
 import {
@@ -92,6 +93,7 @@ const DocumentByToken = () => {
   const isEmbedMode = searchParams.get("embed") === "1";
   const isMobile = useIsMobile();
   const editor = useDocumentEditor(isMobile);
+  const viewerZoom = useViewerZoom();
   const { setFile, loadFields } = editor;
   const viewerRef = useRef<DocumentEditorViewerRef>(null);
   const signedPdfRef = useRef<Blob | null>(null);
@@ -490,6 +492,13 @@ const DocumentByToken = () => {
               isProcessing={isSubmitting}
               isSent={isSent}
               finishLabel="Enviar documento"
+              viewerZoom={{
+                scale: viewerZoom.scale,
+                onZoomIn: viewerZoom.zoomIn,
+                onZoomOut: viewerZoom.zoomOut,
+                minScale: viewerZoom.minScale,
+                maxScale: viewerZoom.maxScale,
+              }}
             />
           )}
           {!isEmbedMode && isSent ? (
@@ -521,6 +530,9 @@ const DocumentByToken = () => {
                 <DocumentEditorViewer
                   ref={viewerRef}
                   file={editor.file}
+                  scale={viewerZoom.scale}
+                  onScaleChange={viewerZoom.setScale}
+                  hideZoomControl
                   fields={editor.fields}
                   activeFieldId={editor.activeFieldId}
                   placingType={editor.placingType}

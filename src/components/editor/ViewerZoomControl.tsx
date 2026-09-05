@@ -1,4 +1,5 @@
-import { Minus, Plus } from "lucide-react";
+import { Minus, Plus, ZoomIn } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface ViewerZoomControlProps {
@@ -27,44 +28,56 @@ export function ViewerZoomControl({
       role="group"
       aria-label="Zoom del documento"
       className={cn(
-        "viewer-zoom-glass absolute z-40 pointer-events-auto",
-        "right-2 bottom-2 sm:right-3 sm:bottom-3",
-        "lg:right-5 lg:top-1/2 lg:bottom-auto lg:-translate-y-1/2",
+        "pointer-events-none absolute bottom-3 left-1/2 z-40 -translate-x-1/2 sm:bottom-4",
         className,
       )}
     >
-      <div className="viewer-zoom-glass__inner">
-        <button
-          type="button"
-          onClick={onZoomIn}
-          disabled={atMax}
-          aria-label="Acercar"
-          className="viewer-zoom-btn"
+      <div
+        className={cn(
+          "pointer-events-auto flex items-center gap-1 rounded-full border border-border/70",
+          "bg-white/95 px-1 py-1 shadow-lg backdrop-blur-sm",
+          "ring-1 ring-black/[0.04]",
+        )}
+      >
+        <span className="sr-only">Ampliar documento</span>
+        <div
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary sm:h-9 sm:w-9"
+          aria-hidden
         >
-          <Plus className="h-[17px] w-[17px]" strokeWidth={2.25} aria-hidden />
-        </button>
+          <ZoomIn className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={2.25} />
+        </div>
 
-        <div className="viewer-zoom-glass__divider" aria-hidden />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={onZoomOut}
+          disabled={atMin}
+          aria-label="Alejar"
+          className="h-8 w-8 rounded-full sm:h-9 sm:w-9"
+        >
+          <Minus className="h-4 w-4" strokeWidth={2.5} />
+        </Button>
 
         <span
-          className="viewer-zoom-glass__label"
+          className="min-w-[2.75rem] px-0.5 text-center text-xs font-bold tabular-nums text-primary sm:min-w-[3rem] sm:text-sm"
           aria-live="polite"
           aria-atomic="true"
         >
           {Math.round(scale * 100)}%
         </span>
 
-        <div className="viewer-zoom-glass__divider" aria-hidden />
-
-        <button
+        <Button
           type="button"
-          onClick={onZoomOut}
-          disabled={atMin}
-          aria-label="Alejar"
-          className="viewer-zoom-btn"
+          variant="default"
+          size="icon"
+          onClick={onZoomIn}
+          disabled={atMax}
+          aria-label="Acercar"
+          className="h-8 w-8 rounded-full shadow-sm sm:h-9 sm:w-9"
         >
-          <Minus className="h-[17px] w-[17px]" strokeWidth={2.25} aria-hidden />
-        </button>
+          <Plus className="h-4 w-4" strokeWidth={2.5} />
+        </Button>
       </div>
     </div>
   );

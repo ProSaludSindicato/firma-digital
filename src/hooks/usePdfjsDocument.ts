@@ -26,11 +26,7 @@ export function usePdfjsDocument(file: File | null) {
     const load = async () => {
       try {
         const arrayBuffer = await file.arrayBuffer();
-        const pdf = await loadPdfjsDocumentFromBytes(arrayBuffer, {
-          onWorkerFallback: (workerError) => {
-            reportClientError(workerError, { phase: "pdf_worker_fallback" });
-          },
-        });
+        const pdf = await loadPdfjsDocumentFromBytes(arrayBuffer);
         loadedPdf = pdf;
         if (cancelled) {
           void pdf.destroy();

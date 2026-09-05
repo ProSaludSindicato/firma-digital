@@ -201,13 +201,8 @@ export function createViewerSteps(
     },
     {
       target: '#tour-pdf-toolbar-zoom',
-      // Convenio: control flotante a la derecha. Visor clásico: barra superior.
-      placement:
-        viewerVariant === 'document-editor'
-          ? layout === 'compact'
-            ? 'top'
-            : 'left'
-          : 'bottom',
+      // Convenio: barra fija bajo el documento. Visor clásico: barra superior.
+      placement: viewerVariant === 'document-editor' ? 'top' : 'bottom',
       skipBeacon: true,
       skipScroll: true,
       title: (
@@ -218,7 +213,10 @@ export function createViewerSteps(
       ),
       content: (
         <div className="space-y-1.5">
-          <p>Acerca o aleja el documento para leerlo con comodidad.</p>
+          <p>
+            Los botones <strong>+</strong> y <strong>−</strong> flotan sobre la parte inferior del
+            documento. Pellizcar la pantalla no está disponible para que no se descuadre.
+          </p>
             {/*<p className="text-xs text-muted-foreground/70">
             Atajos de teclado: <kbd className="px-1 bg-muted rounded text-[10px]">+</kbd> para acercar,{' '}
             <kbd className="px-1 bg-muted rounded text-[10px]">-</kbd> para alejar.
