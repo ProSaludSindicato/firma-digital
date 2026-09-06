@@ -8,6 +8,13 @@ describe("pdfjsSetup", () => {
     };
 
     expect(host.pdfjsWorker?.WorkerMessageHandler).toBeDefined();
-    expect(pdfjsLib.GlobalWorkerOptions.workerSrc).toBe("");
+    expect(pdfjsLib.GlobalWorkerOptions.workerSrc).toMatch(/\/pdf\.worker\.js$/);
+    await expect(
+      (
+        pdfjsLib.PDFWorker as unknown as {
+          _setupFakeWorkerGlobal: Promise<unknown>;
+        }
+      )._setupFakeWorkerGlobal,
+    ).resolves.toBe(host.pdfjsWorker?.WorkerMessageHandler);
   });
 });

@@ -1,7 +1,23 @@
+import { copyFileSync } from "node:fs";
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
+
+function copyPdfjsWorkerToPublic() {
+  return {
+    name: "copy-pdfjs-worker-to-public",
+    buildStart() {
+      copyFileSync(
+        path.resolve(
+          __dirname,
+          "node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs",
+        ),
+        path.resolve(__dirname, "public/pdf.worker.js"),
+      );
+    },
+  };
+}
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -44,7 +60,11 @@ export default defineConfig(({ mode }) => {
         target: "esnext",
       },
     },
-    plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+    plugins: [
+      copyPdfjsWorkerToPublic(),
+      react(),
+      mode === "development" && componentTagger(),
+    ].filter(Boolean),
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),

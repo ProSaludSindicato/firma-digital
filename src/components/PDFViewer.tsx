@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useImperativeHandle, forwardRef, useLayoutEffect, useRef } from "react";
 import { pdfjsLib } from "@/lib/pdfjsSetup";
+import { loadPdfjsDocumentFromBytes } from "@/lib/loadPdfjsDocument";
 import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Loader2, PenLine, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PDFThumbnails } from "./PDFThumbnails";
@@ -199,7 +200,7 @@ export const PDFViewer = forwardRef<PDFViewerRef, PDFViewerProps>(({
     const loadPdf = async () => {
       try {
         const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const pdf = await loadPdfjsDocumentFromBytes(arrayBuffer);
 
         if (isCancelled) return;
 

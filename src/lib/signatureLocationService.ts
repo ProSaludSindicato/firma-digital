@@ -13,6 +13,7 @@
  */
 
 import { pdfjsLib, OPS } from "@/lib/pdfjsSetup";
+import { loadPdfjsDocumentFromBytes } from "@/lib/loadPdfjsDocument";
 import { AI_SEARCH_CONFIG } from "@/lib/autoSignConfig";
 import { CONVENIO_SIGNATURE_PAGE } from "@/lib/convenioEditorConfig";
 import { getFieldSizeLimits } from "@/lib/fieldDefaults";
@@ -177,8 +178,7 @@ class PDFJSTextExtractionProvider implements SignatureLocationProvider {
     const { pdfFile, searchText, pageNumber } = options;
 
     const arrayBuffer = await pdfFile.arrayBuffer();
-    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-    const pdfDoc = await loadingTask.promise;
+    const pdfDoc = await loadPdfjsDocumentFromBytes(arrayBuffer);
 
     const totalPages = pdfDoc.numPages;
     const pagesToSearch = pageNumber
@@ -283,8 +283,7 @@ class PDFJSTextExtractionProvider implements SignatureLocationProvider {
     );
 
     const arrayBuffer = await pdfFile.arrayBuffer();
-    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-    const pdfDoc = await loadingTask.promise;
+    const pdfDoc = await loadPdfjsDocumentFromBytes(arrayBuffer);
     const totalPages = pdfDoc.numPages;
     const pagesToSearch = [
       preferredPage,

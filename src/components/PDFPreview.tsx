@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { pdfjsLib } from "@/lib/pdfjsSetup";
+import { installPdfjsMainThreadWorker, pdfjsLib } from "@/lib/pdfjsSetup";
 import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,6 +27,7 @@ export const PDFPreview = ({ pdfUrl, onClose }: PDFPreviewProps) => {
     const loadPDF = async () => {
       try {
         setIsLoading(true);
+        installPdfjsMainThreadWorker();
         const loadingTask = pdfjsLib.getDocument({ url: pdfUrl });
         const pdf = await loadingTask.promise;
 
