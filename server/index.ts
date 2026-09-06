@@ -1,22 +1,22 @@
 /**
- * Auto-sign HTTP microservice for ProSalud president signature.
+ * Auto-sign HTTP microservice.
  *
  * Exposes:
- *   POST /api/auto-sign  — receive PDF, sign with president stamp, return signed PDF
- *   GET  /api/health     — liveness check
+ *   POST /api/auto-sign  — receive PDF + signature image + search text, return signed PDF
+ *   GET  /api/health     — liveness check (no API key)
  *
  * Environment variables:
  *   AUTO_SIGN_API_KEY  (required)  — shared secret sent as X-Api-Key header by Laravel
  *   AUTO_SIGN_PORT     (default 3001)
+ *   LOG_LEVEL          (default info)
+ *   PDFJS_WORKER_SRC   — absolute path to pdfjs worker (set in Docker)
  */
 
 import express, { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import rateLimit from 'express-rate-limit';
-import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import path from 'path';
-import fs from 'fs';
 import crypto from 'crypto';
 import pino from 'pino';
 
@@ -30,21 +30,14 @@ import { signPDFWithBuffer } from './lib/pdfSigningNode.js';
 
 const PORT = parseInt(process.env.AUTO_SIGN_PORT ?? '3001', 10);
 const PDF_MAX_BYTES = 20 * 1024 * 1024; // 20 MB
-const IMG_MAX_BYTES = 5 * 1024 * 1024;  // 5 MB
+const IMG_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+const SEARCH_TEXT_MAX_LEN = 200;
+const STAMP_MAX_POINTS = 500;
+const DEFAULT_STAMP_WIDTH = 38;
+const DEFAULT_STAMP_HEIGHT = 50;
 
-// President signature anchor text and default config (mirrors autoSignConfig.ts)
-const SEARCH_TEXT = 'JORGE IVAN ÁLVAREZ SOTO';
-const DEFAULT_SIGN_CONFIG = {
-  page: 2,
-  x: 80,
-  y: 255,
-  width: 38,
-  height: 50,
-};
-
-// Path to bundled default signature image
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FIRMA_DEFAULT_PATH = path.resolve(__dirname, '../src/firma_default.png');
+const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+const JPEG_MAGIC = Buffer.from([0xff, 0xd8, 0xff]);
 
 // ─── Logger ───────────────────────────────────────────────────
 
@@ -55,11 +48,71 @@ const logger = pino({
   },
 });
 
+// ─── Helpers ──────────────────────────────────────────────────
+
+function timingSafeEqualString(provided: string, expected: string): boolean {
+  const providedHash = crypto.createHash('sha256').update(provided).digest();
+  const expectedHash = crypto.createHash('sha256').update(expected).digest();
+  return crypto.timingSafeEqual(providedHash, expectedHash);
+}
+
+function headerValue(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) {
+    return value[0] ?? '';
+  }
+  return value ?? '';
+}
+
+function formString(body: Request['body'], field: string): string {
+  const raw = body?.[field];
+  return typeof raw === 'string' ? raw.trim() : '';
+}
+
+function parseOptionalPositiveInt(
+  raw: unknown,
+  field: string,
+): { ok: true; value?: number } | { ok: false; field: string } {
+  if (raw == null || raw === '') {
+    return { ok: true };
+  }
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1) {
+    return { ok: false, field };
+  }
+  return { ok: true, value: n };
+}
+
+function parseOptionalFiniteNumber(
+  raw: unknown,
+  field: string,
+): { ok: true; value?: number } | { ok: false; field: string } {
+  if (raw == null || raw === '') {
+    return { ok: true };
+  }
+  const n = Number(raw);
+  if (!Number.isFinite(n)) {
+    return { ok: false, field };
+  }
+  return { ok: true, value: n };
+}
+
+function detectImageKind(buffer: Buffer, mime: string): 'png' | 'jpeg' | null {
+  const isPng = buffer.length >= 4 && buffer.subarray(0, 4).equals(PNG_MAGIC);
+  const isJpeg = buffer.length >= 3 && buffer.subarray(0, 3).equals(JPEG_MAGIC);
+  if (isPng && mime === 'image/png') {
+    return 'png';
+  }
+  if (isJpeg && mime === 'image/jpeg') {
+    return 'jpeg';
+  }
+  return null;
+}
+
 // ─── App ──────────────────────────────────────────────────────
 
 const app = express();
-
-// ─── Rate limiting ────────────────────────────────────────────
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
 
 const limiter = rateLimit({
   windowMs: 60_000,
@@ -70,8 +123,6 @@ const limiter = rateLimit({
 });
 
 app.use('/api/', limiter);
-
-// ─── Multer (multipart) ───────────────────────────────────────
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -89,8 +140,6 @@ const upload = multer({
   },
 });
 
-// ─── Auth middleware ──────────────────────────────────────────
-
 function requireApiKey(req: Request, res: Response, next: NextFunction): void {
   const apiKey = process.env.AUTO_SIGN_API_KEY ?? '';
   if (!apiKey) {
@@ -99,8 +148,8 @@ function requireApiKey(req: Request, res: Response, next: NextFunction): void {
     return;
   }
 
-  const provided = req.headers['x-api-key'];
-  if (!provided || provided !== apiKey) {
+  const provided = headerValue(req.headers['x-api-key']);
+  if (!provided || !timingSafeEqualString(provided, apiKey)) {
     res.status(401).json({ error: 'API key inválida o ausente', code: 'unauthorized' });
     return;
   }
@@ -125,18 +174,16 @@ app.post(
   ]),
   async (req: Request, res: Response): Promise<void> => {
     const requestId = crypto.randomUUID();
-    const referenceId = req.headers['x-reference-id'] ?? '';
+    const referenceId = headerValue(req.headers['x-reference-id']);
     const startedAt = Date.now();
 
-    // Set the reference id on all responses for traceability
-    res.set('X-Reference-Id', String(referenceId));
+    res.set('X-Reference-Id', referenceId);
 
     const log = logger.child({ requestId, referenceId });
-    log.info('auto-sign request received');
 
-    // --- Validate PDF ------------------------------------------------
     const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
     const pdfFile = files?.['pdf']?.[0];
+    const sigFile = files?.['signature']?.[0];
 
     if (!pdfFile) {
       res.status(400).json({ error: 'El campo pdf es obligatorio', code: 'missing_pdf' });
@@ -145,41 +192,85 @@ app.post(
 
     const pdfBuffer = pdfFile.buffer;
 
-    // Magic bytes check
     if (pdfBuffer.length < 5 || pdfBuffer.slice(0, 5).toString('ascii') !== '%PDF-') {
       res.status(400).json({ error: 'El archivo pdf no es un PDF válido', code: 'invalid_pdf' });
       return;
     }
 
-    // --- Resolve signature image --------------------------------------
-    let signatureBuffer: Buffer;
-    let isPng: boolean;
-
-    const sigFile = files?.['signature']?.[0];
-    if (sigFile) {
-      if (sigFile.size > IMG_MAX_BYTES) {
-        res.status(400).json({ error: 'La imagen de firma excede 5 MB', code: 'signature_too_large' });
-        return;
-      }
-      signatureBuffer = sigFile.buffer;
-      isPng = sigFile.mimetype === 'image/png';
-    } else {
-      // Use default president signature
-      if (!fs.existsSync(FIRMA_DEFAULT_PATH)) {
-        log.error({ path: FIRMA_DEFAULT_PATH }, 'firma_default.png no encontrada');
-        res.status(500).json({ error: 'Imagen de firma por defecto no disponible', code: 'default_signature_missing' });
-        return;
-      }
-      signatureBuffer = fs.readFileSync(FIRMA_DEFAULT_PATH);
-      isPng = true; // firma_default.png is always PNG
+    if (!sigFile) {
+      res.status(400).json({ error: 'El campo signature es obligatorio', code: 'missing_signature' });
+      return;
     }
 
-    // --- Detect signature position ------------------------------------
+    if (sigFile.size > IMG_MAX_BYTES) {
+      res.status(400).json({ error: 'La imagen de firma excede 5 MB', code: 'signature_too_large' });
+      return;
+    }
+
+    const imageKind = detectImageKind(sigFile.buffer, sigFile.mimetype);
+    if (!imageKind) {
+      res.status(400).json({ error: 'La firma debe ser un PNG o JPEG válido', code: 'invalid_signature' });
+      return;
+    }
+
+    const searchText = formString(req.body, 'search_text');
+    if (!searchText) {
+      res.status(400).json({ error: 'El campo search_text es obligatorio', code: 'missing_search_text' });
+      return;
+    }
+    if (searchText.length > SEARCH_TEXT_MAX_LEN) {
+      res.status(400).json({ error: 'search_text es demasiado largo', code: 'invalid_search_text' });
+      return;
+    }
+
+    const secondaryAnchor = formString(req.body, 'secondary_anchor');
+    if (secondaryAnchor.length > SEARCH_TEXT_MAX_LEN) {
+      res.status(400).json({ error: 'secondary_anchor es demasiado largo', code: 'invalid_secondary_anchor' });
+      return;
+    }
+
+    const searchPageParsed = parseOptionalPositiveInt(req.body?.search_page, 'search_page');
+    if (!searchPageParsed.ok) {
+      res.status(400).json({ error: 'search_page debe ser un entero positivo', code: 'invalid_search_page' });
+      return;
+    }
+
+    const widthParsed = parseOptionalFiniteNumber(req.body?.width, 'width');
+    const heightParsed = parseOptionalFiniteNumber(req.body?.height, 'height');
+    const offsetXParsed = parseOptionalFiniteNumber(req.body?.offset_x, 'offset_x');
+    const offsetYParsed = parseOptionalFiniteNumber(req.body?.offset_y, 'offset_y');
+
+    if (!widthParsed.ok || !heightParsed.ok || !offsetXParsed.ok || !offsetYParsed.ok) {
+      res.status(400).json({ error: 'Parámetros numéricos inválidos', code: 'invalid_numeric_field' });
+      return;
+    }
+
+    const width = widthParsed.value ?? DEFAULT_STAMP_WIDTH;
+    const height = heightParsed.value ?? DEFAULT_STAMP_HEIGHT;
+    if (width <= 0 || height <= 0 || width > STAMP_MAX_POINTS || height > STAMP_MAX_POINTS) {
+      res.status(400).json({ error: 'width/height fuera de rango', code: 'invalid_stamp_size' });
+      return;
+    }
+
+    log.info(
+      {
+        pdfBytes: pdfBuffer.length,
+        signatureBytes: sigFile.size,
+        searchPage: searchPageParsed.value ?? null,
+      },
+      'auto-sign request received',
+    );
+
     let detectionMethod: string;
-    let signConfig: typeof DEFAULT_SIGN_CONFIG;
+    let signConfig: { page: number; x: number; y: number; width: number; height: number };
 
     try {
-      const detectionResult = await findSignatureLocationInBuffer(pdfBuffer, SEARCH_TEXT, 2);
+      const detectionResult = await findSignatureLocationInBuffer(
+        pdfBuffer,
+        searchText,
+        searchPageParsed.value,
+        secondaryAnchor || undefined,
+      );
 
       if (!detectionResult) {
         log.warn('Anchor not found in PDF');
@@ -190,15 +281,19 @@ app.post(
         return;
       }
 
-      const position = calculateSignaturePosition(detectionResult.location);
+      const position = calculateSignaturePosition(
+        detectionResult.location,
+        offsetXParsed.value ?? 0,
+        offsetYParsed.value ?? 0,
+      );
       detectionMethod = detectionResult.detectionMethod;
 
       signConfig = {
         page: position.page,
         x: position.x,
         y: position.y,
-        width: DEFAULT_SIGN_CONFIG.width,
-        height: DEFAULT_SIGN_CONFIG.height,
+        width,
+        height,
       };
 
       log.info(
@@ -211,16 +306,21 @@ app.post(
       return;
     }
 
-    // --- Sign PDF -----------------------------------------------------
     let signedBuffer: Buffer;
 
     try {
-      signedBuffer = await signPDFWithBuffer(pdfBuffer, signatureBuffer, isPng, signConfig);
-    } catch (err: any) {
+      signedBuffer = await signPDFWithBuffer(
+        pdfBuffer,
+        sigFile.buffer,
+        imageKind === 'png',
+        signConfig,
+      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '';
       log.error({ err }, 'Error signing PDF');
 
-      if (err.message?.includes('fuera de los límites')) {
-        res.status(422).json({ error: err.message, code: 'draw_out_of_page' });
+      if (message.includes('fuera de los límites')) {
+        res.status(422).json({ error: message, code: 'draw_out_of_page' });
         return;
       }
 
@@ -228,17 +328,16 @@ app.post(
       return;
     }
 
-    // --- Return signed PDF --------------------------------------------
     const durationMs = Date.now() - startedAt;
-    log.info({ durationMs }, 'auto-sign completed');
+    log.info({ durationMs, signedBytes: signedBuffer.length }, 'auto-sign completed');
 
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': 'inline; filename="convenio_firmado_presidente.pdf"',
+      'Content-Disposition': 'inline; filename="signed.pdf"',
       'Content-Length': signedBuffer.length,
       'X-Signature-Detection-Method': detectionMethod,
       'X-Signature-Page': String(signConfig.page),
-      'X-Reference-Id': String(referenceId),
+      'X-Reference-Id': referenceId,
       'X-Duration-Ms': String(durationMs),
     });
     res.status(200).send(signedBuffer);
@@ -248,22 +347,33 @@ app.post(
 // ─── Global error handler ─────────────────────────────────────
 
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+  if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+    res.status(413).json({ error: 'El archivo excede el tamaño máximo permitido', code: 'file_too_large' });
+    return;
+  }
+
+  if (err.message === 'Solo se aceptan archivos PDF' || err.message === 'La firma debe ser PNG o JPEG') {
+    res.status(400).json({ error: err.message, code: 'invalid_file_type' });
+    return;
+  }
+
   logger.error({ err, url: req.url }, 'Unhandled server error');
   res.status(500).json({ error: 'Error interno del servidor', code: 'internal_error' });
 });
 
 // ─── Start ────────────────────────────────────────────────────
 
-app.listen(PORT, () => {
-  logger.info({ port: PORT }, `Auto-sign service started`);
+const isMainModule =
+  Boolean(process.argv[1]) && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
 
-  if (!process.env.AUTO_SIGN_API_KEY) {
-    logger.warn('AUTO_SIGN_API_KEY is not set — all requests will be rejected');
-  }
+if (isMainModule) {
+  app.listen(PORT, () => {
+    logger.info({ port: PORT }, 'Auto-sign service started');
 
-  if (!fs.existsSync(FIRMA_DEFAULT_PATH)) {
-    logger.warn({ path: FIRMA_DEFAULT_PATH }, 'firma_default.png not found — custom signature required on every request');
-  }
-});
+    if (!process.env.AUTO_SIGN_API_KEY) {
+      logger.warn('AUTO_SIGN_API_KEY is not set — all requests will be rejected');
+    }
+  });
+}
 
 export default app;

@@ -7,15 +7,25 @@
 
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import path from 'path';
 
-// Point pdfjs to the Node-compatible worker bundle (same legacy build directory)
-const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const pdfjsWorkerSrc = path.resolve(
-  _dirname,
-  '../../node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs',
-);
-(pdfjsLib as any).GlobalWorkerOptions.workerSrc = `file://${pdfjsWorkerSrc}`;
+function resolvePdfjsWorkerSrc(): string {
+  if (process.env.PDFJS_WORKER_SRC) {
+    return process.env.PDFJS_WORKER_SRC;
+  }
+
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    path.resolve(here, '../../node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs'),
+    path.resolve(here, '../node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs'),
+    path.resolve(process.cwd(), 'node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs'),
+  ];
+
+  return candidates.find((candidate) => fs.existsSync(candidate)) ?? candidates[0];
+}
+
+(pdfjsLib as any).GlobalWorkerOptions.workerSrc = `file://${resolvePdfjsWorkerSrc()}`;
 
 // OPS.constructPath from pdfjs-dist (do not hardcode – read from the lib)
 const CONSTRUCT_PATH_OP: number = (pdfjsLib as any).OPS?.constructPath ?? 91;
@@ -206,17 +216,19 @@ async function findGraphicSignatureLine(
 // ─── Public API ───────────────────────────────────────────────
 
 /**
- * Finds the president's signature location in a PDF (Node.js / Buffer version).
+ * Finds a signature location in a PDF (Node.js / Buffer version).
  *
- * @param pdfBuffer   Raw PDF bytes
- * @param searchText  Primary anchor text (e.g. "JORGE IVAN ÁLVAREZ SOTO")
- * @param pageNumber  Page to search (default 2)
+ * @param pdfBuffer        Raw PDF bytes
+ * @param searchText       Primary anchor text (e.g. signer name)
+ * @param pageNumber       Page to search; omit or 0 to scan every page
+ * @param secondaryAnchor  Optional fallback anchor (e.g. "PRESIDENTE")
  * @returns Detection result with location and method, or null if not found
  */
 export async function findSignatureLocationInBuffer(
   pdfBuffer: Buffer,
   searchText: string,
-  pageNumber = 2,
+  pageNumber?: number,
+  secondaryAnchor?: string,
 ): Promise<SignatureDetectionResult | null> {
   const uint8 = new Uint8Array(pdfBuffer);
   const loadingTask = (pdfjsLib as any).getDocument({ data: uint8, verbosity: 0 });
@@ -224,7 +236,12 @@ export async function findSignatureLocationInBuffer(
 
   try {
     const totalPages = pdfDoc.numPages;
-    const pagesToSearch = pageNumber ? [pageNumber] : Array.from({ length: totalPages }, (_, i) => i + 1);
+    const pagesToSearch =
+      pageNumber && pageNumber > 0
+        ? [pageNumber]
+        : Array.from({ length: totalPages }, (_, i) => i + 1);
+
+    const trimmedSecondary = secondaryAnchor?.trim() || undefined;
 
     for (const pg of pagesToSearch) {
       if (pg < 1 || pg > totalPages) continue;
@@ -234,8 +251,8 @@ export async function findSignatureLocationInBuffer(
       const items = (textContent.items as any[]).filter((item: any) => 'str' in item);
 
       const nameItem = findText(items, searchText);
-      const presidenteItem = findText(items, 'PRESIDENTE');
-      const anchorItem = nameItem ?? presidenteItem;
+      const secondaryItem = trimmedSecondary ? findText(items, trimmedSecondary) : null;
+      const anchorItem = nameItem ?? secondaryItem;
 
       if (!anchorItem) continue;
 
@@ -278,8 +295,8 @@ export async function findSignatureLocationInBuffer(
 }
 
 /**
- * Calculates the final signature stamp position from a text location.
- * X is fixed at 80 (left margin of president block).
+ * Calculates the final signature stamp position from a detected text location.
+ * Uses the detected X plus optional offsets (no hardcoded column).
  */
 export function calculateSignaturePosition(
   textLocation: TextLocation,
@@ -287,7 +304,7 @@ export function calculateSignaturePosition(
   offsetY = 0,
 ): SignaturePosition {
   return {
-    x: 80,
+    x: Math.max(0, textLocation.x + offsetX),
     y: Math.max(0, textLocation.y + offsetY),
     page: textLocation.page,
   };

@@ -1,0 +1,20 @@
+services:
+  auto-sign:
+    build: .
+    container_name: auto-sign
+    restart: unless-stopped
+    ports:
+      # Solo localhost — nginx hace de reverse proxy hacia internet
+      - "127.0.0.1:3001:3001"
+    env_file:
+      - .env
+    environment:
+      AUTO_SIGN_PORT: "3001"
+      PDFJS_WORKER_SRC: /app/node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs
+    mem_limit: 768m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
