@@ -20,16 +20,16 @@ ENV NODE_ENV=production \
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd -m -u 1000 appuser
+    && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=build /app/dist-server ./dist-server
 
-RUN chown -R appuser:appuser /app
-USER appuser
+# node:20-slim already ships a non-root `node` user (UID 1000)
+RUN chown -R node:node /app
+USER node
 
 EXPOSE 3001
 
