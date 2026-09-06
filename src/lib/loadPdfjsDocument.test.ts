@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getDocumentMock = vi.fn();
+const installPdfjsMainThreadWorker = vi.fn();
 
 vi.mock("@/lib/pdfjsSetup", () => ({
+  installPdfjsMainThreadWorker: () => installPdfjsMainThreadWorker(),
   pdfjsLib: {
     getDocument: (params: { data: ArrayBuffer }) => getDocumentMock(params),
     GlobalWorkerOptions: { workerSrc: "worker.js" },
@@ -12,6 +14,7 @@ vi.mock("@/lib/pdfjsSetup", () => ({
 describe("loadPdfjsDocumentFromBytes", () => {
   beforeEach(() => {
     getDocumentMock.mockReset();
+    installPdfjsMainThreadWorker.mockReset();
   });
 
   it("passes a sliced copy to getDocument so the source buffer stays intact", async () => {
@@ -54,5 +57,46 @@ describe("loadPdfjsDocumentFromBytes", () => {
     const pdf = await loadPdfjsDocumentFromBytes(source);
 
     expect(pdf.numPages).toBe(1);
+    expect(installPdfjsMainThreadWorker).toHaveBeenCalled();
+  });
+
+  it("reinstalls the main-thread worker and retries after an iOS fake-worker import failure", async () => {
+    const source = new Uint8Array([0x25, 0x50, 0x44, 0x46]).buffer;
+    getDocumentMock
+      .mockImplementationOnce(() => ({
+        promise: Promise.reject(
+          new Error(
+            'Setting up fake worker failed: "Importing a module script failed.".',
+          ),
+        ),
+      }))
+      .mockImplementationOnce(() => ({
+        promise: Promise.resolve({ numPages: 1, destroy: vi.fn() }),
+      }));
+
+    const { loadPdfjsDocumentFromBytes } = await import(
+      "@/lib/loadPdfjsDocument"
+    );
+    const pdf = await loadPdfjsDocumentFromBytes(source);
+
+    expect(pdf.numPages).toBe(1);
+    expect(getDocumentMock).toHaveBeenCalledTimes(2);
+    expect(installPdfjsMainThreadWorker.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it("does not retry unrelated parse errors", async () => {
+    const source = new Uint8Array([0x25, 0x50, 0x44, 0x46]).buffer;
+    getDocumentMock.mockImplementation(() => ({
+      promise: Promise.reject(new Error("Invalid PDF structure.")),
+    }));
+
+    const { loadPdfjsDocumentFromBytes } = await import(
+      "@/lib/loadPdfjsDocument"
+    );
+
+    await expect(loadPdfjsDocumentFromBytes(source)).rejects.toThrow(
+      "Invalid PDF structure.",
+    );
+    expect(getDocumentMock).toHaveBeenCalledTimes(1);
   });
 });
