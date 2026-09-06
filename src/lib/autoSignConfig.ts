@@ -13,8 +13,8 @@ export const DEFAULT_AUTO_SIGN_CONFIG: AutoSignatureConfig = {
   page: 2,   // Página 2 (donde está el bloque de firma en convenios ProSalud)
   x: 80,     // Margen izquierdo del bloque de firma (columna izquierda)
   y: 255,    // Y de la línea de firma (coordenada PDF, origen inferior-izquierda)
-  width: 38, // Ancho en puntos PDF (≈1.3 cm). Aspect ratio ≈ 0.76.
-  height: 50, // Alto en puntos PDF (≈1.8 cm). Aspect ratio ≈ 0.76. (-5pt ≈ -1.8mm vs anterior)
+  width: 48, // Ancho en puntos PDF (≈1.7 cm). Aspect ratio ≈ 0.76.
+  height: 63, // Alto en puntos PDF (≈2.2 cm). Aspect ratio ≈ 0.76.
 };
 
 /**
@@ -35,7 +35,7 @@ export const AI_SEARCH_CONFIG = {
   searchText: "JORGE IVAN ÁLVAREZ SOTO", // Texto de referencia para ubicar la firma
   anchorText: "PRESIDENTE", // Texto ancla único en el documento (aparece solo en el bloque de firma)
   defaultSearchPage: 2, // Página por defecto donde buscar la firma
-  offsetX: 0, // Offset horizontal desde la línea de firma (puntos PDF)
-  offsetY: 0, // Offset vertical desde la línea de firma (puntos PDF, 0 = sobre la línea)
+  offsetX: 0, // Offset horizontal desde el texto del firmante (puntos PDF)
+  offsetY: -14, // Baja la firma para solapar el nombre y evitar una captura limpia
 };
 

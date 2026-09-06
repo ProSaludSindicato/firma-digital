@@ -2,33 +2,33 @@ import { describe, expect, it } from 'vitest';
 import { calculateSignaturePosition } from '../lib/signatureLocationNode.js';
 
 describe('calculateSignaturePosition', () => {
-  it('centers the stamp on a detected signature line', () => {
+  it('centers the stamp on the signer text width', () => {
     const position = calculateSignaturePosition(
-      { page: 2, x: 80, y: 300, width: 200, height: 0 },
+      { page: 2, x: 80, y: 300, width: 140, height: 0 },
       0,
       0,
-      38,
+      48,
     );
 
     expect(position).toEqual({
       page: 2,
-      x: 161,
+      x: 126,
       y: 300,
     });
   });
 
   it('applies offsets after centering', () => {
     const position = calculateSignaturePosition(
-      { page: 2, x: 80, y: 300, width: 200, height: 0 },
+      { page: 2, x: 80, y: 300, width: 140, height: 0 },
       5,
-      -2,
-      38,
+      -14,
+      48,
     );
 
     expect(position).toEqual({
       page: 2,
-      x: 166,
-      y: 298,
+      x: 131,
+      y: 286,
     });
   });
 
