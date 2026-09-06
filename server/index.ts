@@ -285,6 +285,7 @@ app.post(
         detectionResult.location,
         offsetXParsed.value ?? 0,
         offsetYParsed.value ?? 0,
+        width,
       );
       detectionMethod = detectionResult.detectionMethod;
 

@@ -181,7 +181,7 @@ function extractHorizontalLines(
 async function findGraphicSignatureLine(
   page: any,
   anchorBaselineY: number,
-): Promise<number | null> {
+): Promise<{ y: number; x: number; length: number } | null> {
   const operatorList = await page.getOperatorList();
   const { fnArray, argsArray } = operatorList;
 
@@ -207,7 +207,9 @@ async function findGraphicSignatureLine(
 
   if (validCandidates.length > 0) {
     validCandidates.sort((a, b) => (a.y - anchorBaselineY) - (b.y - anchorBaselineY));
-    return validCandidates[0].y;
+    const best = validCandidates[0];
+
+    return { y: best.y, x: best.x, length: best.length };
   }
 
   return null;
@@ -258,15 +260,15 @@ export async function findSignatureLocationInBuffer(
 
       const anchorBaselineY: number = anchorItem.transform[5];
 
-      const graphicLineY = await findGraphicSignatureLine(page, anchorBaselineY);
+      const graphicLine = await findGraphicSignatureLine(page, anchorBaselineY);
 
-      if (graphicLineY !== null) {
+      if (graphicLine !== null) {
         return {
           location: {
             page: pg,
-            x: anchorItem.transform[4],
-            y: graphicLineY,
-            width: anchorItem.width ?? 0,
+            x: graphicLine.x,
+            y: graphicLine.y,
+            width: graphicLine.length,
             height: 0,
           },
           detectionMethod: 'graphic_line',
@@ -296,15 +298,23 @@ export async function findSignatureLocationInBuffer(
 
 /**
  * Calculates the final signature stamp position from a detected text location.
- * Uses the detected X plus optional offsets (no hardcoded column).
+ * When stampWidth is provided and the detected region is wider, centers the stamp
+ * horizontally (line length for graphic_line, anchor text for text_fallback).
  */
 export function calculateSignaturePosition(
   textLocation: TextLocation,
   offsetX = 0,
   offsetY = 0,
+  stampWidth?: number,
 ): SignaturePosition {
+  let x = textLocation.x;
+
+  if (stampWidth && textLocation.width > stampWidth) {
+    x = textLocation.x + (textLocation.width - stampWidth) / 2;
+  }
+
   return {
-    x: Math.max(0, textLocation.x + offsetX),
+    x: Math.max(0, x + offsetX),
     y: Math.max(0, textLocation.y + offsetY),
     page: textLocation.page,
   };
