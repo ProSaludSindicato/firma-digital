@@ -261,14 +261,15 @@ export async function findSignatureLocationInBuffer(
       const anchorBaselineY: number = anchorItem.transform[5];
 
       const graphicLine = await findGraphicSignatureLine(page, anchorBaselineY);
+      const horizontalItem = nameItem ?? secondaryItem ?? anchorItem;
 
       if (graphicLine !== null) {
         return {
           location: {
             page: pg,
-            x: graphicLine.x,
+            x: horizontalItem.transform[4],
             y: graphicLine.y,
-            width: graphicLine.length,
+            width: horizontalItem.width ?? 0,
             height: 0,
           },
           detectionMethod: 'graphic_line',
@@ -299,7 +300,7 @@ export async function findSignatureLocationInBuffer(
 /**
  * Calculates the final signature stamp position from a detected text location.
  * When stampWidth is provided and the detected region is wider, centers the stamp
- * horizontally (line length for graphic_line, anchor text for text_fallback).
+ * horizontally over the signer text (name or secondary anchor).
  */
 export function calculateSignaturePosition(
   textLocation: TextLocation,
