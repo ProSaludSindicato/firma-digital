@@ -11,16 +11,28 @@ import app from '../index.js';
 
 const VALID_API_KEY = 'test-api-key-for-vitest';
 
-// ─── Helpers ─────────────────────────────────────────────────
+const MIN_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
 
 async function createTestPdf(): Promise<Buffer> {
   const pdfDoc = await PDFDocument.create();
-  pdfDoc.addPage([595, 842]); // page 1
-  pdfDoc.addPage([595, 842]); // page 2
+  pdfDoc.addPage([595, 842]);
+  pdfDoc.addPage([595, 842]);
   return Buffer.from(await pdfDoc.save());
 }
 
-// ─── Env management ──────────────────────────────────────────
+function withAuth(req: request.Test): request.Test {
+  return req.set('X-Api-Key', VALID_API_KEY);
+}
+
+function withRequiredFields(req: request.Test, pdfBuffer: Buffer): request.Test {
+  return withAuth(req)
+    .attach('pdf', pdfBuffer, { filename: 'test.pdf', contentType: 'application/pdf' })
+    .attach('signature', MIN_PNG, { filename: 'firma.png', contentType: 'image/png' })
+    .field('search_text', 'JORGE IVAN ALVAREZ SOTO');
+}
 
 beforeEach(() => {
   process.env.AUTO_SIGN_API_KEY = VALID_API_KEY;
@@ -29,8 +41,6 @@ beforeEach(() => {
 afterEach(() => {
   delete process.env.AUTO_SIGN_API_KEY;
 });
-
-// ─── Tests ───────────────────────────────────────────────────
 
 describe('GET /api/health', () => {
   it('returns 200 with status ok', async () => {
@@ -77,9 +87,9 @@ describe('POST /api/auto-sign — authentication', () => {
 
 describe('POST /api/auto-sign — payload validation', () => {
   it('returns 400 when pdf field is missing', async () => {
-    const res = await request(app)
-      .post('/api/auto-sign')
-      .set('X-Api-Key', VALID_API_KEY);
+    const res = await withAuth(request(app).post('/api/auto-sign'))
+      .attach('signature', MIN_PNG, { filename: 'firma.png', contentType: 'image/png' })
+      .field('search_text', 'NOMBRE FIRMANTE');
 
     expect(res.status).toBe(400);
     expect(res.body.code).toBe('missing_pdf');
@@ -87,24 +97,37 @@ describe('POST /api/auto-sign — payload validation', () => {
 
   it('returns 400 for invalid PDF bytes (not starting with %PDF)', async () => {
     const fakePdf = Buffer.from('this is not a pdf');
-    const res = await request(app)
-      .post('/api/auto-sign')
-      .set('X-Api-Key', VALID_API_KEY)
-      .attach('pdf', fakePdf, { filename: 'fake.pdf', contentType: 'application/pdf' });
+    const res = await withRequiredFields(request(app).post('/api/auto-sign'), fakePdf);
 
     expect(res.status).toBe(400);
     expect(res.body.code).toBe('invalid_pdf');
   });
+
+  it('returns 400 when signature field is missing', async () => {
+    const pdfBuffer = await createTestPdf();
+    const res = await withAuth(request(app).post('/api/auto-sign'))
+      .attach('pdf', pdfBuffer, { filename: 'test.pdf', contentType: 'application/pdf' })
+      .field('search_text', 'NOMBRE FIRMANTE');
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('missing_signature');
+  });
+
+  it('returns 400 when search_text is missing', async () => {
+    const pdfBuffer = await createTestPdf();
+    const res = await withAuth(request(app).post('/api/auto-sign'))
+      .attach('pdf', pdfBuffer, { filename: 'test.pdf', contentType: 'application/pdf' })
+      .attach('signature', MIN_PNG, { filename: 'firma.png', contentType: 'image/png' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('missing_search_text');
+  });
 });
 
 describe('POST /api/auto-sign — anchor not found', () => {
-  it('returns 422 with anchor_not_found when president anchor is missing', async () => {
-    // A synthetic PDF with no text — detection will return null → 422
+  it('returns 422 with anchor_not_found when search text is missing from the PDF', async () => {
     const pdfBuffer = await createTestPdf();
-    const res = await request(app)
-      .post('/api/auto-sign')
-      .set('X-Api-Key', VALID_API_KEY)
-      .attach('pdf', pdfBuffer, { filename: 'test.pdf', contentType: 'application/pdf' });
+    const res = await withRequiredFields(request(app).post('/api/auto-sign'), pdfBuffer);
 
     expect(res.status).toBe(422);
     expect(res.body.code).toBe('anchor_not_found');
@@ -114,13 +137,11 @@ describe('POST /api/auto-sign — anchor not found', () => {
 describe('POST /api/auto-sign — reference id echo', () => {
   it('echoes X-Reference-Id in response headers even on error responses', async () => {
     const pdfBuffer = await createTestPdf();
-    const res = await request(app)
-      .post('/api/auto-sign')
-      .set('X-Api-Key', VALID_API_KEY)
-      .set('X-Reference-Id', '42')
-      .attach('pdf', pdfBuffer, { filename: 'test.pdf', contentType: 'application/pdf' });
+    const res = await withRequiredFields(request(app).post('/api/auto-sign'), pdfBuffer).set(
+      'X-Reference-Id',
+      '42',
+    );
 
-    // The response could be 422 (anchor not found); we just check the header
     expect(res.headers['x-reference-id']).toBe('42');
   });
 });

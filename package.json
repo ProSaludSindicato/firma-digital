@@ -13,7 +13,7 @@
     "test:watch": "vitest",
     "server:dev": "tsx --env-file=.env watch server/index.ts",
     "server:start": "tsx --env-file=.env server/index.ts",
-    "server:build": "tsup server/index.ts --format esm --out-dir dist-server --dts",
+    "server:build": "tsup server/index.ts --format esm --out-dir dist-server --tsconfig tsconfig.server.json --external pdfjs-dist",
     "test:server": "vitest run --config vitest.server.config.ts"
   },
   "dependencies": {
