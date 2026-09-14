@@ -32,6 +32,7 @@ import { useTour } from "@/hooks/useTour";
 import { useIsLandscapeMobile, useIsMobile } from "@/hooks/use-mobile";
 import { appConfig } from "@/lib/appConfig";
 import { CONVENIO_EDITOR_CONSTRAINTS } from "@/lib/convenioEditorConfig";
+import type { EditorConstraints } from "@/types/documentEditor";
 import { apiFieldsToDocumentFields } from "@/lib/fieldDefaults";
 import { exportDocumentToPdf } from "@/lib/pdfFieldExporter";
 import {
@@ -250,7 +251,7 @@ function ConvenioCannotSignPanel({
       tone = "danger";
       title = "Este convenio no puede continuar";
       description =
-        "El trámite asociado a este enlace fue rechazado. Si tienes dudas, escríbenos con tu documento de identidad a mano.";
+        "Este convenio fue invalidado y ya no admite firma. Si te enviaron uno nuevo, usa el enlace más reciente. Si tienes dudas, escríbenos con tu documento de identidad a mano.";
       break;
     case "expirado":
       icon = Clock;
@@ -436,6 +437,7 @@ const SignConvenioByToken = () => {
   const [isSent, setIsSent] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
+  const [lockedPlacement, setLockedPlacement] = useState(false);
 
   const editor = useDocumentEditor(isMobile);
   const { setFile, loadFields } = editor;
@@ -456,6 +458,14 @@ const SignConvenioByToken = () => {
     : null;
   const pdfFile = editor.file;
   const isDownloading = false;
+
+  const convenioConstraints = useMemo<EditorConstraints>(
+    () => ({
+      ...CONVENIO_EDITOR_CONSTRAINTS,
+      lockedPlacement,
+    }),
+    [lockedPlacement],
+  );
 
   const { trackEvent, getAuditLog } = useAuditTrail();
 
@@ -510,6 +520,7 @@ const SignConvenioByToken = () => {
 
     setMetaLoading(true);
     setMetaError(null);
+    setLockedPlacement(false);
     signatureDetectionIdRef.current += 1;
 
     try {
@@ -591,6 +602,7 @@ const SignConvenioByToken = () => {
         );
         if (affiliateField && detectionId === signatureDetectionIdRef.current) {
           loadFields(apiFieldsToDocumentFields([affiliateField]));
+          setLockedPlacement(true);
         }
       } catch (detectionError) {
         console.warn(
@@ -972,7 +984,9 @@ const SignConvenioByToken = () => {
                 !signatureField
                   ? "Desplázate hasta la página de firma y toca donde quieras colocar tu firma."
                   : signature
-                    ? "Revisa que la firma quede sobre la línea. Puedes arrastrar el recuadro o usar el lápiz para editarla."
+                    ? lockedPlacement
+                      ? "Revisa que la firma quede sobre la línea. Si lo necesitas, usa el lápiz para editarla."
+                      : "Revisa que la firma quede sobre la línea. Puedes arrastrar el recuadro o usar el lápiz para editarla."
                     : "Cuando termines de leer, ve a la página de firma y toca el recuadro «Firma aquí» para dibujar o subir tu firma."
               }
             />
@@ -1004,7 +1018,7 @@ const SignConvenioByToken = () => {
                       fields={editor.fields}
                       activeFieldId={editor.activeFieldId}
                       placingType={editor.placingType}
-                      constraints={CONVENIO_EDITOR_CONSTRAINTS}
+                      constraints={convenioConstraints}
                       isLocked={isSent}
                       onSelectField={editor.selectField}
                       onUpdateField={editor.updateField}

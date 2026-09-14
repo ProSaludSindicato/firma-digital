@@ -42,7 +42,11 @@ function makeField(overrides: Partial<DocumentField> = {}): DocumentField {
 
 function renderSignatureOverlay(
   field: DocumentField,
-  extras: { isSelected?: boolean; allowFieldRemoval?: boolean } = {},
+  extras: {
+    isSelected?: boolean;
+    allowFieldRemoval?: boolean;
+    lockedPlacement?: boolean;
+  } = {},
 ) {
   const onRequestEdit = vi.fn();
   const onUpdate = vi.fn();
@@ -55,6 +59,7 @@ function renderSignatureOverlay(
       canvasSize={{ width: 800, height: 600 }}
       isSelected={extras.isSelected ?? true}
       isLocked={false}
+      lockedPlacement={extras.lockedPlacement ?? false}
       allowFieldRemoval={extras.allowFieldRemoval ?? true}
       onSelect={onSelect}
       onUpdate={onUpdate}
@@ -149,5 +154,18 @@ describe("FieldOverlay signature interactions", () => {
     expect(screen.queryByRole("button", { name: "Eliminar Firma" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Redimensionar Firma")).toBeInTheDocument();
     expect(screen.getByLabelText("Mover Firma")).toBeInTheDocument();
+  });
+
+  it("does not allow moving or resizing when placement is locked", () => {
+    const { onUpdate } = renderSignatureOverlay(makeField(), { lockedPlacement: true });
+    const overlay = screen.getByRole("group", { name: "Firma" });
+
+    pointerOn(overlay, "pointerdown", 120, 80);
+    pointerOn(document, "pointermove", 160, 100);
+    pointerOn(document, "pointerup", 160, 100);
+
+    expect(onUpdate).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText("Mover Firma")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Redimensionar Firma")).not.toBeInTheDocument();
   });
 });
